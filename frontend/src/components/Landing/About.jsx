@@ -7,38 +7,27 @@ function About() {
   ];
 
   return (
-    <section id="about" className="rx-section rx-section-center">
-      <div className="rx-container">
-        <h2 className="rx-title">Meet the Team</h2>
-        <p className="rx-subtitle">The developers building RefineX.</p>
-        
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: "32px",
-          maxWidth: "800px",
-          margin: "0 auto"
-        }}>
-          {crew.map((member, idx) => (
-            <div key={idx} className="rx-card" style={{ padding: "40px 24px" }}>
-              {/* Profile Avatar Frame Container */}
-              <div style={{
-                width: "90px", height: "90px", borderRadius: "50%",
-                backgroundColor: "var(--rx-surface)", margin: "0 auto 20px auto",
-                border: "2px solid var(--rx-border)", display: "flex",
-                alignItems: "center", justifyContent: "center",
-                fontSize: "1.5rem", fontWeight: 700, color: "var(--rx-primary)"
-              }}>
-                {member.name.split(" ").map(n => n[0]).join("")}
-              </div>
-              <h3 style={{ fontSize: "1.3rem", marginBottom: "6px" }}>{member.name}</h3>
-              <p style={{ color: "var(--rx-primary)", fontWeight: 600, fontSize: "0.95rem", marginBottom: "20px" }}>{member.role}</p>
-              <a href="#" className="rx-btn-secondary" style={{ padding: "8px 16px", fontSize: "0.9rem" }}>
-                <FiGithub /> GitHub Profile
-              </a>
+    <section id="about" className="py-24 px-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-[#111111] text-center">
+      <h2 className="text-3xl font-bold mb-4 text-black dark:text-white tracking-tight">Meet the Team</h2>
+      <p className="text-lg text-gray-600 dark:text-gray-400 mb-16">The developers building RefineX.</p>
+      
+      <div className="grid sm:grid-cols-2 gap-12 max-w-3xl mx-auto">
+        {crew.map((member, idx) => (
+          <div key={idx} className="flex flex-col items-center">
+            
+            <div className="w-24 h-24 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 rounded-full flex items-center justify-center text-2xl font-bold text-primary mb-5 shadow-sm">
+              {member.name.split(" ").map(n => n[0]).join("")}
             </div>
-          ))}
-        </div>
+            
+            <h3 className="text-xl font-semibold text-black dark:text-white mb-1">{member.name}</h3>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">{member.role}</p>
+            
+            <a href="#" className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors">
+              <FiGithub size={18} /> GitHub Profile
+            </a>
+            
+          </div>
+        ))}
       </div>
     </section>
   );

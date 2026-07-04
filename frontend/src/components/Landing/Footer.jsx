@@ -2,74 +2,51 @@ import { FiDatabase } from "react-icons/fi";
 
 function Footer() {
   return (
-    <footer style={{ backgroundColor: "var(--rx-surface)", borderTop: "1px solid var(--rx-border)" }}>
-      <div className="rx-container" style={{ paddingTop: "64px", paddingBottom: "48px" }}>
+    <footer className="border-t border-border-gray dark:border-gray-800 bg-gray-50 dark:bg-[#121212] pt-16 pb-8 px-6">
+      <div className="max-w-7xl mx-auto">
         
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: "40px",
-          marginBottom: "48px"
-        }}>
-          {/* Logo Brand Statement Block (Occupies more width on desktop screens) */}
-          <div style={{ gridColumn: "span 2" }} className="footer-brand-span">
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-              <div style={{
-                display: "flex", justifyContent: "center", alignItems: "center",
-                width: "28px", height: "28px", backgroundColor: "var(--rx-primary)",
-                borderRadius: "6px", color: "white"
-              }}>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-16">
+          
+          <div className="col-span-2">
+            <div className="flex items-center gap-2 mb-5">
+              <div className="flex justify-center items-center w-7 h-7 bg-primary rounded text-white">
                 <FiDatabase size={14} />
               </div>
-              <span style={{ fontFamily: "var(--rx-font-logo)", fontWeight: 700, fontSize: "1.2rem", letterSpacing: "0.5px" }}>
-                RefineX
-              </span>
+              <span className="font-bold text-lg tracking-wide text-black dark:text-white">RefineX</span>
             </div>
-            <p style={{ color: "var(--rx-text-secondary)", fontSize: "0.95rem", lineHeight: 1.6, maxWidth: "280px" }}>
+            <p className="text-sm text-gray-600 dark:text-gray-400 max-w-sm leading-relaxed">
               Your complete platform for data cleaning, visualization, and machine learning. Built for students and professionals.
             </p>
           </div>
 
-          {/* Links Grid Column 1 */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <h4 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "4px" }}>Product</h4>
-            <a href="#features" className="rx-link" style={{ fontSize: "0.9rem" }}>Data Cleaning</a>
-            <a href="#features" className="rx-link" style={{ fontSize: "0.9rem" }}>ML Training</a>
-            <a href="#features" className="rx-link" style={{ fontSize: "0.9rem" }}>Visualizations</a>
+          <div className="flex flex-col gap-4 text-sm">
+            <h4 className="font-semibold text-black dark:text-white mb-1">Product</h4>
+            <a href="#features" className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors">Data Cleaning</a>
+            <a href="#features" className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors">ML Training</a>
+            <a href="#features" className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors">Visualizations</a>
           </div>
 
-          {/* Links Grid Column 2 */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <h4 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "4px" }}>Resources</h4>
-            <a href="#" className="rx-link" style={{ fontSize: "0.9rem" }}>Documentation</a>
-            <a href="#" className="rx-link" style={{ fontSize: "0.9rem" }}>Sample Datasets</a>
-            <a href="#" className="rx-link" style={{ fontSize: "0.9rem" }}>GitHub</a>
+          <div className="flex flex-col gap-4 text-sm">
+            <h4 className="font-semibold text-black dark:text-white mb-1">Resources</h4>
+            <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors">Documentation</a>
+            <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors">Sample Datasets</a>
+            <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors">GitHub</a>
           </div>
 
-          {/* Links Grid Column 3 */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <h4 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "4px" }}>Legal</h4>
-            <a href="#" className="rx-link" style={{ fontSize: "0.9rem" }}>Privacy Policy</a>
-            <a href="#" className="rx-link" style={{ fontSize: "0.9rem" }}>Terms of Service</a>
+          <div className="flex flex-col gap-4 text-sm">
+            <h4 className="font-semibold text-black dark:text-white mb-1">Legal</h4>
+            <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors">Privacy Policy</a>
+            <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors">Terms of Service</a>
           </div>
+
         </div>
 
-        {/* Closing Copyright Signoff Bar */}
-        <div style={{
-          borderTop: "1px solid var(--rx-border)", paddingTop: "24px",
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          flexWrap: "wrap", gap: "12px", fontSize: "0.85rem", color: "var(--rx-text-secondary)"
-        }}>
+        <div className="border-t border-border-gray dark:border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500 dark:text-gray-500">
           <span>&copy; {new Date().getFullYear()} RefineX Team. All rights reserved.</span>
           <span>Made in Ahmedabad.</span>
         </div>
+        
       </div>
-
-      <style>{`
-        @media (max-width: 640px) {
-          .footer-brand-span { grid-column: span 1 !important; }
-        }
-      `}</style>
     </footer>
   );
 }

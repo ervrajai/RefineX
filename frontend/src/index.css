@@ -1,159 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@400;600;700;900&display=swap');
+@import "tailwindcss";
 
-:root {
-  --rx-bg: #ffffff;
-  --rx-surface: #f8f9fa;
-  --rx-card-bg: #ffffff;
-  --rx-border: #cdcdcd;
-  --rx-primary: #673ab7;
-  --rx-primary-hover: #522e93;
-  --rx-text-primary: #121212;
-  --rx-text-secondary: #5a5a5a;
-  --rx-font-sans: 'Inter', sans-serif;
-  --rx-font-logo: 'Orbitron', sans-serif;
-  --rx-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-  --rx-shadow-lg: 0 20px 25px -5px rgba(103, 58, 183, 0.1), 0 8px 10px -6px rgba(103, 58, 183, 0.05);
+/* THIS LINE FIXES THE MANUAL DARK MODE TOGGLE IN V4 */
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-primary: #673ab7;
+  --color-primary-dark: #522e93;
+  --color-border-gray: #cdcdcd;
 }
 
-[data-theme="dark"] {
-  --rx-bg: #0b0813;
-  --rx-surface: #141122;
-  --rx-card-bg: #1c1830;
-  --rx-border: #2d2945;
-  --rx-text-primary: #f3f1f8;
-  --rx-text-secondary: #a39eb9;
-  --rx-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-  --rx-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
-}
-
-body {
-  font-family: var(--rx-font-sans);
-  background-color: var(--rx-bg);
-  color: var(--rx-text-primary);
-  overflow-x: hidden;
-  line-height: 1.5;
-}
-
-/* Reusable Layout Utilities */
-.rx-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px;
-  width: 100%;
-}
-
-.rx-section {
-  padding: 80px 0;
-}
-
-.rx-section-center {
-  text-align: center;
-}
-
-.rx-title {
-  font-size: 2.25rem;
-  font-weight: 800;
-  color: var(--rx-text-primary);
-  margin-bottom: 12px;
-  letter-spacing: -0.025em;
-}
-
-.rx-subtitle {
-  font-size: 1.125rem;
-  color: var(--rx-text-secondary);
-  max-width: 650px;
-  margin: 0 auto 48px auto;
-  line-height: 1.6;
-}
-
-/* UI Cards */
-.rx-card {
-  background-color: var(--rx-card-bg);
-  border: 1px solid var(--rx-border);
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: var(--rx-shadow);
-  position: relative;
-  overflow: hidden;
-}
-
-.rx-card:hover {
-  border-color: var(--rx-primary);
-  box-shadow: var(--rx-shadow-lg);
-  transform: translateY(-2px);
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-/* Buttons */
-.rx-btn-primary {
-  background-color: var(--rx-primary);
-  color: #ffffff;
-  border: none;
-  padding: 10px 22px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  text-decoration: none;
-}
-
-.rx-btn-primary:hover {
-  background-color: var(--rx-primary-hover);
-}
-
-.rx-btn-secondary {
-  background-color: transparent;
-  color: var(--rx-text-primary);
-  border: 1px solid var(--rx-border);
-  padding: 10px 22px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  text-decoration: none;
-}
-
-.rx-btn-secondary:hover {
-  background-color: var(--rx-surface);
-  border-color: var(--rx-text-secondary);
-}
-
-.rx-link {
-  color: var(--rx-text-secondary);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.rx-link:hover {
-  color: var(--rx-primary);
-}
-
-/* Text Gradients */
-.text-gradient {
-  background: linear-gradient(135deg, var(--rx-primary) 0%, #9c27b0 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* Responsive Handling */
-@media (max-width: 768px) {
-  .rx-title {
-    font-size: 1.75rem;
-  }
-  .rx-section {
-    padding: 48px 0;
+@layer base {
+  body {
+    /* Vite uses slightly off-black for dark mode for better contrast */
+    @apply bg-white text-black dark:bg-[#111111] dark:text-[#f8f8f8] font-sans antialiased transition-colors duration-300;
   }
 }

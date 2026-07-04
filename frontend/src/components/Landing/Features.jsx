@@ -1,68 +1,42 @@
 import { FiDatabase, FiCpu, FiBarChart2 } from "react-icons/fi";
 
 function Features() {
-  const pipelineData = [
+  const features = [
     {
-      icon: <FiDatabase size={28} />,
+      icon: <FiDatabase size={20} />,
       title: "Data Cleaning",
-      items: [
-        { label: "Upload Dataset", desc: "Import your raw CSV safely" },
-        { label: "Auto-Detect Issues", desc: "Find nulls, duplicates & outliers instantly" },
-        { label: "Resolve & Export", desc: "Apply fixes and download pristine data" }
-      ]
+      desc: "Import your raw CSV, detect nulls or duplicates, and export pristine data ready for analysis."
     },
     {
-      icon: <FiCpu size={28} />,
+      icon: <FiCpu size={20} />,
       title: "Model Training",
-      items: [
-        { label: "Select Target", desc: "Choose the column you want to predict" },
-        { label: "Train Algorithm", desc: "Run Regression or Random Forest models" },
-        { label: "Evaluate & Save", desc: "Check accuracy scores and download .pkl" }
-      ]
+      desc: "Select a target column and instantly train Regression or Random Forest models with high accuracy."
     },
     {
-      icon: <FiBarChart2 size={28} />,
+      icon: <FiBarChart2 size={20} />,
       title: "Visualization",
-      items: [
-        { label: "Pick Data Points", desc: "Select X and Y axes from your dataset" },
-        { label: "Generate Chart", desc: "Create Bar, Line, Scatter, or Pie graphs" },
-        { label: "Export Assets", desc: "Download the graph image and Python code" }
-      ]
+      desc: "Generate professional Bar, Line, Scatter, or Pie graphs and export the Python code instantly."
     }
   ];
 
   return (
-    <section id="features" className="rx-section rx-section-center">
-      <div className="rx-container">
-        <h2 className="rx-title">Master Every Feature</h2>
-        <p className="rx-subtitle">Dedicated pipelines designed to handle data exactly how you want.</p>
+    <section id="features" className="py-24 px-6 border-t border-border-gray dark:border-gray-800 bg-white dark:bg-[#0a0a0a]">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl font-bold mb-4 text-black dark:text-white tracking-tight">Master Every Feature</h2>
+          <p className="text-lg text-gray-600 dark:text-gray-400">Dedicated pipelines designed to handle data exactly how you want.</p>
+        </div>
         
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: "32px",
-          textAlign: "left"
-        }}>
-          {pipelineData.map((feature, idx) => (
-            <div key={idx} className="rx-card" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-              <div style={{
-                color: "white", backgroundColor: "var(--rx-primary)", 
-                width: "54px", height: "54px", borderRadius: "12px",
-                display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "center"
-              }}>
+        <div className="grid md:grid-cols-3 gap-6">
+          {features.map((feature, idx) => (
+            <div key={idx} className="border border-border-gray dark:border-gray-800 rounded-xl p-8 bg-gray-50 dark:bg-[#121212] hover:border-primary dark:hover:border-primary transition-colors">
+              <div className="w-10 h-10 bg-white dark:bg-[#1f1f1f] border border-border-gray dark:border-gray-700 text-primary flex items-center justify-center rounded-lg mb-6">
                 {feature.icon}
               </div>
-              <h3 style={{ fontSize: "1.4rem", fontWeight: 700 }}>{feature.title}</h3>
-              <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "16px" }}>
-                {feature.items.map((step, sIdx) => (
-                  <li key={sIdx} style={{ fontSize: "0.95rem" }}>
-                    <strong style={{ color: "var(--rx-text-primary)", display: "block", marginBottom: "2px" }}>
-                      {step.label}
-                    </strong>
-                    <span style={{ color: "var(--rx-text-secondary)" }}>{step.desc}</span>
-                  </li>
-                ))}
-              </ul>
+              <h3 className="text-xl font-semibold mb-3 text-black dark:text-white">{feature.title}</h3>
+              <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                {feature.desc}
+              </p>
             </div>
           ))}
         </div>

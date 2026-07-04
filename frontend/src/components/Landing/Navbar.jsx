@@ -118,8 +118,8 @@ function Navbar() {
             <div className="flex justify-center items-center w-9 h-9 md:w-10 md:h-10 bg-purple-600 rounded-xl text-white shadow-sm">
               <FiDatabase size={20} />
             </div>
-            <span className="font-orbitron text-xl md:text-2xl font-black tracking-wider inline-flex items-center text-black dark:text-white">
-              Refine<span className="font-sans text-purple-600 text-2xl md:text-3xl ml-0.5 leading-none">X</span>
+            <span className="font-display text-xl md:text-2xl font-black tracking-wider inline-flex items-center text-black dark:text-white">
+              Refine<span className="font-sans text-brand text-2xl md:text-3xl ml-0.5 leading-none">X</span>
             </span>
           </a>
 

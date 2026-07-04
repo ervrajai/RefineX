@@ -1,48 +1,37 @@
-import { FiCheckCircle, FiActivity, FiCpu } from "react-icons/fi";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { useRef } from "react";
 
-function DashboardShowcase() {
+export default function DashboardShowcase() {
+  const containerRef = useRef(null);
+  
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "center center"]
+  });
+
+  // Maps scroll progress (0 to 1) to rotateX (25deg to 0deg) and scale (0.85 to 1)
+  const rotateX = useTransform(scrollYProgress, [0, 1], [25, 0]);
+  const scale = useTransform(scrollYProgress, [0, 1], [0.85, 1]);
+
   return (
-    <section id="dashboard" className="py-24 px-6 border-t border-border-gray dark:border-gray-800 bg-white dark:bg-[#0a0a0a]">
-      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
-        
-        <div>
-          <h2 className="text-3xl font-bold mb-4 text-black dark:text-white tracking-tight">
-            Interactive dashboard at a glance
-          </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
-            Track cleaning progress, model performance, and data trends without switching tools.
-          </p>
-          
-          <ul className="space-y-4 text-gray-800 dark:text-gray-300 font-medium">
-            <li className="flex items-center gap-3"><FiCheckCircle className="text-primary"/> Live status monitoring</li>
-            <li className="flex items-center gap-3"><FiActivity className="text-primary"/> Visual summaries for datasets</li>
-            <li className="flex items-center gap-3"><FiCpu className="text-primary"/> Fast export of trained models</li>
-          </ul>
-        </div>
-
-        <div className="bg-gray-50 dark:bg-[#121212] border border-border-gray dark:border-gray-800 rounded-xl p-8">
-          <div className="flex justify-between font-semibold mb-4 text-black dark:text-white">
-            <span>Tasks completed</span>
-            <span className="text-primary">82%</span>
-          </div>
-          
-          <div className="w-full h-2 bg-gray-200 dark:bg-gray-800 rounded-full mb-8 overflow-hidden">
-            <div className="h-full bg-primary w-[82%] transition-all duration-500"></div>
-          </div>
-          
-          <div className="space-y-4">
-            <div className="p-4 bg-white dark:bg-[#1a1a1a] border border-border-gray dark:border-gray-800 rounded-lg text-sm">
-              <strong className="text-black dark:text-white">Validation checks:</strong> <span className="text-gray-600 dark:text-gray-400 ml-1">120 clean logs detected</span>
-            </div>
-            <div className="p-4 bg-white dark:bg-[#1a1a1a] border border-border-gray dark:border-gray-800 rounded-lg text-sm">
-              <strong className="text-black dark:text-white">Model accuracy:</strong> <span className="text-gray-600 dark:text-gray-400 ml-1">94.2% Random Forest</span>
-            </div>
+    <div ref={containerRef} className="w-full max-w-5xl mx-auto z-20 relative px-4 pb-20" style={{ perspective: "1200px" }}>
+      <motion.div
+        style={{ rotateX, scale, transformOrigin: "top center" }}
+        className="w-full rounded-xl border border-lightBorder/50 dark:border-brand/30 bg-[#ffffff]/50 dark:bg-[#000000]/50 backdrop-blur-sm p-1.5 md:p-2 shadow-2xl mx-auto"
+      >
+        <div className="bg-gray-100 dark:bg-neutral-900 rounded-lg aspect-[16/9] w-full flex items-center justify-center border border-lightBorder dark:border-gray-800 overflow-hidden relative shadow-[0_0_50px_rgba(0,0,0,0.1)] dark:shadow-[0_0_50px_rgba(103,58,183,0.15)]">
+          <img
+            src="https://placehold.co/1200x675/1e1e1e/673ab7?text=RefineX+Dashboard+Preview"
+            alt="Dashboard Preview"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute top-0 left-0 w-full h-6 md:h-8 bg-gray-200 dark:bg-neutral-800 flex items-center px-3 md:px-4 gap-1.5 md:gap-2 border-b border-lightBorder dark:border-gray-700">
+            <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-red-400"></div>
+            <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-yellow-400"></div>
+            <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-green-400"></div>
           </div>
         </div>
-
-      </div>
-    </section>
+      </motion.div>
+    </div>
   );
 }
-
-export default DashboardShowcase;

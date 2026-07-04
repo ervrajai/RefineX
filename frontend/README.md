@@ -1,16 +1,48 @@
-# React + Vite
+# RefineX
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+RefineX is a modern web-based platform designed to simplify the complete data preprocessing and machine learning workflow. It enables users to upload datasets, clean and prepare data, visualize insights through interactive charts, train machine learning models, and download processed results—all from a single, user-friendly interface.
 
-Currently, two official plugins are available:
+The platform is built to reduce the time and effort required for data preparation while making machine learning accessible to students, researchers, analysts, and developers.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## What RefineX Does
 
-## React Compiler
+### Dataset Upload
+- Upload CSV datasets securely.
+- Preview data before processing.
+- View dataset structure and basic statistics.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Data Cleaning
+- Detect and handle missing values.
+- Remove duplicate records.
+- Identify and manage outliers.
+- Correct inconsistent data types.
+- Prepare datasets for machine learning.
 
-## Expanding the ESLint configuration
+### Data Visualization
+- Generate interactive and informative charts.
+- Create scatter plots, bar charts, line charts, histograms, box plots, heatmaps, and more.
+- Customize graph variables.
+- Export graph images and source code.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Machine Learning
+RefineX allows users to train and evaluate multiple machine learning models directly from the browser, including:
+
+- Linear Regression
+- Multiple Linear Regression
+- Polynomial Regression
+- K-Nearest Neighbors (KNN)
+- Decision Tree
+- Random Forest
+- Support Vector Machine (SVM)
+
+Users can compare model performance and download trained models in `.pkl` format.
+
+### Export & Downloads
+- Download cleaned CSV datasets.
+- Export trained machine learning models.
+- Save generated visualizations.
+- Copy or download graph generation code.
+
+## Goal
+
+RefineX aims to provide an all-in-one platform where users can transform raw datasets into clean, machine-learning-ready data, visualize patterns, train predictive models, and export results without writing extensive code.

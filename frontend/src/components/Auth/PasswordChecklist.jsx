@@ -8,10 +8,14 @@ function PasswordChecklist({ password }) {
   ];
 
   return (
-    <div className="rounded-md bg-slate-50 p-3">
+    <div className="rounded-xl bg-white/5 border border-white/10 p-3">
       {checks.map((check) => (
-        <div key={check.label} className="flex items-center gap-2 py-1 text-xs text-slate-600">
-          {check.pass ? <Check className="h-4 w-4 text-teal-700" /> : <X className="h-4 w-4 text-slate-400" />}
+        <div key={check.label} className="flex items-center gap-2 py-1 text-xs text-zinc-400">
+          {check.pass ? (
+            <Check className="h-4 w-4 text-brand" />
+          ) : (
+            <X className="h-4 w-4 text-zinc-500" />
+          )}
           <span>{check.label}</span>
         </div>
       ))}

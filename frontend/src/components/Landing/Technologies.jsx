@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+// src/components/Landing/Technologies.jsx
+import React from "react";
 
 const techs = [
   { name: "Pandas", url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/pandas/pandas-original.svg" },
@@ -10,25 +11,39 @@ const techs = [
 
 export default function Technologies() {
   return (
-    <section id="library" className="py-16 md:py-24 bg-[#ffffff] dark:bg-[#000000] w-full">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4 text-[#000000] dark:text-[#ffffff]">Powered By The Best</h2>
-          <p className="text-gray-600 dark:text-gray-400">The frameworks and libraries driving RefineX.</p>
+    <section id="library" className="py-20 md:py-28 bg-white dark:bg-black w-full">
+      <div className="max-w-7xl mx-auto px-4 md:px-8">
+        
+        {/* Section Header (Matched to Features design) */}
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-5xl font-bold text-black dark:text-white mb-4 tracking-tight">
+            Powered By The Best
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 text-lg max-w-2xl mx-auto">
+            The industry-leading frameworks and libraries driving the RefineX engine.
+          </p>
         </div>
 
+        {/* Tech Cards Grid */}
         <div className="flex flex-wrap justify-center gap-4 md:gap-6">
           {techs.map((tech) => (
-            <motion.div
+            <div
               key={tech.name}
-              whileHover={{ scale: 1.05, y: -5 }}
-              className="flex flex-col w-[140px] items-center justify-center p-6 bg-[#ffffff] dark:bg-[#121212] border border-lightBorder dark:border-gray-800 rounded-2xl hover:border-brand cursor-pointer shadow-sm hover:shadow-[0_0_15px_rgba(103,58,183,0.3)] transition-colors duration-300"
+              className="group relative flex flex-col w-[140px] md:w-[160px] items-center justify-center p-6 bg-white dark:bg-[#111111] border border-lightBorder/50 dark:border-white/10 rounded-2xl cursor-pointer transition-all duration-500 ease-out hover:border-[#673ab7] hover:bg-[#673ab7]/5 dark:hover:bg-[#673ab7]/20 hover:shadow-[0_0_30px_rgba(103,58,183,0.15)]"
             >
-              <img src={tech.url} alt={tech.name} className="w-12 h-12 md:w-14 md:h-14 mb-3 dark:invert opacity-80" />
-              <span className="font-bold text-sm text-[#000000] dark:text-[#ffffff]">{tech.name}</span>
-            </motion.div>
+              <img 
+                src={tech.url} 
+                alt={tech.name} 
+                className="w-12 h-12 md:w-14 md:h-14 mb-4 transition-all duration-500 ease-out opacity-100 grayscale-0 md:opacity-40 md:grayscale group-hover:grayscale-0 group-hover:opacity-100" 
+              />
+              
+              <span className="font-bold text-sm transition-colors duration-300 text-[#673ab7] dark:text-white md:text-gray-500 md:dark:text-gray-400 group-hover:text-[#673ab7] dark:group-hover:text-white">
+                {tech.name}
+              </span>
+            </div>
           ))}
         </div>
+        
       </div>
     </section>
   );

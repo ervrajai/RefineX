@@ -15,8 +15,15 @@ import {
   FiInfo,
   FiLogIn
 } from "react-icons/fi";
+import logoImg from "../../assets/logo/refinex_logo.png";
 
-const NAV_LINKS = ["Home", "Dashboard", "Features", "Library", "About"];
+const NAV_LINKS = [
+  { name: "Home", href: "#home" },
+  { name: "Dashboard", href: "#dashboard" },
+  { name: "Features", href: "#features" }, 
+  { name: "Library", href: "#library" },   
+  { name: "About", href: "#about" },
+];
 
 function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -115,11 +122,14 @@ function Navbar() {
           
           {/* Logo */}
           <a href="/" className="flex items-center gap-2 shrink-0">
-            <div className="flex justify-center items-center w-9 h-9 md:w-10 md:h-10 bg-brand rounded-xl text-white shadow-sm">
-              <FiDatabase size={20} />
-            </div>
+            {/* Using the imported image here */}
+            <img 
+              src={logoImg} 
+              alt="RefineX Logo" 
+              className="w-9 h-9 md:w-10 md:h-10 object-cover rounded-xl shadow-sm"
+            />
             <span className="font-display text-xl md:text-2xl font-black tracking-wider inline-flex items-center text-black dark:text-white">
-              Refine<span className="font-sans text-brand dark:text-brand text-2xl md:text-3xl ml-0.5 leading-none">X</span>
+              Refine<span className="font-sans text-[#673ab7] text-2xl md:text-3xl ml-0.5 leading-none">X</span>
             </span>
           </a>
 
@@ -130,16 +140,16 @@ function Navbar() {
               onMouseLeave={() => setHoveredLink(null)}
             >
               {NAV_LINKS.map((link) => (
-                <li key={link} className="relative z-10">
+                <li key={link.name} className="relative z-10">
                   <a 
-                    href={`#${link.toLowerCase()}`} 
-                    onMouseEnter={() => setHoveredLink(link)}
+                    href={link.href} 
+                    onMouseEnter={() => setHoveredLink(link.name)}
                     className="block relative px-5 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors z-20 hover:text-brand dark:hover:text-white"
                   >
-                    {link}
+                    {link.name}
                   </a>
                   {/* Framer Motion LayoutId creates the gliding outline effect */}
-                  {hoveredLink === link && (
+                  {hoveredLink === link.name && (
                     <motion.div
                       layoutId="nav-outline"
                       className="absolute inset-0 border border-brand rounded-[20px] pointer-events-none"
@@ -153,12 +163,26 @@ function Navbar() {
           </div>
 
           {/* Right Controls */}
-          <div className="flex items-center gap-2 md:gap-3 shrink-0">
-            <a href="/login" className="hidden md:block font-medium text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors">
+          <div className="flex items-center gap-3 md:gap-5 shrink-0">
+            <a 
+              href="/login" 
+              className="hidden md:block font-bold text-sm text-gray-900 dark:text-white hover:text-brand dark:hover:text-brand transition-colors"
+            >
               Log in
             </a>
-            <a href="/signup" className="hidden md:flex items-center justify-center font-bold text-sm text-gray-900 dark:text-white border-2 border-transparent hover:border-lightBorder dark:hover:border-gray-700 rounded-md px-4 py-1.5 transition-all">
-              sign up
+            <a 
+              href="/signup" 
+              className="hidden sm:flex items-center gap-2.5 px-6 py-2.5 bg-[#673ab7] hover:bg-[#111111] dark:hover:bg-white text-white font-bold text-sm rounded-[20px] transition-colors duration-200 group shadow-sm"
+            >
+              <span className="text-white group-hover:text-white dark:group-hover:text-black transition-colors duration-200">
+                Sign Up
+              </span>
+              
+              <div className="flex justify-center items-center">
+                <div className="relative w-[10px] h-[2px] bg-[#673ab7] group-hover:bg-white dark:group-hover:bg-black transition-colors duration-200 mt-[1px]">
+                  <div className="absolute top-[-3px] right-[3px] group-hover:right-0 p-[3px] border-solid border-white dark:group-hover:border-black border-b-[2px] border-r-[2px] transform -rotate-45 transition-all duration-200 box-border"></div>
+                </div>
+              </div>
             </a>
 
             {/* Theme Dropdown */}
@@ -215,7 +239,7 @@ function Navbar() {
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-lightBorder/50 dark:border-gray-800">
           <span className="font-display text-base font-black tracking-wider inline-flex items-baseline text-black dark:text-white">
-            Refine<span className="font-sans text-brand dark:text-brand text-xl ml-0.5">X</span>
+            Refine<span className="font-sans text-[#673ab7] text-xl ml-0.5">X</span>
           </span>
           <button
             onClick={closeMobileMenu}
@@ -247,7 +271,7 @@ function Navbar() {
           <a onClick={closeMobileMenu} href="/login" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-brand dark:hover:text-brand hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
             <FiLogIn className="w-4 h-4 shrink-0 text-gray-400" /> Log in
           </a>
-          <a onClick={closeMobileMenu} href="/signup" className="flex items-center justify-center gap-2 mt-1 px-3 py-2.5 rounded-lg text-sm font-semibold bg-brand text-white hover:bg-brandDark transition-colors">
+          <a onClick={closeMobileMenu} href="/signup" className="flex items-center justify-center gap-2 mt-1 px-3 py-2.5 rounded-lg text-sm font-semibold bg-[#673ab7] text-white hover:bg-[#522e93] transition-colors">
             Sign Up
           </a>
         </nav>

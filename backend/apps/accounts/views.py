@@ -1,3 +1,331 @@
-from django.shortcuts import render
+import secrets
+from smtplib import SMTPException
+from datetime import timedelta
 
-# Create your views here.
+from django.conf import settings
+from django.contrib.auth import get_user_model, login, logout
+from django.core.mail import BadHeaderError, send_mail
+from django.utils import timezone
+from rest_framework import status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .models import User
+from .serializers import (
+    CompleteSignupSerializer,
+    ForgotPasswordOtpRequestSerializer,
+    LoginSerializer,
+    OtpVerifySerializer,
+    ResetPasswordSerializer,
+    SignupOtpRequestSerializer,
+    UserSerializer,
+)
+
+UserModel = get_user_model()
+OTP_TIMEOUT_MINUTES = 10
+OTP_MAX_ATTEMPTS = 5
+OTP_RESEND_COOLDOWN_SECONDS = 30
+
+
+def _otp_session_key(purpose):
+    return f"{purpose}_otp"
+
+
+def _generate_otp():
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def _expires_at():
+    return (timezone.now() + timedelta(minutes=OTP_TIMEOUT_MINUTES)).isoformat()
+
+
+def _clear_otp(request, purpose):
+    request.session.pop(_otp_session_key(purpose), None)
+    request.session.modified = True
+
+
+def _store_otp(request, purpose, *, email, otp, extra=None):
+    request.session[_otp_session_key(purpose)] = {
+        "email": email.lower(),
+        "otp": otp,
+        "expires_at": _expires_at(),
+        "last_sent_at": timezone.now().isoformat(),
+        "verified": False,
+        "attempts": 0,
+        "extra": extra or {},
+    }
+    request.session.modified = True
+
+
+def _get_otp_record(request, purpose):
+    record = request.session.get(_otp_session_key(purpose))
+    if not record:
+        return None, "No active OTP request found."
+
+    expires_at = timezone.datetime.fromisoformat(record["expires_at"])
+    if timezone.now() > expires_at:
+        _clear_otp(request, purpose)
+        return None, "OTP expired. Please request a new one."
+
+    if record.get("attempts", 0) >= OTP_MAX_ATTEMPTS:
+        _clear_otp(request, purpose)
+        return None, "Too many OTP attempts. Please request a new one."
+
+    return record, None
+
+
+def _resend_cooldown_response(request, purpose, email):
+    record = request.session.get(_otp_session_key(purpose))
+    if not record or record.get("email") != email.lower():
+        return None
+
+    last_sent_at = record.get("last_sent_at")
+    if not last_sent_at:
+        return None
+
+    elapsed = (timezone.now() - timezone.datetime.fromisoformat(last_sent_at)).total_seconds()
+    remaining = OTP_RESEND_COOLDOWN_SECONDS - int(elapsed)
+    if remaining <= 0:
+        return None
+
+    return Response(
+        {
+            "detail": f"Please wait {remaining} seconds before requesting another OTP.",
+            "retry_after": remaining,
+        },
+        status=status.HTTP_429_TOO_MANY_REQUESTS,
+    )
+
+
+def _send_otp(email, otp, subject):
+    message = (
+        f"Your Refinex verification code is {otp}. "
+        f"It expires in {OTP_TIMEOUT_MINUTES} minutes."
+    )
+    sent_count = send_mail(
+        subject,
+        message,
+        getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@refinex.local"),
+        [email],
+        fail_silently=False,
+    )
+    if sent_count != 1:
+        raise SMTPException("OTP email was not accepted by the SMTP backend.")
+
+
+def _otp_email_error_response():
+    return Response(
+        {"detail": "Could not send OTP email right now. Please try again in a moment."},
+        status=status.HTTP_503_SERVICE_UNAVAILABLE,
+    )
+
+
+def _provider_label(provider):
+    return dict(User.AuthProvider.choices).get(provider, provider.title())
+
+
+class SignupOtpRequestView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = SignupOtpRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        email = data["email"].lower()
+
+        existing_user = UserModel.objects.filter(email__iexact=email).first()
+        if existing_user:
+            if existing_user.auth_provider != User.AuthProvider.EMAIL:
+                provider = _provider_label(existing_user.auth_provider)
+                return Response(
+                    {"detail": f"You already signed up with {provider}. Please log in using that method."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            return Response(
+                {"detail": "An account with this email already exists. Please log in instead."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cooldown_response = _resend_cooldown_response(request, "signup", email)
+        if cooldown_response:
+            return cooldown_response
+
+        otp = _generate_otp()
+        try:
+            _send_otp(email, otp, "Verify your Refinex signup")
+        except (BadHeaderError, SMTPException, OSError):
+            return _otp_email_error_response()
+
+        _store_otp(
+            request,
+            "signup",
+            email=email,
+            otp=otp,
+            extra={
+                "first_name": data["first_name"],
+                "last_name": data.get("last_name", ""),
+            },
+        )
+        return Response({"detail": "OTP sent to your email."})
+
+
+class SignupOtpVerifyView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = OtpVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        record, error = _get_otp_record(request, "signup")
+        if error:
+            return Response({"detail": error}, status=status.HTTP_400_BAD_REQUEST)
+
+        email = serializer.validated_data["email"].lower()
+        if record["email"] != email:
+            return Response({"detail": "OTP does not match this email."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not secrets.compare_digest(record["otp"], serializer.validated_data["otp"]):
+            record["attempts"] = record.get("attempts", 0) + 1
+            request.session[_otp_session_key("signup")] = record
+            request.session.modified = True
+            return Response({"detail": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+        record["verified"] = True
+        request.session[_otp_session_key("signup")] = record
+        request.session.modified = True
+        return Response({"detail": "OTP verified."})
+
+
+class CompleteSignupView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = CompleteSignupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].lower()
+        record, error = _get_otp_record(request, "signup")
+        if error:
+            return Response({"detail": error}, status=status.HTTP_400_BAD_REQUEST)
+
+        if record["email"] != email or not record.get("verified"):
+            return Response({"detail": "Please verify your signup OTP first."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if UserModel.objects.filter(email__iexact=email).exists():
+            _clear_otp(request, "signup")
+            return Response({"detail": "An account with this email already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = UserModel.objects.create_user(
+            email=email,
+            password=serializer.validated_data["password"],
+            first_name=record["extra"].get("first_name", ""),
+            last_name=record["extra"].get("last_name", ""),
+            auth_provider=User.AuthProvider.EMAIL,
+        )
+        login(request, user)
+        _clear_otp(request, "signup")
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        login(request, serializer.validated_data["user"])
+        request.session.set_expiry(60 * 60 * 24 * 30 if serializer.validated_data["remember_me"] else 0)
+        return Response(UserSerializer(serializer.validated_data["user"]).data)
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        logout(request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CurrentUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(UserSerializer(request.user).data)
+
+
+class ForgotPasswordOtpRequestView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ForgotPasswordOtpRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].lower()
+        user = UserModel.objects.filter(email__iexact=email).first()
+        if not user:
+            return Response({"detail": "If the email exists, an OTP has been sent."})
+        if user.auth_provider != User.AuthProvider.EMAIL:
+            provider = _provider_label(user.auth_provider)
+            return Response(
+                {"detail": f"This account uses {provider}. Please log in using that method."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cooldown_response = _resend_cooldown_response(request, "password_reset", email)
+        if cooldown_response:
+            return cooldown_response
+
+        otp = _generate_otp()
+        try:
+            _send_otp(email, otp, "Reset your Refinex password")
+        except (BadHeaderError, SMTPException, OSError):
+            return _otp_email_error_response()
+
+        _store_otp(request, "password_reset", email=email, otp=otp)
+        return Response({"detail": "If the email exists, an OTP has been sent."})
+
+
+class ForgotPasswordOtpVerifyView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = OtpVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        record, error = _get_otp_record(request, "password_reset")
+        if error:
+            return Response({"detail": error}, status=status.HTTP_400_BAD_REQUEST)
+
+        email = serializer.validated_data["email"].lower()
+        if record["email"] != email:
+            return Response({"detail": "OTP does not match this email."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not secrets.compare_digest(record["otp"], serializer.validated_data["otp"]):
+            record["attempts"] = record.get("attempts", 0) + 1
+            request.session[_otp_session_key("password_reset")] = record
+            request.session.modified = True
+            return Response({"detail": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+        record["verified"] = True
+        request.session[_otp_session_key("password_reset")] = record
+        request.session.modified = True
+        return Response({"detail": "OTP verified."})
+
+
+class ResetPasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].lower()
+        record, error = _get_otp_record(request, "password_reset")
+        if error:
+            return Response({"detail": error}, status=status.HTTP_400_BAD_REQUEST)
+
+        if record["email"] != email or not record.get("verified"):
+            return Response({"detail": "Please verify your password reset OTP first."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = UserModel.objects.filter(email__iexact=email).first()
+        if user:
+            user.set_password(serializer.validated_data["password"])
+            user.save(update_fields=["password"])
+        _clear_otp(request, "password_reset")
+        return Response({"detail": "Password updated successfully."})

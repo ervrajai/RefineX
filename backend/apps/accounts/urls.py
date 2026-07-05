@@ -1,3 +1,25 @@
 from django.urls import path
 
-urlpatterns = []
+from .views import (
+    CompleteSignupView,
+    CurrentUserView,
+    ForgotPasswordOtpRequestView,
+    ForgotPasswordOtpVerifyView,
+    LoginView,
+    LogoutView,
+    ResetPasswordView,
+    SignupOtpRequestView,
+    SignupOtpVerifyView,
+)
+
+urlpatterns = [
+    path("signup/request-otp/", SignupOtpRequestView.as_view(), name="signup-request-otp"),
+    path("signup/verify-otp/", SignupOtpVerifyView.as_view(), name="signup-verify-otp"),
+    path("signup/complete/", CompleteSignupView.as_view(), name="signup-complete"),
+    path("login/", LoginView.as_view(), name="login"),
+    path("logout/", LogoutView.as_view(), name="logout"),
+    path("me/", CurrentUserView.as_view(), name="me"),
+    path("forgot-password/request-otp/", ForgotPasswordOtpRequestView.as_view(), name="forgot-password-request-otp"),
+    path("forgot-password/verify-otp/", ForgotPasswordOtpVerifyView.as_view(), name="forgot-password-verify-otp"),
+    path("forgot-password/reset/", ResetPasswordView.as_view(), name="forgot-password-reset"),
+]

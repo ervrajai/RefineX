@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 
@@ -41,11 +42,17 @@ class User(AbstractUser):
 
     username = None
     email = models.EmailField(_("email address"), unique=True)
+    
+    # OAuth and Profile Integration
     auth_provider = models.CharField(
         max_length=20,
         choices=AuthProvider.choices,
         default=AuthProvider.EMAIL,
     )
+    profile_picture = models.CharField(max_length=500, null=True, blank=True)
+    social_id = models.CharField(max_length=255, null=True, blank=True, unique=True)
+    is_email_verified = models.BooleanField(default=False)
+    password_last_updated = models.DateTimeField(default=timezone.now)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

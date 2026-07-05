@@ -18,7 +18,7 @@ function Login() {
     setLoading(true);
     try {
       await api.post("accounts/login/", form);
-      navigate("/");
+      navigate("/dashboard");
     } catch (err) {
       setError(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || "Login failed.");
     } finally {

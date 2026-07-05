@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import { 
   FiMenu, 
   FiX, 
@@ -15,21 +16,20 @@ import {
   FiLogIn
 } from "react-icons/fi";
 
+const NAV_LINKS = ["Home", "Dashboard", "Features", "Library", "About"];
+
 function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [theme, setTheme] = useState("auto");
   const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
+  const [hoveredLink, setHoveredLink] = useState(null);
   const themeDropdownRef = useRef(null);
 
-  // Handle scroll effect for transparent nav on large screens
+  // Handle scroll effect for Solid-to-Blurred nav
   useEffect(() => {
     const handleScroll = () => {
-      if (window.innerWidth >= 1024) {
-        setIsScrolled(window.scrollY > 10);
-      } else {
-        setIsScrolled(true); // Always solid on mobile/tablet
-      }
+      setIsScrolled(window.scrollY > 10);
     };
     
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -64,7 +64,6 @@ function Navbar() {
 
     applyTheme(storedTheme);
 
-    // Listen for system theme changes if set to auto
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
       if (theme === "auto") applyTheme("auto");
@@ -107,71 +106,49 @@ function Navbar() {
       <nav
         className={`fixed top-0 z-50 w-full transition-all duration-300 border-b ${
           isScrolled
-            ? "bg-white/90 dark:bg-black/90 backdrop-blur-md border-gray-200 dark:border-gray-800"
-            : "lg:bg-transparent lg:border-transparent lg:backdrop-blur-none bg-white/90 dark:bg-black/90 backdrop-blur-md border-gray-200 dark:border-gray-800"
+            ? "bg-white/80 dark:bg-black/80 backdrop-blur-md border-lightBorder/50 dark:border-gray-800"
+            // SOLID at the top, hiding the background underneath
+            : "bg-white dark:bg-black border-transparent" 
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex justify-between items-center relative">
           
           {/* Logo */}
           <a href="/" className="flex items-center gap-2 shrink-0">
-            <div className="flex justify-center items-center w-9 h-9 md:w-10 md:h-10 bg-purple-600 rounded-xl text-white shadow-sm">
+            <div className="flex justify-center items-center w-9 h-9 md:w-10 md:h-10 bg-brand rounded-xl text-white shadow-sm">
               <FiDatabase size={20} />
             </div>
             <span className="font-display text-xl md:text-2xl font-black tracking-wider inline-flex items-center text-black dark:text-white">
-              Refine<span className="font-sans text-brand text-2xl md:text-3xl ml-0.5 leading-none">X</span>
+              Refine<span className="font-sans text-brand dark:text-brand text-2xl md:text-3xl ml-0.5 leading-none">X</span>
             </span>
           </a>
 
-          {/* Desktop Links (Center Pill) */}
-          <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-neutral-900 p-1">
-            <ul className="flex items-center text-sm font-medium">
-              <li>
-                <a href="#home" className="block px-5 py-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white transition-colors">
-                  Home
-                </a>
-              </li>
-              <li>
-                <a href="#dashboard" className="block px-5 py-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white transition-colors">
-                  Dashboard
-                </a>
-              </li>
-              <li className="relative group">
-                <a href="#features" className="px-5 py-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white flex items-center gap-1 transition-colors">
-                  Features
-                  <FiChevronDown className="w-4 h-4 mt-0.5" />
-                </a>
-                {/* Dropdown Menu */}
-                <div className="absolute left-0 top-full pt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-200 z-50">
-                  <ul className="bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
-                    <li>
-                      <a href="#cleaning" className="block px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white border-b border-gray-200 dark:border-gray-700 transition-colors">
-                        Data Cleaning
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#training" className="block px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white border-b border-gray-200 dark:border-gray-700 transition-colors">
-                        Model Training
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#visuals" className="block px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white transition-colors">
-                        Visualization
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-              <li>
-                <a href="#library" className="block px-5 py-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white transition-colors">
-                  Library
-                </a>
-              </li>
-              <li>
-                <a href="#about" className="block px-5 py-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white transition-colors">
-                  About
-                </a>
-              </li>
+          {/* Desktop Links (Animated Outline Container) */}
+          <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <ul 
+              className="flex items-center p-1.5 rounded-[40px] bg-gray-50/80 dark:bg-[#121212]/80 border border-lightBorder/50 dark:border-gray-800/80 relative"
+              onMouseLeave={() => setHoveredLink(null)}
+            >
+              {NAV_LINKS.map((link) => (
+                <li key={link} className="relative z-10">
+                  <a 
+                    href={`#${link.toLowerCase()}`} 
+                    onMouseEnter={() => setHoveredLink(link)}
+                    className="block relative px-5 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors z-20 hover:text-brand dark:hover:text-white"
+                  >
+                    {link}
+                  </a>
+                  {/* Framer Motion LayoutId creates the gliding outline effect */}
+                  {hoveredLink === link && (
+                    <motion.div
+                      layoutId="nav-outline"
+                      className="absolute inset-0 border border-brand rounded-[20px] pointer-events-none"
+                      initial={false}
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                    />
+                  )}
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -180,15 +157,15 @@ function Navbar() {
             <a href="/login" className="hidden md:block font-medium text-sm text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors">
               Log in
             </a>
-            <a href="/signup" className="hidden sm:block bg-purple-600 text-white px-4 py-2 md:px-5 rounded-md font-medium text-sm hover:bg-purple-700 transition-colors">
-              Sign Up
+            <a href="/signup" className="hidden md:flex items-center justify-center font-bold text-sm text-gray-900 dark:text-white border-2 border-transparent hover:border-lightBorder dark:hover:border-gray-700 rounded-md px-4 py-1.5 transition-all">
+              sign up
             </a>
 
             {/* Theme Dropdown */}
             <div className="relative" ref={themeDropdownRef}>
               <button
                 onClick={() => setIsThemeDropdownOpen(!isThemeDropdownOpen)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-neutral-900 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors focus:outline-none"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-lightBorder/80 dark:border-gray-700 bg-gray-50 dark:bg-neutral-900 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors focus:outline-none"
               >
                 {theme === "light" ? <FiSun className="w-4 h-4 shrink-0" /> : theme === "dark" ? <FiMoon className="w-4 h-4 shrink-0" /> : <FiMonitor className="w-4 h-4 shrink-0" />}
                 <span className="hidden sm:inline capitalize">{theme}</span>
@@ -196,14 +173,14 @@ function Navbar() {
               </button>
 
               {isThemeDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-36 bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-50">
+                <div className="absolute right-0 top-full mt-2 w-36 bg-white dark:bg-[#121212] border border-lightBorder/80 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-50">
                   <button onClick={() => changeTheme("light")} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white transition-colors">
                     <FiSun className="w-4 h-4 shrink-0" /> Light
                   </button>
-                  <button onClick={() => changeTheme("dark")} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white transition-colors border-t border-gray-200 dark:border-gray-700">
+                  <button onClick={() => changeTheme("dark")} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white transition-colors border-t border-lightBorder/50 dark:border-gray-700">
                     <FiMoon className="w-4 h-4 shrink-0" /> Dark
                   </button>
-                  <button onClick={() => changeTheme("auto")} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white transition-colors border-t border-gray-200 dark:border-gray-700">
+                  <button onClick={() => changeTheme("auto")} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white transition-colors border-t border-lightBorder/50 dark:border-gray-700">
                     <FiMonitor className="w-4 h-4 shrink-0" /> Auto
                   </button>
                 </div>
@@ -232,13 +209,13 @@ function Navbar() {
 
       {/* Panel */}
       <div
-        className={`fixed top-0 right-0 h-full w-[60%] max-w-xs z-50 bg-white dark:bg-[#0d0d0d] border-l border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col lg:hidden transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-full w-[60%] max-w-xs z-50 bg-white dark:bg-[#0d0d0d] border-l border-lightBorder/50 dark:border-gray-800 shadow-2xl flex flex-col lg:hidden transition-transform duration-300 ease-in-out ${
           isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
-          <span className="font-orbitron text-base font-black tracking-wider inline-flex items-baseline text-black dark:text-white">
-            Refine<span className="font-sans text-purple-600 text-xl ml-0.5">X</span>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-lightBorder/50 dark:border-gray-800">
+          <span className="font-display text-base font-black tracking-wider inline-flex items-baseline text-black dark:text-white">
+            Refine<span className="font-sans text-brand dark:text-brand text-xl ml-0.5">X</span>
           </span>
           <button
             onClick={closeMobileMenu}
@@ -249,28 +226,28 @@ function Navbar() {
         </div>
         
         <nav className="flex flex-col px-3 py-4 gap-0.5 flex-1 overflow-y-auto">
-          <a onClick={closeMobileMenu} href="#home" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-500 hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
+          <a onClick={closeMobileMenu} href="#home" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-brand dark:hover:text-brand hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
             <FiHome className="w-4 h-4 shrink-0 text-gray-400" /> Home
           </a>
-          <a onClick={closeMobileMenu} href="#dashboard" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-500 hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
+          <a onClick={closeMobileMenu} href="#dashboard" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-brand dark:hover:text-brand hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
             <FiGrid className="w-4 h-4 shrink-0 text-gray-400" /> Dashboard
           </a>
-          <a onClick={closeMobileMenu} href="#features" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-500 hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
+          <a onClick={closeMobileMenu} href="#features" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-brand dark:hover:text-brand hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
             <FiLayers className="w-4 h-4 shrink-0 text-gray-400" /> Features
           </a>
-          <a onClick={closeMobileMenu} href="#library" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-500 hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
+          <a onClick={closeMobileMenu} href="#library" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-brand dark:hover:text-brand hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
             <FiBook className="w-4 h-4 shrink-0 text-gray-400" /> Library
           </a>
-          <a onClick={closeMobileMenu} href="#about" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-500 hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
+          <a onClick={closeMobileMenu} href="#about" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-brand dark:hover:text-brand hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
             <FiInfo className="w-4 h-4 shrink-0 text-gray-400" /> About
           </a>
           
           <div className="border-t border-gray-100 dark:border-gray-800 my-2"></div>
           
-          <a onClick={closeMobileMenu} href="/login" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-500 hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
+          <a onClick={closeMobileMenu} href="/login" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-brand dark:hover:text-brand hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
             <FiLogIn className="w-4 h-4 shrink-0 text-gray-400" /> Log in
           </a>
-          <a onClick={closeMobileMenu} href="/signup" className="flex items-center justify-center gap-2 mt-1 px-3 py-2.5 rounded-lg text-sm font-semibold bg-purple-600 text-white hover:bg-purple-700 transition-colors">
+          <a onClick={closeMobileMenu} href="/signup" className="flex items-center justify-center gap-2 mt-1 px-3 py-2.5 rounded-lg text-sm font-semibold bg-brand text-white hover:bg-brandDark transition-colors">
             Sign Up
           </a>
         </nav>

@@ -1,69 +1,254 @@
+// src/components/Landing/Hero.jsx
+import React, { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
+import { ArrowRight, Zap } from "lucide-react";
 
 export default function Hero() {
+  const canvasRef = useRef(null);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const ctx = canvas.getContext("2d");
+    let animationFrameId;
+    let particles = [];
+    const mouse = { x: null, y: null, radius: 200 };
+
+    class Particle {
+      constructor(x, y, directionX, directionY, size, color) {
+        this.x = x;
+        this.y = y;
+        this.directionX = directionX;
+        this.directionY = directionY;
+        this.size = size;
+        this.color = color;
+      }
+
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2, false);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+      }
+
+      update(width, height) {
+        if (this.x > width || this.x < 0) {
+          this.directionX = -this.directionX;
+        }
+        if (this.y > height || this.y < 0) {
+          this.directionY = -this.directionY;
+        }
+
+        // Mouse collision detection
+        if (mouse.x !== null && mouse.y !== null) {
+          let dx = mouse.x - this.x;
+          let dy = mouse.y - this.y;
+          let distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance < mouse.radius + this.size) {
+            const forceDirectionX = dx / distance;
+            const forceDirectionY = dy / distance;
+            const force = (mouse.radius - distance) / mouse.radius;
+            this.x -= forceDirectionX * force * 5;
+            this.y -= forceDirectionY * force * 5;
+          }
+        }
+
+        this.x += this.directionX;
+        this.y += this.directionY;
+        this.draw();
+      }
+    }
+
+    let cw, ch;
+
+    function init() {
+      particles = [];
+      let numberOfParticles = (cw * ch) / 9000;
+      for (let i = 0; i < numberOfParticles; i++) {
+        let size = Math.random() * 2 + 1;
+        let x = Math.random() * (cw - size * 2 - size * 2) + size * 2;
+        let y = Math.random() * (ch - size * 2 - size * 2) + size * 2;
+        let directionX = Math.random() * 0.4 - 0.2;
+        let directionY = Math.random() * 0.4 - 0.2;
+        let color = "rgba(191, 128, 255, 0.8)"; // Brighter purple from your code
+        particles.push(
+          new Particle(x, y, directionX, directionY, size, color)
+        );
+      }
+    }
+
+    const resizeCanvas = () => {
+      // Scale canvas based on devicePixelRatio to prevent blurriness
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+
+      ctx.scale(dpr, dpr);
+
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+
+      cw = rect.width;
+      ch = rect.height;
+
+      init();
+    };
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    const connect = () => {
+      let opacityValue = 1;
+      for (let a = 0; a < particles.length; a++) {
+        for (let b = a; b < particles.length; b++) {
+          let distance =
+            (particles[a].x - particles[b].x) * (particles[a].x - particles[b].x) +
+            (particles[a].y - particles[b].y) * (particles[a].y - particles[b].y);
+
+          if (distance < (cw / 7) * (ch / 7)) {
+            opacityValue = 1 - distance / 20000;
+
+            let dx_mouse_a = particles[a].x - mouse.x;
+            let dy_mouse_a = particles[a].y - mouse.y;
+            let distance_mouse_a = Math.sqrt(
+              dx_mouse_a * dx_mouse_a + dy_mouse_a * dy_mouse_a
+            );
+
+            if (mouse.x && distance_mouse_a < mouse.radius) {
+              ctx.strokeStyle = `rgba(255, 255, 255, ${opacityValue})`;
+            } else {
+              ctx.strokeStyle = `rgba(200, 150, 255, ${opacityValue})`;
+            }
+
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(particles[a].x, particles[a].y);
+            ctx.lineTo(particles[b].x, particles[b].y);
+            ctx.stroke();
+          }
+        }
+      }
+    };
+
+    const animate = () => {
+      animationFrameId = requestAnimationFrame(animate);
+      // Use clearRect instead of fillRect so it's transparent over your Tailwind backgrounds
+      ctx.clearRect(0, 0, cw, ch);
+
+      for (let i = 0; i < particles.length; i++) {
+        particles[i].update(cw, ch);
+      }
+      connect();
+    };
+
+    const handleMouseMove = (event) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = event.clientX - rect.left;
+      mouse.y = event.clientY - rect.top;
+    };
+
+    const handleMouseOut = () => {
+      mouse.x = null;
+      mouse.y = null;
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseout", handleMouseOut);
+
+    animate();
+
+    return () => {
+      window.removeEventListener("resize", resizeCanvas);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseout", handleMouseOut);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  const fadeUpVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: (i) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: i * 0.2 + 0.5,
+        duration: 0.8,
+        ease: "easeInOut",
+      },
+    }),
+  };
+
   return (
-    <section id="home" className="relative pt-[100px] pb-20 md:pt-[120px] md:pb-24 px-4 overflow-hidden bg-[#ffffff] dark:bg-[#000000] w-full min-h-[80vh] flex flex-col items-center">
-      
-      {/* Animated Background Orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <motion.div
-          animate={{ x: ["0%", "8%", "-5%", "12%", "0%"], y: ["0%", "-12%", "6%", "4%", "0%"] }}
-          transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[-25%] left-[-5%] w-[420px] h-[420px] md:w-[680px] md:h-[680px] rounded-full blur-[110px] bg-[#673ab7]/30 dark:bg-[#673ab7]/45"
-        />
-        <motion.div
-          animate={{ x: ["0%", "-10%", "7%", "-4%", "0%"], y: ["0%", "8%", "-10%", "5%", "0%"] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[-18%] right-[-8%] w-[320px] h-[320px] md:w-[540px] md:h-[540px] rounded-full blur-[130px] bg-[#7c3aed]/20 dark:bg-[#7c3aed]/35"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white dark:to-black opacity-90 z-0"></div>
-      </div>
+    <section
+      id="home"
+      ref={containerRef}
+      className="relative h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-white dark:bg-black transition-colors duration-300"
+    >
+      {/* The canvas is now the primary background */}
+      <canvas
+        ref={canvasRef}
+        className="absolute top-0 left-0 w-full h-full pointer-events-none"
+      ></canvas>
 
-      <div className="relative z-10 w-full max-w-5xl mx-auto flex flex-col items-center text-center gap-10 md:gap-12">
-        <div className="flex flex-col gap-4 px-2">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[#000000] dark:text-[#ffffff] leading-tight">
-            Analyze, clean and train <br className="hidden sm:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand to-brandDark">datasets of any shape</span>
-          </h1>
-          <p className="max-w-2xl mx-auto text-base md:text-lg text-gray-600 dark:text-gray-400 font-medium">
-            Our automated pipeline allows you to upload, visualize, and apply machine learning models to your data with zero coding required.
-          </p>
-        </div>
-
-        {/* Premium Framer Motion Upload Button */}
-        <motion.div 
-          className="relative flex items-center justify-center w-[300px] h-[300px] cursor-pointer group"
-          whileHover="hover"
+      {/* Overlay HTML Content exactly from your provided code */}
+      <div className="relative z-10 text-center p-6 mt-16 md:mt-20">
+        <motion.div
+          custom={0}
+          variants={fadeUpVariants}
+          initial="hidden"
+          animate="visible"
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6 backdrop-blur-sm"
         >
-          {/* Background Glow */}
-          <motion.div
-            variants={{ hover: { scale: 1.62, opacity: 0.8 } }}
-            transition={{ duration: 0.5 }}
-            className="absolute inset-0 rounded-full bg-brand/20 blur-xl"
-          />
-          
-          {/* Inner Circle */}
-          <motion.label
-            htmlFor="csv-upload"
-            variants={{ hover: { scale: 1.05, borderColor: "rgba(103, 58, 183, 0.6)", boxShadow: "0 0 50px rgba(103, 58, 183, 0.2)" } }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="relative flex flex-col items-center justify-center text-center rounded-full w-[268px] h-[268px] bg-white dark:bg-[#0d0d0d] border-[1.5px] border-brand/15 z-10 cursor-pointer"
+          <Zap className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+          <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+            Zero-Code ML Engine
+          </span>
+        </motion.div>
+
+        <motion.h1
+          custom={1}
+          variants={fadeUpVariants}
+          initial="hidden"
+          animate="visible"
+          className="text-5xl md:text-8xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-black to-gray-500 dark:from-white dark:to-gray-400"
+        >
+          Data refined.  Insights revealed.
+        </motion.h1>
+
+        <motion.p
+          custom={2}
+          variants={fadeUpVariants}
+          initial="hidden"
+          animate="visible"
+          className="max-w-2xl mx-auto text-lg text-gray-600 dark:text-gray-400 mb-10"
+        >
+          Clean, analyze, and train models effortlessly. A seamless pipeline from raw CSV to predictive insights.
+        </motion.p>
+
+        <motion.div
+          custom={3}
+          variants={fadeUpVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <label 
+            htmlFor="csv-upload-btn"
+            className="px-8 py-4 bg-black text-white dark:bg-white dark:text-black font-semibold rounded-lg shadow-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors duration-300 flex items-center gap-2 mx-auto w-fit cursor-pointer"
           >
-            <motion.div 
-              variants={{ hover: { scale: 1.1, boxShadow: "0 0 20px rgba(103, 58, 183, 0.35)" } }}
-              className="w-[52px] h-[52px] rounded-full bg-gradient-to-br from-brand to-brandDark flex items-center justify-center mb-4"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="16 16 12 12 8 16" />
-                <line x1="12" y1="12" x2="12" y2="21" />
-                <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
-              </svg>
-            </motion.div>
-            <p className="font-bold text-sm text-black dark:text-white mb-1">Click or drag & drop<br/>your files here</p>
-            <p className="text-xs font-medium text-brand mb-2">Or select a folder</p>
-            <p className="text-[10px] text-gray-400">CSV · Excel · JSON · Dataset<br/>Up to 50 MB free</p>
-            <input id="csv-upload" type="file" className="hidden" accept=".csv,.xlsx,.xls,.json" />
-          </motion.label>
+            Upload CSV
+            <ArrowRight className="h-5 w-5" />
+          </label>
+          <input
+            id="csv-upload-btn"
+            type="file"
+            className="hidden"
+            accept=".csv,.xlsx,.xls,.json"
+          />
         </motion.div>
       </div>
     </section>

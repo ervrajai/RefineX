@@ -34,6 +34,19 @@ class LoginSerializer(serializers.Serializer):
     remember_me = serializers.BooleanField(required=False, default=False)
 
     def validate(self, attrs):
+        email = attrs.get("email", "").lower()
+        # Find if user exists first to check their provider
+        try:
+            user_obj = User.objects.get(email__iexact=email)
+            if user_obj.auth_provider != User.AuthProvider.EMAIL:
+                # User exists but is OAuth provider
+                provider_display = dict(User.AuthProvider.choices).get(user_obj.auth_provider, user_obj.auth_provider.title())
+                raise serializers.ValidationError(
+                    f"This account is associated with {provider_display}. Please sign in using {provider_display} instead."
+                )
+        except User.DoesNotExist:
+            pass
+
         user = authenticate(
             request=self.context.get("request"),
             username=attrs["email"],
@@ -75,4 +88,6 @@ class UserSerializer(serializers.ModelSerializer):
             "profile_picture",
             "social_id",
             "is_email_verified",
+            "date_joined",
         )
+        read_only_fields = ("date_joined",)

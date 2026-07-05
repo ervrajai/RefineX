@@ -5,6 +5,7 @@ import AuthLayout from "../../components/Auth/AuthLayout";
 import FormField from "../../components/Auth/FormField";
 import OAuthButtons from "../../components/Auth/OAuthButtons";
 import PasswordChecklist from "../../components/Auth/PasswordChecklist";
+import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 import { validatePassword } from "../../utils/passwordPolicy";
 
@@ -16,6 +17,7 @@ const initialBasicInfo = {
 
 function Signup() {
   const navigate = useNavigate();
+  const { setLoggedIn } = useAuth();
   const [step, setStep] = useState(1);
   const [basicInfo, setBasicInfo] = useState(initialBasicInfo);
   const [otp, setOtp] = useState("");
@@ -87,14 +89,15 @@ function Signup() {
 
     setLoading(true);
     try {
-      await api.post("accounts/signup/complete/", {
+      const res = await api.post("accounts/signup/complete/", {
         email: basicInfo.email,
         ...passwords,
       });
+      setLoggedIn(res.data);           // update AuthContext immediately
       setBasicInfo(initialBasicInfo);
       setOtp("");
       setPasswords({ password: "", confirm_password: "" });
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.response?.data?.detail || "Could not complete signup.");
     } finally {

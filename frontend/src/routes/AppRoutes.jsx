@@ -1,5 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 
+import { GuestRoute, ProtectedRoute } from "./AuthGuards";
+
 import ForgotPassword from "../pages/Auth/ForgotPassword";
 import Login from "../pages/Auth/Login";
 import Signup from "../pages/Auth/Signup";
@@ -9,11 +11,44 @@ import Landing from "../pages/Landing/Landing";
 function AppRoutes() {
   return (
     <Routes>
+      {/* Public — no guard needed */}
       <Route path="/" element={<Landing />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/dashboard" element={<Dashboard />} />
+
+      {/* Guest-only routes: redirect to /dashboard if already logged in */}
+      <Route
+        path="/login"
+        element={
+          <GuestRoute>
+            <Login />
+          </GuestRoute>
+        }
+      />
+      <Route
+        path="/signup"
+        element={
+          <GuestRoute>
+            <Signup />
+          </GuestRoute>
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <GuestRoute>
+            <ForgotPassword />
+          </GuestRoute>
+        }
+      />
+
+      {/* Protected routes: redirect to /login if not logged in */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }

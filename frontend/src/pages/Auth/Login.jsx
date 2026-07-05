@@ -4,10 +4,12 @@ import { useState } from "react";
 import AuthLayout from "../../components/Auth/AuthLayout";
 import FormField from "../../components/Auth/FormField";
 import OAuthButtons from "../../components/Auth/OAuthButtons";
+import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 
 function Login() {
   const navigate = useNavigate();
+  const { setLoggedIn } = useAuth();
   const [form, setForm] = useState({ email: "", password: "", remember_me: false });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,8 +19,9 @@ function Login() {
     setError("");
     setLoading(true);
     try {
-      await api.post("accounts/login/", form);
-      navigate("/dashboard");
+      const res = await api.post("accounts/login/", form);
+      setLoggedIn(res.data);          // update AuthContext immediately
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || "Login failed.");
     } finally {

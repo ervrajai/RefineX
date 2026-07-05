@@ -6,7 +6,11 @@ from django.conf import settings
 from django.contrib.auth import get_user_model, login, logout
 from django.core.mail import BadHeaderError, send_mail
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+
 from rest_framework import status
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -125,6 +129,13 @@ def _provider_label(provider):
     return dict(User.AuthProvider.choices).get(provider, provider.title())
 
 
+class GetCSRFTokenView(APIView):
+    permission_classes = [AllowAny]
+
+    @method_decorator(ensure_csrf_cookie)
+    def get(self, request):
+        return Response({"detail": "CSRF cookie set successfully."})
+
 class SignupOtpRequestView(APIView):
     permission_classes = [AllowAny]
 
@@ -221,13 +232,21 @@ class CompleteSignupView(APIView):
             last_name=record["extra"].get("last_name", ""),
             auth_provider=User.AuthProvider.EMAIL,
         )
+        user.backend = 'django.contrib.auth.backends.ModelBackend'
         login(request, user)
         _clear_otp(request, "signup")
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
 
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return
+
+
+@method_decorator(csrf_exempt, name='dispatch')
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data, context={"request": request})
@@ -237,8 +256,10 @@ class LoginView(APIView):
         return Response(UserSerializer(serializer.validated_data["user"]).data)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
         logout(request)

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import React, { useRef } from "react";
 
 function OtpInput({ length = 6, value = "", onChange }) {
   const inputsRef = useRef([]);
@@ -48,21 +48,25 @@ function OtpInput({ length = 6, value = "", onChange }) {
   };
 
   return (
-    <div className="flex justify-center gap-1.5 sm:gap-2.5 mt-2" onPaste={handlePaste}>
+    <div className="flex items-center justify-center gap-1 sm:gap-2 px-1 mt-3" onPaste={handlePaste}>
       {otpArray.map((_, index) => {
         const char = value[index] || "";
         return (
-          <input
-            key={index}
-            type="text"
-            inputMode="numeric"
-            maxLength={1}
-            value={char}
-            ref={(el) => (inputsRef.current[index] = el)}
-            onChange={(e) => handleChange(e, index)}
-            onKeyDown={(e) => handleKeyDown(e, index)}
-            className="w-9 h-9 sm:w-11 sm:h-11 text-center bg-white/5 border-b-2 border-zinc-700 focus:border-brand focus:outline-none text-white text-base sm:text-lg font-bold transition-colors rounded-t-md"
-          />
+          <React.Fragment key={index}>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={char}
+              ref={(el) => (inputsRef.current[index] = el)}
+              onChange={(e) => handleChange(e, index)}
+              onKeyDown={(e) => handleKeyDown(e, index)}
+              className="otp-input w-10 h-12 sm:w-12 sm:h-14 text-center font-sans text-xl font-semibold rounded-2xl bg-[#f2f2f7] dark:bg-[#2c2c2e] border border-transparent focus:border-[#af52de] dark:focus:border-[#bf5af2] focus:bg-white dark:focus:bg-[#3a3a3c] focus:ring-4 focus:ring-[#af52de]/15 dark:focus:ring-[#bf5af2]/15 focus:scale-105 outline-none text-black dark:text-white transition-all duration-200 tracking-tight"
+            />
+            {index === 2 && (
+              <span className="text-gray-400 dark:text-gray-500 font-bold mx-0.5 sm:mx-1">-</span>
+            )}
+          </React.Fragment>
         );
       })}
     </div>

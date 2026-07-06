@@ -217,7 +217,7 @@ export default function Hero() {
           animate="visible"
           className="text-5xl md:text-8xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-black to-gray-500 dark:from-white dark:to-gray-400"
         >
-          Data refined.  Insights revealed.
+          The ultimate workspace for data refinement
         </motion.h1>
 
         <motion.p
@@ -235,14 +235,31 @@ export default function Hero() {
           variants={fadeUpVariants}
           initial="hidden"
           animate="visible"
+          className="flex justify-center"
         >
           <label 
             htmlFor="csv-upload-btn"
-            className="px-8 py-4 bg-black text-white dark:bg-white dark:text-black font-semibold rounded-lg shadow-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors duration-300 flex items-center gap-2 mx-auto w-fit cursor-pointer"
+            className="relative group border-none bg-transparent p-0 outline-none cursor-pointer font-sans w-fit block"
           >
-            Upload CSV
-            <ArrowRight className="h-5 w-5" />
+            {/* Layer 1: Drop Shadow */}
+            <span
+              className="absolute inset-0 w-full h-full bg-black/20 dark:bg-white/20 rounded-lg transform translate-y-1 transition duration-[600ms] ease-[cubic-bezier(0.3,0.7,0.4,1)] group-hover:translate-y-1.5 group-hover:duration-[250ms] group-active:translate-y-px"
+            ></span>
+
+            {/* Layer 2: 3D Edge (Creates the depth thickness) */}
+            <span
+              className="absolute inset-0 w-full h-full rounded-lg bg-gray-800 dark:bg-gray-300"
+            ></span>
+
+            {/* Layer 3: Top Face */}
+            <div
+              className="relative flex items-center justify-between px-8 py-4 font-semibold text-white bg-black dark:text-black dark:bg-white rounded-lg transform -translate-y-1 transition duration-[600ms] ease-[cubic-bezier(0.3,0.7,0.4,1)] group-hover:-translate-y-1.5 group-hover:duration-[250ms] group-active:-translate-y-0.5 gap-2"
+            >
+              <span className="select-none">Upload CSV</span>
+              <ArrowRight className="h-5 w-5 transition duration-250 group-hover:translate-x-1" />
+            </div>
           </label>
+          
           <input
             id="csv-upload-btn"
             type="file"

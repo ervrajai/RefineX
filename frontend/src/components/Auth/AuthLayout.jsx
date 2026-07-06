@@ -164,11 +164,14 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
               <div className="relative z-10 w-full">
                 {/* Pill Switcher with Gliding Outline Hover Effect */}
                 {(isLogin || isSignup) && (
-                  <div className="relative mb-5 flex rounded-full border border-lightBorder/55 dark:border-gray-800/80 bg-gray-100/50 dark:bg-white/5 p-0.5">
+                  <div 
+                    className="relative mb-5 flex rounded-full border border-lightBorder/50 dark:border-gray-800/80 bg-gray-50/80 dark:bg-[#121212]/80 p-0.5"
+                    onMouseLeave={() => setHoveredTab(null)}
+                  >
                     
-                    {/* Active Tab indicator (solid background) */}
+                    {/* Active Tab indicator (High contrast for light/dark mode visibility) */}
                     <div 
-                      className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-full bg-primary transition-all duration-300 ease-in-out shadow-[0_2px_8px_rgba(0,0,0,0.35)] dark:shadow-[0_0_12px_rgba(103,58,183,0.6)] ${
+                      className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-full border border-gray-900 dark:border-white bg-transparent transition-all duration-300 ease-in-out ${
                         isSignup ? "left-[calc(50%+1px)]" : "left-0.5"
                       }`}
                     />
@@ -176,18 +179,17 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
                     {/* Log In Tab */}
                     <button
                       onMouseEnter={() => setHoveredTab("login")}
-                      onMouseLeave={() => setHoveredTab(null)}
                       onClick={() => navigate("/login")}
                       className={`relative z-10 flex-1 rounded-full py-1.5 text-center text-xs font-semibold transition-colors duration-200 cursor-pointer ${
-                        isLogin ? "text-white" : "text-slate-650 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+                        isLogin ? "text-gray-900 dark:text-white" : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
                       }`}
                     >
                       Log In
-                      {/* Gliding border outline for hover tab */}
+                      {/* Gliding transparent outline for hover tab - matching Navbar */}
                       {hoveredTab === "login" && !isLogin && (
                         <motion.div
                           layoutId="pill-hover"
-                          className="absolute inset-0 border border-primary rounded-full pointer-events-none"
+                          className="absolute inset-0 border border-brand dark:border-white/50 rounded-full pointer-events-none"
                           initial={false}
                           transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
                         />
@@ -197,18 +199,17 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
                     {/* Sign Up Tab */}
                     <button
                       onMouseEnter={() => setHoveredTab("signup")}
-                      onMouseLeave={() => setHoveredTab(null)}
                       onClick={() => navigate("/signup")}
                       className={`relative z-10 flex-1 rounded-full py-1.5 text-center text-xs font-semibold transition-colors duration-200 cursor-pointer ${
-                        isSignup ? "text-white" : "text-slate-650 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+                        isSignup ? "text-gray-900 dark:text-white" : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
                       }`}
                     >
                       Sign Up
-                      {/* Gliding border outline for hover tab */}
+                      {/* Gliding transparent outline for hover tab - matching Navbar */}
                       {hoveredTab === "signup" && !isSignup && (
                         <motion.div
                           layoutId="pill-hover"
-                          className="absolute inset-0 border border-primary rounded-full pointer-events-none"
+                          className="absolute inset-0 border border-brand dark:border-white/50 rounded-full pointer-events-none"
                           initial={false}
                           transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
                         />

@@ -282,11 +282,14 @@ class ForgotPasswordOtpRequestView(APIView):
         email = serializer.validated_data["email"].lower()
         user = UserModel.objects.filter(email__iexact=email).first()
         if not user:
-            return Response({"detail": "If the email exists, an OTP has been sent."})
+            return Response(
+                {"detail": "User with this email does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if user.auth_provider != User.AuthProvider.EMAIL:
             provider = _provider_label(user.auth_provider)
             return Response(
-                {"detail": f"This account uses {provider}. Please log in using that method."},
+                {"detail": f"This account is associated with {provider}. Please log in using {provider} instead."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -301,7 +304,7 @@ class ForgotPasswordOtpRequestView(APIView):
             return _otp_email_error_response()
 
         _store_otp(request, "password_reset", email=email, otp=otp)
-        return Response({"detail": "If the email exists, an OTP has been sent."})
+        return Response({"detail": "OTP has been sent to your email."})
 
 
 class ForgotPasswordOtpVerifyView(APIView):
@@ -346,6 +349,11 @@ class ResetPasswordView(APIView):
 
         user = UserModel.objects.filter(email__iexact=email).first()
         if user:
+            if user.check_password(serializer.validated_data["password"]):
+                return Response(
+                    {"detail": "New password cannot be the same as your old password."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             user.set_password(serializer.validated_data["password"])
             user.save(update_fields=["password"])
         _clear_otp(request, "password_reset")

@@ -6,6 +6,8 @@ import api from "../../services/api";
 // Subcomponents
 import Sidebar from "../../components/Dashboard/Sidebar";
 import SettingsView from "../../components/Dashboard/SettingsView";
+import CleanView from "../../components/Dashboard/CleanView";
+import HistoryView from "../../components/Dashboard/HistoryView";
 
 import { 
   Sparkles,
@@ -102,21 +104,7 @@ function Dashboard() {
           {activeTab === "overview" && null}
 
           {/* TAB 2: CLEAN */}
-          {activeTab === "clean" && (
-            <div className="space-y-4 max-w-xl animate-fade-in text-black dark:text-white">
-              <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/10">
-                    <Sparkles className="w-5 h-5" />
-                  </div>
-                  <h2 className="text-sm font-bold text-slate-800 dark:text-zinc-150">Clean Operations</h2>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
-                  (Clean Tab view is ready. Content details will be loaded subsequently.)
-                </p>
-              </div>
-            </div>
-          )}
+          {activeTab === "clean" && <CleanView />}
 
           {/* TAB 3: MODEL TRAINING */}
           {activeTab === "model-training" && (
@@ -153,21 +141,7 @@ function Dashboard() {
           )}
 
           {/* TAB 5: HISTORY */}
-          {activeTab === "history" && (
-            <div className="space-y-4 max-w-xl animate-fade-in text-black dark:text-white">
-              <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/10">
-                    <History className="w-5 h-5" />
-                  </div>
-                  <h2 className="text-sm font-bold text-slate-800 dark:text-zinc-150">Execution History</h2>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
-                  (History Tab view is ready. Activity records will be loaded subsequently.)
-                </p>
-              </div>
-            </div>
-          )}
+          {activeTab === "history" && <HistoryView />}
 
           {/* TAB 6: SETTINGS */}
           {activeTab === "settings" && (

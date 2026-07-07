@@ -28,6 +28,35 @@ function Dashboard() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
+  // Persisted Dataset Workspace states
+  const [datasetId, setDatasetId] = useState(null);
+  const [metadata, setMetadata] = useState(null);
+  const [report, setReport] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [beforeReport, setBeforeReport] = useState(null);
+  const [afterReport, setAfterReport] = useState(null);
+  const [cleanLogs, setCleanLogs] = useState([]);
+
+  // Theme Sync on Mount
+  useEffect(() => {
+    const storedTheme = localStorage.getItem("theme") || "auto";
+    const applyTheme = (currentTheme) => {
+      const root = document.documentElement;
+      if (currentTheme === "dark") {
+        root.classList.add("dark");
+      } else if (currentTheme === "light") {
+        root.classList.remove("dark");
+      } else {
+        if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+          root.classList.add("dark");
+        } else {
+          root.classList.remove("dark");
+        }
+      }
+    };
+    applyTheme(storedTheme);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     api
@@ -104,7 +133,24 @@ function Dashboard() {
           {activeTab === "overview" && null}
 
           {/* TAB 2: CLEAN */}
-          {activeTab === "clean" && <CleanView />}
+          {activeTab === "clean" && (
+            <CleanView
+              datasetId={datasetId}
+              setDatasetId={setDatasetId}
+              metadata={metadata}
+              setMetadata={setMetadata}
+              report={report}
+              setReport={setReport}
+              preview={preview}
+              setPreview={setPreview}
+              beforeReport={beforeReport}
+              setBeforeReport={setBeforeReport}
+              afterReport={afterReport}
+              setAfterReport={setAfterReport}
+              cleanLogs={cleanLogs}
+              setCleanLogs={setCleanLogs}
+            />
+          )}
 
           {/* TAB 3: MODEL TRAINING */}
           {activeTab === "model-training" && (
@@ -141,7 +187,20 @@ function Dashboard() {
           )}
 
           {/* TAB 5: HISTORY */}
-          {activeTab === "history" && <HistoryView />}
+          {activeTab === "history" && (
+            <HistoryView
+              onLoadWorkspace={(dsId, meta, bReport, aReport, logs, previewData) => {
+                setDatasetId(dsId);
+                setMetadata(meta);
+                setReport(aReport || bReport);
+                setBeforeReport(bReport);
+                setAfterReport(aReport);
+                setCleanLogs(logs || []);
+                setPreview(previewData);
+                setActiveTab("clean");
+              }}
+            />
+          )}
 
           {/* TAB 6: SETTINGS */}
           {activeTab === "settings" && (

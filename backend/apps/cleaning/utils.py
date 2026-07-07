@@ -1,7 +1,78 @@
+import os
+import io
+import csv
 import re
 import numpy as np
 import pandas as pd
 from django.core.files.base import ContentFile
+
+def make_columns_unique(columns):
+    seen = {}
+    new_cols = []
+    for col in columns:
+        col_str = str(col).strip()
+        if not col_str:
+            col_str = "unnamed"
+        if col_str in seen:
+            seen[col_str] += 1
+            new_cols.append(f"{col_str}_{seen[col_str]}")
+        else:
+            seen[col_str] = 0
+            new_cols.append(col_str)
+    return new_cols
+
+def read_dataframe(file_path, file_type, encoding='UTF-8'):
+    """
+    Safely reads a dataset into a Pandas DataFrame, handling common encoding formats and delimiter sniffing.
+    """
+    if not os.path.exists(file_path):
+        raise FileNotFoundError("The dataset file does not exist on the server.")
+
+    if file_type.lower() == 'csv':
+        detected_encoding = encoding
+        encodings_to_try = [encoding, 'utf-8', 'latin-1', 'cp1252', 'utf-16']
+        df = None
+        for enc in encodings_to_try:
+            try:
+                # Read sample to sniff delimiter
+                with open(file_path, 'rb') as f:
+                    sample_bytes = f.read(10240)
+                sample = sample_bytes.decode(enc, errors='ignore')
+                
+                try:
+                    dialect = csv.Sniffer().sniff(sample)
+                    delimiter = dialect.delimiter
+                    if delimiter not in [',', ';', '\t', '|']:
+                        delimiter = ','
+                except Exception:
+                    # Fallback separator counts
+                    if ';' in sample and sample.count(';') > sample.count(','):
+                        delimiter = ';'
+                    elif '\t' in sample:
+                        delimiter = '\t'
+                    else:
+                        delimiter = ','
+
+                df = pd.read_csv(file_path, encoding=enc, sep=delimiter, on_bad_lines='skip')
+                detected_encoding = enc
+                break
+            except Exception:
+                continue
+                
+        if df is None:
+            raise ValueError("Could not decode CSV file using standard encodings. The file might be corrupted.")
+            
+        df.columns = make_columns_unique(df.columns)
+        return df, detected_encoding
+    elif file_type.lower() in ['xlsx', 'xls']:
+        try:
+            df = pd.read_excel(file_path)
+            df.columns = make_columns_unique(df.columns)
+            return df, 'UTF-8'
+        except Exception as e:
+            raise ValueError(f"Could not read Excel file: {str(e)}")
+    else:
+        raise ValueError(f"Unsupported file type: {file_type}")
 
 def make_json_safe(obj):
     """
@@ -240,29 +311,37 @@ def profile_dataset(df):
     numeric_stats = []
     for col in df.columns:
         if pd.api.types.is_numeric_dtype(df[col]):
-            col_nonnull = df[col].dropna()
-            if len(col_nonnull) > 0:
-                q1 = float(col_nonnull.quantile(0.25))
-                q3 = float(col_nonnull.quantile(0.75))
-                iqr = q3 - q1
-                
-                # Mode extraction safely
-                mode_series = col_nonnull.mode()
-                mode_val = float(mode_series.iloc[0]) if not mode_series.empty else None
+            try:
+                col_nonnull = df[col].dropna()
+                if len(col_nonnull) > 0:
+                    q1 = float(col_nonnull.quantile(0.25))
+                    q3 = float(col_nonnull.quantile(0.75))
+                    iqr = q3 - q1
+                    
+                    # Mode extraction safely
+                    mode_series = col_nonnull.mode()
+                    mode_val = None
+                    if not mode_series.empty:
+                        try:
+                            mode_val = float(mode_series.iloc[0])
+                        except Exception:
+                            mode_val = str(mode_series.iloc[0])
 
-                numeric_stats.append({
-                    "column": col,
-                    "mean": float(col_nonnull.mean()),
-                    "median": float(col_nonnull.median()),
-                    "mode": mode_val,
-                    "min": float(col_nonnull.min()),
-                    "max": float(col_nonnull.max()),
-                    "std": float(col_nonnull.std()) if len(col_nonnull) > 1 else 0.0,
-                    "variance": float(col_nonnull.var()) if len(col_nonnull) > 1 else 0.0,
-                    "q1": q1,
-                    "q3": q3,
-                    "iqr": iqr
-                })
+                    numeric_stats.append({
+                        "column": col,
+                        "mean": float(col_nonnull.mean()) if pd.notna(col_nonnull.mean()) else 0.0,
+                        "median": float(col_nonnull.median()) if pd.notna(col_nonnull.median()) else 0.0,
+                        "mode": mode_val,
+                        "min": float(col_nonnull.min()) if pd.notna(col_nonnull.min()) else 0.0,
+                        "max": float(col_nonnull.max()) if pd.notna(col_nonnull.max()) else 0.0,
+                        "std": float(col_nonnull.std()) if len(col_nonnull) > 1 and pd.notna(col_nonnull.std()) else 0.0,
+                        "variance": float(col_nonnull.var()) if len(col_nonnull) > 1 and pd.notna(col_nonnull.var()) else 0.0,
+                        "q1": q1,
+                        "q3": q3,
+                        "iqr": iqr
+                    })
+            except Exception:
+                pass
 
     # Correlation Matrix
     correlation_matrix = {}

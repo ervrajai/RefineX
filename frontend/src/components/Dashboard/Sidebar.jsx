@@ -2,11 +2,11 @@ import React from "react";
 import logoImg from "../../assets/logo/refinex_logo.png";
 import { 
   LayoutDashboard, 
-  Sparkles,
+  BrushCleaning,
   BrainCircuit,
   LineChart,
   History,
-  Settings, 
+  Cog, 
   LogOut
 } from "lucide-react";
 
@@ -15,11 +15,11 @@ const cn = (...classes) => classes.filter(Boolean).join(" ");
 
 const MENU_ITEMS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "clean", label: "Clean", icon: Sparkles },
+  { id: "clean", label: "Clean", icon: BrushCleaning },
   { id: "model-training", label: "Model Training", icon: BrainCircuit },
   { id: "visualization", label: "Visualization", icon: LineChart },
   { id: "history", label: "History", icon: History },
-  { id: "settings", label: "Settings", icon: Settings },
+  { id: "settings", label: "Settings", icon: Cog },
 ];
 
 // Animated SVG Hamburger Toggle Icon Component - Pixel Aligned

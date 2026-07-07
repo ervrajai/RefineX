@@ -78,12 +78,12 @@ const footerData = {
 
 // Reusable components
 const NavSection = ({ title, links, index }) => (
-  <motion.div variants={itemVariants} custom={index} className="flex flex-col gap-2">
+  <motion.div variants={itemVariants} custom={index} className="flex flex-col gap-3">
     <motion.h3
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 + index * 0.1, duration: 0.5 }}
-      className="mb-2 uppercase text-gray-500 dark:text-gray-400 text-xs font-bold tracking-widest border-b border-lightBorder/50 dark:border-white/10 pb-2 hover:text-black dark:hover:text-white transition-colors duration-300"
+      className="mb-3 uppercase text-gray-500 dark:text-gray-400 text-sm font-bold tracking-widest border-b border-lightBorder/50 dark:border-white/10 pb-2 hover:text-black dark:hover:text-white transition-colors duration-300"
     >
       {title}
     </motion.h3>
@@ -99,7 +99,7 @@ const NavSection = ({ title, links, index }) => (
           x: 8,
           transition: { type: "spring", stiffness: 300, damping: 20 },
         }}
-        className="text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300 font-sans text-sm font-medium group relative w-max mt-1"
+        className="text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300 font-sans text-base font-medium group relative w-max mt-1"
       >
         <span className="relative">
           {link}
@@ -142,7 +142,6 @@ const SocialLink = ({ href, label, icon, index }) => (
 
 export default function Footer() {
   return (
-    // Lowered the height from 70vh to 60vh so it frames your 3 columns perfectly without empty space
     <div className="relative h-[60vh]" style={{ clipPath: "polygon(0% 0, 100% 0%, 100% 100%, 0 100%)" }}>
       <div className="relative h-[calc(100vh+60vh)] -top-[100vh]">
         <div className="h-[60vh] sticky top-[calc(100vh-60vh)]">
@@ -152,9 +151,6 @@ export default function Footer() {
             variants={containerVariants}
             className="bg-white dark:bg-black border-t border-lightBorder/50 dark:border-white/10 py-10 md:py-16 px-6 md:px-12 h-full w-full flex flex-col justify-between relative overflow-hidden"
           >
-            {/* Animated RefineX Purple Background Blobs */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/5 dark:from-white/5 to-transparent pointer-events-none" />
-
             <motion.div
               variants={backgroundVariants}
               className="absolute top-0 right-0 w-64 h-64 md:w-96 md:h-96 bg-[#673ab7]/10 dark:bg-[#673ab7]/20 rounded-full blur-3xl"
@@ -186,8 +182,7 @@ export default function Footer() {
 
             {/* Navigation Section */}
             <motion.div variants={containerVariants} className="relative z-10 max-w-7xl mx-auto w-full">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 lg:gap-20">
-                {/* Intro Column removed to let the giant text at the bottom handle branding */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12 lg:gap-20 w-full">
                 {footerData.sections.map((section, index) => (
                   <NavSection key={section.title} title={section.title} links={section.links} index={index} />
                 ))}
@@ -207,10 +202,6 @@ export default function Footer() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 1, duration: 0.8, ease: "easeOut" }}
                   className="flex items-center gap-4 cursor-default"
-                  whileHover={{
-                    scale: 1.02,
-                    transition: { type: "spring", stiffness: 300, damping: 20 },
-                  }}
                 >
                   <img src={logoImg} alt="RefineX Logo" className="w-12 h-12 md:w-16 md:h-16 object-cover rounded-2xl shadow-lg border border-lightBorder dark:border-white/10" />
                   <h1 className="text-6xl md:text-[8vw] lg:text-[7vw] leading-[0.8] font-black tracking-wider bg-gradient-to-br from-black via-gray-700 to-black/60 dark:from-white dark:via-gray-300 dark:to-white/60 bg-clip-text text-transparent font-display">

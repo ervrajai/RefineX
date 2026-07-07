@@ -1,56 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api';
-import './Dashboard.css';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import api from "../../services/api";
 
-/* ─── helpers ─────────────────────────────────────────────────── */
-const getInitials = (firstName = '', lastName = '', email = '') => {
-  if (firstName || lastName) {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  }
-  return email.charAt(0).toUpperCase();
-};
+// Subcomponents
+import Sidebar from "../../components/Dashboard/Sidebar";
+import SettingsView from "../../components/Dashboard/SettingsView";
 
-const formatDate = (iso) => {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-};
+import { 
+  Sparkles,
+  BrainCircuit,
+  LineChart,
+  History,
+  Bell
+} from "lucide-react";
 
-const providerMeta = {
-  google: { label: 'Google', color: '#4285F4', icon: '🔵' },
-  github: { label: 'GitHub', color: '#24292e', icon: '⚫' },
-  email: { label: 'Email / Password', color: '#673ab7', icon: '✉️' },
-};
-
-/* ─── Skeleton shimmer ────────────────────────────────────────── */
-const Skeleton = ({ className }) => (
-  <div className={`skeleton ${className ?? ''}`} />
-);
-
-/* ─── Main component ─────────────────────────────────────────── */
-const Dashboard = () => {
+function Dashboard() {
   const navigate = useNavigate();
   const { setLoggedOut } = useAuth();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
-  const [imgError, setImgError] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     api
-      .get('accounts/me/')
+      .get("accounts/me/")
       .then((res) => {
         if (!cancelled) setUser(res.data);
       })
       .catch(() => {
-        if (!cancelled) setError('Could not load profile. Please refresh.');
+        if (!cancelled) setError("Could not load profile. Please refresh.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -63,213 +47,148 @@ const Dashboard = () => {
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      await api.post('accounts/logout/');
-      setLoggedOut();                        // clear AuthContext immediately
-      navigate('/login', { replace: true }); // replace so Back can't return to dashboard
+      await api.post("accounts/logout/");
+      setLoggedOut();
+      navigate("/login", { replace: true });
     } catch {
-      setError('Failed to log out. Please try again.');
+      setError("Failed to log out. Please try again.");
       setLoggingOut(false);
     }
   };
 
-  const provider = providerMeta[user?.auth_provider] ?? providerMeta.email;
-  const showPhoto = user?.profile_picture && !imgError;
+  const handleScroll = (e) => {
+    setIsScrolled(e.currentTarget.scrollTop > 10);
+  };
 
   return (
-    <div className="dashboard-root">
-      {/* ── animated background blobs ── */}
-      <div className="blob blob-1" />
-      <div className="blob blob-2" />
-      <div className="blob blob-3" />
+    <div className="flex w-screen h-screen bg-[#fcfcfc] dark:bg-[#070708] text-slate-900 dark:text-white transition-colors duration-300 overflow-hidden font-sans">
+      
+      {/* Dynamic Collapsible Navigation Sidebar */}
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        user={user}
+        loading={loading}
+        handleLogout={handleLogout}
+        loggingOut={loggingOut}
+        isCollapsed={isCollapsed}
+        setIsCollapsed={setIsCollapsed}
+      />
 
-      <div className="dashboard-center">
-        {/* ── header ── */}
-        <header className="dashboard-header">
-          <div className="header-brand">
-            <span className="brand-icon">⚡</span>
-            <span className="brand-name">RefineX</span>
-          </div>
-          <button
-            id="logout-btn"
-            className="logout-btn"
-            onClick={handleLogout}
-            disabled={loggingOut}
-          >
-            {loggingOut ? (
-              <span className="spinner" />
-            ) : (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                Log out
-              </>
-            )}
+      {/* Workspace Panel */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        
+        {/* Floating Notification Bell (Only shown at the top, fades out on scroll) */}
+        <div className={`absolute top-4 right-6 z-40 transition-all duration-300 ${
+          isScrolled ? "opacity-0 pointer-events-none -translate-y-2" : "opacity-100 translate-y-0"
+        }`}>
+          <button className="relative p-2.5 rounded-xl text-slate-500 dark:text-zinc-400 bg-[#fafafa]/80 dark:bg-[#121212]/80 border border-slate-200/50 dark:border-zinc-800 backdrop-blur shadow-sm hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-900 dark:hover:text-white transition duration-200 cursor-pointer">
+            <Bell className="w-4.5 h-4.5" />
+            <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-primary ring-1 ring-white dark:ring-zinc-900" />
           </button>
-        </header>
+        </div>
 
-        {/* ── error banner ── */}
-        {error && (
-          <div className="error-banner" role="alert">
-            ⚠️ {error}
-          </div>
-        )}
-
-        {/* ── profile card ── */}
-        <div className="profile-card" role="main">
-          {/* card glow border */}
-          <div className="card-glow" />
-
-          {/* ── avatar section ── */}
-          <div className="avatar-section">
-            {loading ? (
-              <Skeleton className="avatar-skeleton" />
-            ) : showPhoto ? (
-              <img
-                id="profile-avatar-img"
-                src={user.profile_picture}
-                alt={`${user.first_name} ${user.last_name}`}
-                className="avatar-img"
-                onError={() => setImgError(true)}
-              />
-            ) : (
-              <div
-                id="profile-avatar-initials"
-                className="avatar-initials"
-                aria-label="User initials avatar"
-              >
-                {user ? getInitials(user.first_name, user.last_name, user.email) : '?'}
-              </div>
-            )}
-
-            {/* online indicator */}
-            {!loading && <span className="online-dot" title="Active" />}
-          </div>
-
-          {/* ── user name / email ── */}
-          <div className="user-identity">
-            {loading ? (
-              <>
-                <Skeleton className="skel-name" />
-                <Skeleton className="skel-email" />
-              </>
-            ) : (
-              <>
-                <h1 id="profile-name" className="user-name">
-                  {user?.first_name || user?.last_name
-                    ? `${user.first_name} ${user.last_name}`.trim()
-                    : 'User'}
-                </h1>
-                <p id="profile-email" className="user-email">
-                  {user?.email}
-                </p>
-              </>
-            )}
-          </div>
-
-          {/* ── provider badge ── */}
-          {!loading && (
-            <div
-              id="provider-badge"
-              className="provider-badge"
-              style={{ '--badge-color': provider.color }}
-            >
-              <span>{provider.icon}</span>
-              <span>{provider.label}</span>
+        {/* Dynamic content area - listens for scroll to hide/show bell */}
+        <main onScroll={handleScroll} className="flex-1 overflow-y-auto p-6 space-y-6 pt-16">
+          
+          {/* Main Error Banner */}
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-xl border border-rose-500/20 bg-rose-500/10 text-xs font-semibold text-rose-600 dark:text-rose-450 animate-fade-in" role="alert">
+              <span>⚠️</span> {error}
             </div>
           )}
 
-          {/* ── divider ── */}
-          <div className="card-divider" />
+          {/* TAB 1: OVERVIEW - Blank placeholder as requested */}
+          {activeTab === "overview" && null}
 
-          {/* ── detail grid ── */}
-          <div className="detail-grid">
-            <DetailRow
-              loading={loading}
-              icon={
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              }
-              label="First Name"
-              id="detail-first-name"
-              value={user?.first_name || '—'}
-            />
-            <DetailRow
-              loading={loading}
-              icon={
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              }
-              label="Last Name"
-              id="detail-last-name"
-              value={user?.last_name || '—'}
-            />
-            <DetailRow
-              loading={loading}
-              icon={
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-              }
-              label="Email"
-              id="detail-email"
-              value={user?.email}
-              full
-            />
-            <DetailRow
-              loading={loading}
-              icon={
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              }
-              label="Email Verified"
-              id="detail-email-verified"
-              value={
-                user?.is_email_verified ? (
-                  <span className="badge badge-green">✓ Verified</span>
-                ) : (
-                  <span className="badge badge-amber">⚠ Not verified</span>
-                )
-              }
-            />
-            <DetailRow
-              loading={loading}
-              icon={
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              }
-              label="Member Since"
-              id="detail-date-joined"
-              value={formatDate(user?.date_joined)}
-            />
-            <DetailRow
-              loading={loading}
-              icon={
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-              }
-              label="Auth Provider"
-              id="detail-auth-provider"
-              value={provider.label}
-            />
-          </div>
-        </div>
+          {/* TAB 2: CLEAN */}
+          {activeTab === "clean" && (
+            <div className="space-y-4 max-w-xl animate-fade-in text-black dark:text-white">
+              <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/10">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-sm font-bold text-slate-800 dark:text-zinc-150">Clean Operations</h2>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+                  (Clean Tab view is ready. Content details will be loaded subsequently.)
+                </p>
+              </div>
+            </div>
+          )}
 
-        {/* ── footer ── */}
-        <p className="dashboard-footer">
-          RefineX © {new Date().getFullYear()} — Your AI-powered data refinement platform
-        </p>
+          {/* TAB 3: MODEL TRAINING */}
+          {activeTab === "model-training" && (
+            <div className="space-y-4 max-w-xl animate-fade-in text-black dark:text-white">
+              <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/10">
+                    <BrainCircuit className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-sm font-bold text-slate-800 dark:text-zinc-150">Model Training Console</h2>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+                  (Model Training Tab view is ready. Training metrics will be loaded subsequently.)
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: VISUALIZATION */}
+          {activeTab === "visualization" && (
+            <div className="space-y-4 max-w-xl animate-fade-in text-black dark:text-white">
+              <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/10">
+                    <LineChart className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-sm font-bold text-slate-800 dark:text-zinc-150">Data Visualization</h2>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+                  (Visualization Tab view is ready. Dashboard plots will be loaded subsequently.)
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: HISTORY */}
+          {activeTab === "history" && (
+            <div className="space-y-4 max-w-xl animate-fade-in text-black dark:text-white">
+              <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/10">
+                    <History className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-sm font-bold text-slate-800 dark:text-zinc-150">Execution History</h2>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+                  (History Tab view is ready. Activity records will be loaded subsequently.)
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6: SETTINGS */}
+          {activeTab === "settings" && (
+            <SettingsView
+              user={user}
+              loading={loading}
+              error={error}
+            />
+          )}
+
+        </main>
+
+        {/* Footer info banner */}
+        <footer className="px-6 py-3 border-t border-slate-200 dark:border-zinc-800 bg-[#fafafa]/50 dark:bg-[#0c0c0e]/50 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-550 flex items-center justify-between select-none">
+          <span>RefineX Platform</span>
+          <span>© {new Date().getFullYear()} — DB Optimizer</span>
+        </footer>
+
       </div>
     </div>
   );
-};
-
-/* ─── DetailRow sub-component ────────────────────────────────── */
-const DetailRow = ({ loading, icon, label, value, id, full }) => (
-  <div className={`detail-row ${full ? 'detail-row-full' : ''}`}>
-    <div className="detail-icon">{icon}</div>
-    <div className="detail-content">
-      <span className="detail-label">{label}</span>
-      {loading ? (
-        <Skeleton className="skel-value" />
-      ) : (
-        <span id={id} className="detail-value">
-          {value ?? '—'}
-        </span>
-      )}
-    </div>
-  </div>
-);
+}
 
 export default Dashboard;

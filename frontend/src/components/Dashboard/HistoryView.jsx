@@ -6,16 +6,17 @@ import {
   ChevronDown,
   ChevronUp,
   FileSpreadsheet,
-  CheckCircle,
   TrendingUp,
   Info,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from "lucide-react";
 
-export default function HistoryView() {
+export default function HistoryView({ onLoadWorkspace }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [restoreLoading, setRestoreLoading] = useState(false);
   const [error, setError] = useState("");
   const [expandedJobId, setExpandedJobId] = useState(null);
 
@@ -43,6 +44,29 @@ export default function HistoryView() {
 
   const toggleExpand = (jobId) => {
     setExpandedJobId(prev => (prev === jobId ? null : jobId));
+  };
+
+  const handleRestore = async (job) => {
+    setRestoreLoading(true);
+    setError("");
+    try {
+      const res = await api.get(`cleaning/${job.dataset_id}/analyze/`);
+      const data = res.data;
+      if (onLoadWorkspace) {
+        onLoadWorkspace(
+          job.dataset_id,
+          data.metadata,
+          job.before_stats,
+          job.after_stats,
+          job.logs,
+          data.preview
+        );
+      }
+    } catch (err) {
+      setError("Failed to load dataset preview for restoration. The file might have been deleted.");
+    } finally {
+      setRestoreLoading(false);
+    }
   };
 
   const formatDate = (isoString) => {
@@ -135,7 +159,7 @@ export default function HistoryView() {
                     </div>
                     <div>
                       <h3 className="text-sm font-black text-black dark:text-white tracking-tight">{job.dataset_name}</h3>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[10px] font-bold text-slate-400 dark:text-zinc-500">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[10px] font-bold text-slate-400 dark:text-zinc-550">
                         <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {formatDate(job.cleaned_at)}</span>
                         <span>• Job ID: #{job.id}</span>
                       </div>
@@ -160,7 +184,7 @@ export default function HistoryView() {
                     </div>
 
                     {/* Expand icon */}
-                    <button className="text-slate-400 dark:text-zinc-500 p-1 rounded-lg border border-slate-200 dark:border-zinc-800 bg-[#fafafa] dark:bg-zinc-900">
+                    <button className="text-slate-400 dark:text-zinc-500 p-1 rounded-lg border border-slate-200 dark:border-zinc-800 bg-[#fafafa] dark:bg-zinc-900 cursor-pointer">
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
 
@@ -205,8 +229,8 @@ export default function HistoryView() {
 
                     </div>
 
-                    {/* Download Actions */}
-                    <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100 dark:border-zinc-800/80">
+                    {/* Actions and Restore */}
+                    <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100 dark:border-zinc-800/80 items-center">
                       <button 
                         onClick={() => handleDownload(job.dataset_id, "csv")}
                         className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg bg-primary text-white hover:bg-primary-dark transition duration-150 flex items-center gap-1 cursor-pointer"
@@ -223,7 +247,7 @@ export default function HistoryView() {
                         onClick={() => handleDownload(job.dataset_id, "report")}
                         className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900 transition duration-150 flex items-center gap-1 cursor-pointer"
                       >
-                        <Download className="w-3.5 h-3.5" /> Full Report
+                        <Download className="w-3.5 h-3.5" /> PDF Audit Report
                       </button>
                       <button 
                         onClick={() => handleDownload(job.dataset_id, "log")}
@@ -231,6 +255,16 @@ export default function HistoryView() {
                       >
                         <Download className="w-3.5 h-3.5" /> Operations Log
                       </button>
+
+                      {onLoadWorkspace && (
+                        <button 
+                          onClick={() => handleRestore(job)}
+                          disabled={restoreLoading}
+                          className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 transition duration-150 flex items-center gap-1 cursor-pointer disabled:opacity-50 ml-auto"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" /> {restoreLoading ? "Restoring..." : "Restore to Workspace"}
+                        </button>
+                      )}
                     </div>
 
                     {/* logs */}

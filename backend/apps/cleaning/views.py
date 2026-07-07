@@ -14,33 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from apps.accounts.views import CsrfExemptSessionAuthentication
 
 from .models import Dataset, CleaningJob
-from .utils import profile_dataset, clean_dataset, make_json_safe
-
-def read_dataframe(file_path, file_type, encoding='UTF-8'):
-    """
-    Safely reads a dataset into a Pandas DataFrame, handling common encoding formats.
-    """
-    if not os.path.exists(file_path):
-        raise FileNotFoundError("The dataset file does not exist on the server.")
-
-    if file_type.lower() == 'csv':
-        # Try preferred encoding
-        encodings_to_try = [encoding, 'utf-8', 'latin-1', 'cp1252', 'utf-16']
-        for enc in encodings_to_try:
-            try:
-                df = pd.read_csv(file_path, encoding=enc)
-                return df, enc
-            except (UnicodeDecodeError, LookupError):
-                continue
-        raise ValueError("Could not decode CSV file using standard encodings. The file might be corrupted.")
-    elif file_type.lower() in ['xlsx', 'xls']:
-        try:
-            df = pd.read_excel(file_path)
-            return df, 'UTF-8'
-        except Exception as e:
-            raise ValueError(f"Could not read Excel file: {str(e)}")
-    else:
-        raise ValueError(f"Unsupported file type: {file_type}")
+from .utils import profile_dataset, clean_dataset, make_json_safe, read_dataframe
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -398,37 +372,17 @@ class DatasetDownloadView(APIView):
             return response
             
         elif download_type == "report":
-            # Fetch latest cleaning job or profile original
             latest_job = CleaningJob.objects.filter(dataset=dataset).order_by('-created_at').first()
-            if latest_job:
-                # Compare report
-                import json
-                report_data = {
-                    "dataset_name": dataset.name,
-                    "cleaned_at": latest_job.created_at.isoformat(),
-                    "before_metrics": latest_job.before_stats,
-                    "after_metrics": latest_job.after_stats,
-                    "cleaning_logs": latest_job.logs
-                }
-            else:
-                # Profile original
-                try:
-                    df, _ = read_dataframe(dataset.original_file.path, dataset.file_type, encoding=dataset.encoding)
-                    profile = profile_dataset(df)
-                    report_data = {
-                        "dataset_name": dataset.name,
-                        "profile_at": dataset.created_at.isoformat(),
-                        "metrics": profile,
-                        "status": "uncleaned"
-                    }
-                except Exception as e:
-                    return Response({"error": f"Failed to generate report: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-                    
-            response = HttpResponse(content_type='application/json')
-            response['Content-Disposition'] = f'attachment; filename="cleaning_report_{dataset.id}.json"'
-            import json
-            response.write(json.dumps(report_data, indent=2))
-            return response
+            try:
+                response = HttpResponse(content_type='application/pdf')
+                filename = f"cleaning_report_{dataset.id}.pdf"
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                
+                from .reports import generate_pdf_report
+                generate_pdf_report(response, dataset, latest_job)
+                return response
+            except Exception as e:
+                return Response({"error": f"Failed to generate PDF report: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
             
         else:
             return Response({"error": "Invalid download type"}, status=status.HTTP_400_BAD_REQUEST)

@@ -5,7 +5,8 @@ from .views import (
     DatasetCleanView,
     DatasetDecideView,
     DatasetResetView,
-    DatasetDownloadView
+    DatasetDownloadView,
+    DatasetPreviewView
 )
 
 urlpatterns = [
@@ -15,4 +16,5 @@ urlpatterns = [
     path("<int:pk>/decide/", DatasetDecideView.as_view(), name="dataset-decide"),
     path("<int:pk>/reset/", DatasetResetView.as_view(), name="dataset-reset"),
     path("<int:pk>/download/", DatasetDownloadView.as_view(), name="dataset-download"),
+    path("<int:pk>/preview/", DatasetPreviewView.as_view(), name="dataset-preview"),
 ]

@@ -4,6 +4,7 @@ import {
   UploadCloud,
   FileSpreadsheet,
   Sparkles,
+  BrushCleaning,
   RefreshCw,
   FileDown,
   ChevronLeft,
@@ -15,7 +16,7 @@ import {
   Settings,
   HelpCircle,
   ArrowUpDown,
-  LayoutGrid,
+  Table,
   FileText
 } from "lucide-react";
 
@@ -143,8 +144,36 @@ export default function CleanView({
     }
   }, [errorMsg]);
 
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const toggleAccordion = (key) => {
     setActiveAccordion(prev => (prev === key ? null : key));
+  };
+
+  const loadMoreRows = async () => {
+    if (loadingMore || !datasetId || !preview || !metadata) return;
+    if (preview.rows.length >= metadata.rows) return;
+    
+    setLoadingMore(true);
+    try {
+      const offset = preview.rows.length;
+      const res = await api.get(`cleaning/${datasetId}/preview/?offset=${offset}&limit=100`);
+      setPreview(prev => ({
+        ...prev,
+        rows: [...prev.rows, ...res.data.rows]
+      }));
+    } catch (err) {
+      console.error("Failed to load more rows:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const handleTableScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    if (scrollHeight - scrollTop - clientHeight < 45) {
+      loadMoreRows();
+    }
   };
 
   const fileInputRef = useRef(null);
@@ -410,6 +439,28 @@ export default function CleanView({
     setManualTypes(prev => ({ ...prev, [col]: type }));
   };
 
+  // Clears the sidebar configuration checkboxes ONLY
+  const handleConfigReset = () => {
+    setConfig({
+      standardize_column_names: false, standardize_trim: true, standardize_replace_spaces: true, standardize_lowercase: true, standardize_remove_special: true, standardize_replace_multiple_underscores: true, standardize_remove_outer_underscores: true,
+      handle_missing_values: false, missing_strategy: "nothing", missing_custom_value: "",
+      remove_duplicate_rows: false, remove_duplicate_columns: false,
+      clean_numeric_values: false,
+      text_cleaning: false, text_trim: true, text_remove_multiple_spaces: false, text_remove_html: false, text_remove_emoji: false, text_remove_tabs_newlines: false, text_case_mode: "none",
+      blank_value_detection: true,
+      data_type_conversion: false, type_conversion_mode: "auto",
+      outlier_strategy: "ignore", outlier_method: "iqr",
+      date_formatting: false, date_format: "YYYY-MM-DD",
+      decimal_formatting: false, decimal_format: "none",
+      remove_constant_columns: false, remove_high_missing_columns: false, missing_threshold: 90,
+      remove_low_variance_columns: false, remove_invalid_values: false, remove_unwanted_columns: false,
+      reset_index: false, encoding: "UTF-8"
+    });
+    setSelectedUnwanted([]);
+    setManualTypes({});
+    setSuccessMsg("Sidebar configuration cleared.");
+  };
+
   return (
     <div className="space-y-6 text-slate-800 dark:text-zinc-100 max-w-full pb-10 animate-fade-in font-sans">
       
@@ -429,115 +480,113 @@ export default function CleanView({
       )}
 
       {/* HEADER SECTION */}
-      <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-black text-black dark:text-white tracking-tight flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" /> Dataset Cleaning Console
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
-            Analyze, clean, and standardize datasets. Maximize data quality score instantly.
-          </p>
+      <div className="mb-6 flex flex-col gap-4 animate-fade-in">
+        
+        {/* TOP ROW: Title & Global Buttons (Outside the card) */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           
-          {metadata && (
-            <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 text-xs font-semibold text-slate-600 dark:text-zinc-300">
-              <span className="flex items-center gap-1"><FileSpreadsheet className="w-3.5 h-3.5" /> {metadata.name}</span>
-              <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 text-[10px] uppercase font-bold text-primary">{metadata.file_type}</span>
-              <span>• Rows: <strong className="text-black dark:text-white">{metadata.rows}</strong></span>
-              <span>• Columns: <strong className="text-black dark:text-white">{metadata.columns}</strong></span>
-              <span>• Size: <strong className="text-black dark:text-white">{formatSize(metadata.file_size)}</strong></span>
-              <span>• Encoding: <strong className="text-black dark:text-white">{metadata.encoding}</strong></span>
+          {/* Cool, Styled Section Title */}
+          <div className="flex items-center gap-2.5 px-1">
+            <div className="p-1.5 rounded-lg bg-[#673ab7]/10 dark:bg-[#673ab7]/20">
+              <BrushCleaning className="w-4 h-4 text-[#673ab7] dark:text-[#9373d1]" />
             </div>
-          )}
-        </div>
-
-        {/* Global Controls */}
-        <div className="flex flex-wrap gap-2 items-center">
+            <h1 className="text-xs font-black uppercase tracking-[0.2em] bg-gradient-to-r from-[#673ab7] to-indigo-500 bg-clip-text text-transparent select-none">
+              Dataset Cleaning Console
+            </h1>
+          </div>
+          
+          {/* Top Right Global Buttons */}
           {datasetId && (
-            <>
-              <button
-                onClick={handleClean}
-                disabled={processing}
-                className="px-4 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-xl transition duration-150 shadow-sm disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
-                title="Execute manual config"
-              >
-                {processing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : null}
-                Clean Dataset
-              </button>
-
-              <button
-                onClick={handleDecide}
-                disabled={processing}
-                className="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-750 hover:to-indigo-750 rounded-xl transition duration-150 shadow-md disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
-                title="Run RefineX automated heuristic cleaning pipeline"
-              >
-                ✨ RefineX Decide
-              </button>
-
-              {/* Click-Based Download Dropdown */}
+            <div className="flex flex-wrap items-center gap-3">
+              
+              {/* DOWNLOAD BUTTON */}
               <div className="relative" ref={downloadRef}>
                 <button 
                   onClick={() => setDownloadOpen(!downloadOpen)}
-                  className="px-4 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-850 hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition duration-150 flex items-center gap-1 cursor-pointer bg-white dark:bg-[#121212] text-slate-800 dark:text-zinc-100"
+                  className="px-4 py-2 text-[13px] font-bold rounded-xl border-2 border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-zinc-300 hover:bg-slate-800 hover:border-slate-800 hover:text-white dark:hover:bg-zinc-200 dark:hover:border-zinc-200 dark:hover:text-black transition-colors duration-200 flex items-center gap-2 cursor-pointer shadow-sm bg-white dark:bg-[#121212]"
                 >
-                  <FileDown className="w-3.5 h-3.5" /> Download
+                  <FileDown className="w-4 h-4" /> Download
                 </button>
                 {downloadOpen && (
-                  <div className="absolute right-0 top-full mt-2.5 z-50 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl w-44 overflow-hidden py-1">
-                    <button 
-                      onClick={() => { handleDownload("csv"); setDownloadOpen(false); }} 
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white transition-colors duration-150 cursor-pointer"
-                    >
-                      Clean CSV
-                    </button>
-                    <button 
-                      onClick={() => { handleDownload("excel"); setDownloadOpen(false); }} 
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white transition-colors duration-150 cursor-pointer"
-                    >
-                      Clean Excel
-                    </button>
-                    <button 
-                      onClick={() => { handleDownload("report"); setDownloadOpen(false); }} 
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white transition-colors duration-150 cursor-pointer"
-                    >
-                      PDF Audit Report
-                    </button>
-                    <button 
-                      onClick={() => { handleDownload("log"); setDownloadOpen(false); }} 
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white transition-colors duration-150 cursor-pointer"
-                    >
-                      Cleaning Log
-                    </button>
+                  <div className="absolute right-0 top-full mt-2.5 z-50 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl w-48 overflow-hidden py-1">
+                    <button onClick={() => { handleDownload("csv"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-zinc-300 hover:bg-[#673ab7] hover:text-white transition-colors cursor-pointer">Clean CSV</button>
+                    <button onClick={() => { handleDownload("excel"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-zinc-300 hover:bg-[#673ab7] hover:text-white transition-colors cursor-pointer">Clean Excel</button>
+                    <button onClick={() => { handleDownload("report"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-zinc-300 hover:bg-[#673ab7] hover:text-white transition-colors cursor-pointer">PDF Audit Report</button>
+                    <button onClick={() => { handleDownload("log"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-zinc-300 hover:bg-[#673ab7] hover:text-white transition-colors cursor-pointer">Cleaning Log</button>
                   </div>
                 )}
               </div>
 
-              <button
-                onClick={handleReset}
-                disabled={processing}
-                className="px-4 py-2 text-xs font-bold rounded-xl border border-rose-500/20 text-rose-600 hover:bg-rose-500/5 dark:hover:bg-rose-500/10 transition duration-150 disabled:opacity-50 cursor-pointer"
-              >
-                Reset
+              {/* DATASET RESET BUTTON */}
+              <button 
+                onClick={handleReset} 
+                disabled={processing} 
+                className="px-4 py-2 text-[13px] font-bold rounded-xl border-2 border-rose-500 text-rose-500 bg-white transition-colors duration-200 shadow-sm cursor-pointer hover:bg-rose-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed dark:bg-[#121212] dark:text-rose-400 dark:border-rose-500/50 dark:hover:bg-rose-500 dark:hover:text-white"
+              > 
+                Reset Dataset 
               </button>
 
+              {/* UPLOAD NEW BUTTON (Inverts on hover) */}
               <button
                 onClick={() => {
-                  setDatasetId(null);
-                  setMetadata(null);
-                  setReport(null);
-                  setPreview(null);
-                  setBeforeReport(null);
-                  setAfterReport(null);
-                  setCleanLogs([]);
-                  setSelectedUnwanted([]);
+                  setDatasetId(null); setMetadata(null); setReport(null); setPreview(null);
+                  setBeforeReport(null); setAfterReport(null); setCleanLogs([]); setSelectedUnwanted([]);
                 }}
-                className="px-4 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition duration-150 cursor-pointer flex items-center gap-1 bg-white dark:bg-[#121212]"
+                className="px-4 py-2 text-[13px] font-bold rounded-xl border-2 border-black dark:border-white text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors duration-200 flex items-center gap-2 cursor-pointer shadow-sm bg-white dark:bg-[#121212]"
               >
-                Upload New
+                <UploadCloud className="w-4 h-4" /> Upload New
               </button>
-            </>
+
+            </div>
           )}
         </div>
-      </div>
+
+        {/* DATASET INFO CARD (Main Section) */}
+        {datasetId && metadata && (
+          <article className="w-full bg-white dark:bg-[#121212] border border-slate-200 dark:border-zinc-800 shadow-sm p-5 md:p-6 rounded-2xl flex flex-col gap-5">
+            
+            {/* Top: Icon + Name */}
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 text-[#673ab7] bg-[#673ab7]/10 rounded-xl flex items-center justify-center shrink-0 border border-[#673ab7]/20">
+                <FileSpreadsheet className="w-6 h-6" />
+              </div>
+              <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white truncate tracking-tight">
+                {metadata.name}
+              </h2>
+            </div>
+
+            {/* Bottom: Rectangular Data Tiles (Takes up less vertical space) */}
+            <div className="flex flex-wrap gap-3">
+              
+              <div className="flex flex-col justify-center px-4 py-2 min-w-[100px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
+                <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Type</span>
+                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{metadata.file_type.toUpperCase()}</span>
+              </div>
+
+              <div className="flex flex-col justify-center px-4 py-2 min-w-[100px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
+                <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Rows</span>
+                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{metadata.rows.toLocaleString()}</span>
+              </div>
+
+              <div className="flex flex-col justify-center px-4 py-2 min-w-[100px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
+                <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Cols</span>
+                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{metadata.columns.toLocaleString()}</span>
+              </div>
+
+              <div className="flex flex-col justify-center px-4 py-2 min-w-[110px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
+                <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Size</span>
+                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{formatSize(metadata.file_size)}</span>
+              </div>
+
+              <div className="flex flex-col justify-center px-4 py-2 min-w-[110px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
+                <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Encoding</span>
+                <span className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase">{metadata.encoding}</span>
+              </div>
+
+            </div>
+          </article>
+        )}
+      </div>  
 
       {/* NO DATASET / UPLOADER STATE */}
       {!datasetId ? (
@@ -586,8 +635,8 @@ export default function CleanView({
               
               <div className="p-4 border-b border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50 dark:bg-zinc-950/20">
                 <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded-lg bg-primary/10 text-primary"><LayoutGrid className="w-4 h-4" /></span>
-                  <span className="text-xs font-bold text-slate-700 dark:text-zinc-200">Interactive Preview <span className="font-semibold text-slate-400 dark:text-zinc-500">(Displaying first 100 rows)</span></span>
+                  <span className="p-1.5 rounded-lg bg-primary/10 text-primary"><Table className="w-4 h-4" /></span>
+                  <span className="text-xs font-bold text-slate-700 dark:text-zinc-200">Interactive Preview <span className="font-semibold text-slate-400 dark:text-zinc-500">(Loaded {preview?.rows?.length || 0} of {metadata?.rows || 0} rows)</span></span>
                 </div>
                 
                 <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -615,7 +664,10 @@ export default function CleanView({
                 </div>
               </div>
 
-              <div className="overflow-x-auto max-h-[450px] overflow-y-auto">
+              <div 
+                className="overflow-x-auto max-h-[450px] overflow-y-auto"
+                onScroll={handleTableScroll}
+              >
                 <table className="w-full text-[11px] border-collapse relative">
                   <thead className="sticky top-0 bg-slate-100 dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 font-bold uppercase tracking-wider z-20 shadow-sm">
                     <tr>
@@ -643,7 +695,7 @@ export default function CleanView({
                           {preview?.columns?.map((col) => (
                             <td key={col} className="px-4 py-2.5 truncate max-w-[200px] font-medium text-slate-650 dark:text-zinc-300">
                               {row[col] === null || row[col] === undefined ? (
-                                <span className="text-rose-600 dark:text-rose-400 font-bold bg-rose-500/10 dark:bg-rose-500/20 px-1.5 py-0.5 rounded border border-rose-500/20">null</span>
+                                <span className="text-rose-600 dark:text-rose-500 font-bold">null</span>
                               ) : String(row[col])}
                             </td>
                           ))}
@@ -665,16 +717,16 @@ export default function CleanView({
                   Showing {Math.min(processedRows.length, (currentPage - 1) * rowsPerPage + 1)} - {Math.min(processedRows.length, currentPage * rowsPerPage)} of {processedRows.length} preview rows
                 </span>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="p-1.5 rounded-lg border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-850 disabled:opacity-30 cursor-pointer"
+                    className="p-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition duration-150 flex items-center justify-center border border-primary/10 shadow-sm mx-1"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   
-                  <span className="mx-1">
+                  <span className="mx-2 text-sm text-slate-600 dark:text-zinc-400">
                     Page <input 
                       type="number" 
                       min={1} 
@@ -684,14 +736,14 @@ export default function CleanView({
                         const val = Math.max(1, Math.min(totalPages, Number(e.target.value)));
                         setCurrentPage(val);
                       }}
-                      className="w-10 text-center py-1 border border-slate-200 dark:border-zinc-850 rounded bg-white dark:bg-zinc-900 focus:outline-none text-slate-900 dark:text-white"
+                      className="w-12 text-center py-1 border border-slate-200 dark:border-zinc-800 rounded bg-white dark:bg-zinc-900 focus:outline-none text-slate-900 dark:text-white mx-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     /> of {totalPages || 1}
                   </span>
 
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages || totalPages === 0}
-                    className="p-1.5 rounded-lg border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-850 disabled:opacity-30 cursor-pointer"
+                    className="p-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition duration-150 flex items-center justify-center border border-primary/10 shadow-sm mx-1"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -1092,9 +1144,8 @@ export default function CleanView({
                     <h3 className="text-xs font-bold text-black dark:text-white uppercase tracking-wider flex items-center gap-1.5"><FileText className="w-4.5 h-4.5 text-primary" /> Active Job Pipeline Execution Logs</h3>
                     <div className="p-4 rounded-xl border border-slate-100 dark:border-zinc-800 bg-slate-50/20 dark:bg-zinc-900/10 font-mono text-[10px] text-slate-700 dark:text-zinc-350 space-y-1.5 max-h-60 overflow-y-auto">
                       {cleanLogs.map((log, idx) => (
-                        <div key={idx} className="flex items-start gap-1.5">
-                          <span className="text-emerald-500 shrink-0">✓</span>
-                          <span>{log}</span>
+                        <div key={idx} className="flex items-start gap-1.5 px-2 py-1 rounded transition-colors duration-150 cursor-default text-slate-700 dark:text-zinc-300 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black">
+                          <span className="font-mono text-sm break-all">{log}</span>
                         </div>
                       ))}
                     </div>
@@ -1668,28 +1719,43 @@ export default function CleanView({
               </div>
 
               {/* Sidebar bottom action buttons */}
-              <div className="grid grid-cols-2 gap-2 mt-4 pt-3.5 border-t border-slate-150 dark:border-zinc-850">
-                <button
-                  onClick={handleClean}
-                  disabled={processing}
-                  className="px-2 py-2 text-[10px] font-bold text-white bg-primary hover:bg-primary-dark rounded-lg transition duration-150 shadow disabled:opacity-50 text-center cursor-pointer"
-                >
-                  Clean
-                </button>
-                <button
-                  onClick={handleDecide}
-                  disabled={processing}
-                  className="px-2 py-2 text-[10px] font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-750 hover:to-indigo-750 rounded-lg transition duration-150 shadow disabled:opacity-50 text-center flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  ✨ Decide
-                </button>
-                <button
-                  onClick={handleReset}
-                  disabled={processing}
-                  className="col-span-2 px-3 py-1.5 text-[9.5px] font-bold text-rose-500 hover:bg-rose-500/5 dark:hover:bg-rose-500/10 rounded-lg transition duration-150 disabled:opacity-50 text-center cursor-pointer"
-                >
-                  Reset Configuration
-                </button>
+              <div className="mt-5 pt-5 border-t border-slate-200 dark:border-zinc-800 flex flex-col gap-3">
+                
+                {/* 1. CLEAN (Standard Action) */}
+{/* 1. CLEAN (Standard Action) */}
+<button
+  onClick={handleClean}
+  disabled={processing}
+  className="group w-full px-4 py-3 text-sm font-bold rounded-xl bg-[#393e7f] dark:bg-[#a855f7] text-white dark:text-zinc-950 outline-2 outline-offset-[-2px] outline-[#393e7f] dark:outline-[#a855f7] border-none cursor-pointer transition-all duration-300 shadow-sm flex items-center justify-center gap-2 hover:bg-transparent dark:hover:bg-transparent hover:text-[#393e7f] dark:hover:text-[#c084fc] disabled:opacity-40 disabled:pointer-events-none"
+>
+  {processing ? (
+    <RefreshCw className="w-4 h-4 animate-spin stroke-[2.5]" />
+  ) : (
+    <BrushCleaning className="w-4 h-4 transition-colors duration-300 stroke-[2.5]" />
+  )}
+  <span>Clean Features</span>
+</button>
+
+{/* 2. DECIDE (Auto Action) */}
+<button
+  onClick={handleDecide}
+  disabled={processing}
+  className="group w-full px-4 py-3 text-sm font-bold rounded-xl bg-indigo-600 dark:bg-indigo-400 text-white dark:text-zinc-950 outline-2 outline-offset-[-2px] outline-indigo-600 dark:outline-indigo-400 border-none cursor-pointer transition-all duration-300 shadow-sm flex items-center justify-center gap-2 hover:bg-transparent dark:hover:bg-transparent hover:text-indigo-600 dark:hover:text-indigo-300 disabled:opacity-40 disabled:pointer-events-none"
+>
+  <Sparkles className="w-4 h-4 transition-colors duration-300 stroke-[2.5]" /> 
+  <span>Auto-Decide</span>
+</button>
+
+{/* 3. SIDEBAR RESET (Clears Checkboxes Only) */}
+<button
+  onClick={handleConfigReset}
+  disabled={processing}
+  className="group w-full px-4 py-3 text-sm font-bold rounded-xl bg-rose-600 dark:bg-rose-400 text-white dark:text-zinc-950 outline-2 outline-offset-[-2px] outline-rose-600 dark:outline-rose-400 border-none cursor-pointer transition-all duration-300 shadow-sm flex items-center justify-center gap-2 hover:bg-transparent dark:hover:bg-transparent hover:text-rose-600 dark:hover:text-rose-300 disabled:opacity-40 disabled:pointer-events-none"
+>
+  <RefreshCw className="w-4 h-4 transition-colors duration-300 stroke-[2.5]" /> 
+  <span>Clear Sidebar Options</span>
+</button>
+
               </div>
 
             </div>

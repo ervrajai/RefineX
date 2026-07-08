@@ -386,3 +386,28 @@ class DatasetDownloadView(APIView):
             
         else:
             return Response({"error": "Invalid download type"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DatasetPreviewView(APIView):
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    def get(self, request, pk, *args, **kwargs):
+        dataset = get_object_or_404(Dataset, pk=pk)
+        offset = int(request.query_params.get("offset", 0))
+        limit = int(request.query_params.get("limit", 100))
+        
+        try:
+            file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
+            if not os.path.exists(file_path):
+                return Response({"error": "Dataset file not found"}, status=status.HTTP_404_NOT_FOUND)
+                
+            df, _ = read_dataframe(file_path, dataset.file_type, encoding=dataset.encoding)
+            sliced_df = df.iloc[offset:offset+limit].replace({np.nan: None})
+            
+            return Response({
+                "columns": list(df.columns),
+                "rows": make_json_safe(sliced_df.to_dict(orient='records')),
+                "total_rows": len(df)
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Failed to retrieve preview: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)

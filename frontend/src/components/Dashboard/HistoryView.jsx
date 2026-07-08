@@ -274,7 +274,6 @@ export default function HistoryView({ onLoadWorkspace }) {
                         <div className="p-3.5 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 font-mono text-[9px] text-slate-600 dark:text-zinc-350 space-y-1 max-h-36 overflow-y-auto">
                           {job.logs.map((log, lidx) => (
                             <div key={lidx} className="flex items-start gap-1">
-                              <span className="text-emerald-500">✓</span>
                               <span>{log}</span>
                             </div>
                           ))}

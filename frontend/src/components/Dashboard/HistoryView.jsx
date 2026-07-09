@@ -10,10 +10,16 @@ import {
   Info,
   Calendar,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  BrainCircuit
 } from "lucide-react";
 
-export default function HistoryView({ onLoadWorkspace }) {
+export default function HistoryView({ 
+  onLoadWorkspace, 
+  onRestoreRedirect, 
+  onTrainModelRedirect,
+  onLoadTrainingWorkspace
+}) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [restoreLoading, setRestoreLoading] = useState(false);
@@ -42,6 +48,37 @@ export default function HistoryView({ onLoadWorkspace }) {
     window.open(url, "_blank");
   };
 
+  const handleDownloadML = (jobId, type) => {
+    const url = `http://localhost:8000/api/model-training/jobs/${jobId}/download/?type=${type}`;
+    window.open(url, "_blank");
+  };
+
+  const handleRestoreMLJob = async (job) => {
+    setRestoreLoading(true);
+    setError("");
+    try {
+      const res = await api.get(`cleaning/${job.dataset_id}/preview/?offset=0&limit=100`);
+      const data = res.data;
+      if (onLoadWorkspace) {
+        onLoadWorkspace(
+          job.dataset_id,
+          data.metadata,
+          null,
+          null,
+          [],
+          data
+        );
+      }
+      if (onLoadTrainingWorkspace) {
+        onLoadTrainingWorkspace(job);
+      }
+    } catch (err) {
+      setError("Failed to load dataset details for restoration. The file might have been deleted.");
+    } finally {
+      setRestoreLoading(false);
+    }
+  };
+
   const toggleExpand = (jobId) => {
     setExpandedJobId(prev => (prev === jobId ? null : jobId));
   };
@@ -50,7 +87,7 @@ export default function HistoryView({ onLoadWorkspace }) {
     setRestoreLoading(true);
     setError("");
     try {
-      const res = await api.get(`cleaning/${job.dataset_id}/analyze/`);
+      const res = await api.get(`cleaning/${job.dataset_id}/preview/?offset=0&limit=100`);
       const data = res.data;
       if (onLoadWorkspace) {
         onLoadWorkspace(
@@ -59,11 +96,40 @@ export default function HistoryView({ onLoadWorkspace }) {
           job.before_stats,
           job.after_stats,
           job.logs,
-          data.preview
+          data
         );
+      }
+      if (onRestoreRedirect) {
+        onRestoreRedirect();
       }
     } catch (err) {
       setError("Failed to load dataset preview for restoration. The file might have been deleted.");
+    } finally {
+      setRestoreLoading(false);
+    }
+  };
+
+  const handleTrainModel = async (job) => {
+    setRestoreLoading(true);
+    setError("");
+    try {
+      const res = await api.get(`cleaning/${job.dataset_id}/preview/?offset=0&limit=100`);
+      const data = res.data;
+      if (onLoadWorkspace) {
+        onLoadWorkspace(
+          job.dataset_id,
+          data.metadata,
+          job.before_stats,
+          job.after_stats,
+          job.logs,
+          data
+        );
+      }
+      if (onTrainModelRedirect) {
+        onTrainModelRedirect();
+      }
+    } catch (err) {
+      setError("Failed to load dataset for model training. The file might have been deleted.");
     } finally {
       setRestoreLoading(false);
     }
@@ -139,12 +205,143 @@ export default function HistoryView({ onLoadWorkspace }) {
         <div className="space-y-4">
           {history.map((job) => {
             const isExpanded = expandedJobId === job.id;
+            const isML = job.type === "training";
+
+            if (isML) {
+              const bestScore = job.best_model_score || 0;
+              const hasMetrics = job.evaluation_metrics && Object.keys(job.evaluation_metrics).length > 0;
+              const metricKey = hasMetrics ? (Object.values(job.evaluation_metrics)[0].metrics.r2 !== undefined ? "R²" : "Accuracy") : "Score";
+
+              return (
+                <div 
+                  key={`ml-${job.id}`} 
+                  className="rounded-2xl border border-primary/20 dark:border-primary/25 bg-white dark:bg-[#121212] shadow-sm overflow-hidden transition-all duration-300"
+                >
+                  
+                  {/* Job Summary Row */}
+                  <div 
+                    onClick={() => toggleExpand(job.id)}
+                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-900/30 transition duration-150"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/15 mt-0.5 animate-pulse">
+                        <BrainCircuit className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-black text-black dark:text-white tracking-tight">{job.dataset_name}</h3>
+                          <span className="px-2 py-0.5 rounded bg-primary/15 border border-primary/20 text-primary text-[8px] font-black uppercase tracking-wider">
+                            ML Model
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[10px] font-bold text-slate-400 dark:text-zinc-550">
+                          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {formatDate(job.created_at)}</span>
+                          <span>• Target (Y): <strong className="text-slate-600 dark:text-zinc-300 font-extrabold">{job.target_column}</strong></span>
+                          <span>• Job ID: #{job.id}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Score comparison & Expand button */}
+                    <div className="flex items-center gap-6">
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <span className="text-[8.5px] uppercase font-bold text-slate-450 block">Best Model ({job.best_model_name?.replace('_', ' ') || "N/A"})</span>
+                          <strong className="text-xs font-black text-emerald-500 block mt-0.5">{metricKey}: {(bestScore * 100).toFixed(2)}%</strong>
+                        </div>
+                        <span className="p-1 rounded bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400">
+                          <TrendingUp className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
+
+                      <button className="text-slate-400 dark:text-zinc-500 p-1 rounded-lg border border-slate-200 dark:border-zinc-800 bg-[#fafafa] dark:bg-zinc-900 cursor-pointer">
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                    </div>
+
+                  </div>
+
+                  {/* Expanded Details panel */}
+                  {isExpanded && (
+                    <div className="p-5 border-t border-slate-100 dark:border-zinc-800 bg-[#fafafa]/50 dark:bg-zinc-950/10 space-y-4 animate-fade-in">
+                      
+                      {/* Stats grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
+                          <span className="text-[9px] uppercase font-bold text-slate-450 block">Champion Model</span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 mt-1 block capitalize">
+                            {job.best_model_name?.replace('_', ' ') || "N/A"}
+                          </span>
+                        </div>
+
+                        <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
+                          <span className="text-[9px] uppercase font-bold text-slate-450 block">Best Performance</span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 mt-1 block">
+                            {(bestScore * 100).toFixed(2)}% ({metricKey})
+                          </span>
+                        </div>
+
+                        <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
+                          <span className="text-[9px] uppercase font-bold text-slate-450 block">Target Column</span>
+                          <span className="text-xs font-bold text-slate-850 dark:text-zinc-250 mt-1 block">
+                            {job.target_column}
+                          </span>
+                        </div>
+
+                        <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
+                          <span className="text-[9px] uppercase font-bold text-slate-450 block">Train Duration</span>
+                          <span className="text-xs font-bold text-slate-850 dark:text-zinc-250 mt-1 block">
+                            {job.training_duration?.toFixed(3)}s
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100 dark:border-zinc-800/80 items-center">
+                        <button 
+                          onClick={() => handleDownloadML(job.id, "model")}
+                          className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg bg-primary text-white hover:bg-primary-dark transition duration-150 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Download joblib Model
+                        </button>
+                        <button 
+                          onClick={() => handleDownloadML(job.id, "predictions")}
+                          className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900 transition duration-150 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Predictions CSV
+                        </button>
+                        <button 
+                          onClick={() => handleDownloadML(job.id, "report")}
+                          className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900 transition duration-150 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" /> PDF Summary Report
+                        </button>
+
+                        <div className="flex items-center gap-2 ml-auto">
+                          <button 
+                            onClick={() => handleRestoreMLJob(job)}
+                            disabled={restoreLoading}
+                            className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-650 text-white hover:from-violet-700 hover:to-indigo-750 transition duration-150 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          >
+                            <BrainCircuit className="w-3.5 h-3.5" /> {restoreLoading ? "Loading Workspace..." : "Setup Training Workspace"}
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+
+                </div>
+              );
+            }
+
+            // Otherwise, render Data Cleaning Job layout
             const beforeScore = job.before_stats?.quality_score || 0;
             const afterScore = job.after_stats?.quality_score || 0;
             
             return (
               <div 
-                key={job.id} 
+                key={`clean-${job.id}`} 
                 className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm overflow-hidden transition-all duration-300"
               >
                 
@@ -200,28 +397,28 @@ export default function HistoryView({ onLoadWorkspace }) {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       
                       <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
-                        <span className="text-[9px] uppercase font-bold text-slate-450 block">Rows Change</span>
+                        <span className="text-[9px] uppercase font-bold text-slate-455 block">Rows Change</span>
                         <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 mt-1 block">
                           {job.before_stats?.rows} → {job.after_stats?.rows}
                         </span>
                       </div>
 
                       <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
-                        <span className="text-[9px] uppercase font-bold text-slate-450 block">Columns Change</span>
+                        <span className="text-[9px] uppercase font-bold text-slate-455 block">Columns Change</span>
                         <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 mt-1 block">
                           {job.before_stats?.columns} → {job.after_stats?.columns}
                         </span>
                       </div>
 
                       <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
-                        <span className="text-[9px] uppercase font-bold text-slate-450 block">Missing Cells</span>
+                        <span className="text-[9px] uppercase font-bold text-slate-455 block">Missing Cells</span>
                         <span className="text-xs font-bold text-slate-850 dark:text-zinc-250 mt-1 block">
                           {job.before_stats?.missing_summary?.total_missing} → {job.after_stats?.missing_summary?.total_missing}
                         </span>
                       </div>
 
                       <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
-                        <span className="text-[9px] uppercase font-bold text-slate-450 block">Duplicate Rows</span>
+                        <span className="text-[9px] uppercase font-bold text-slate-455 block">Duplicate Rows</span>
                         <span className="text-xs font-bold text-slate-850 dark:text-zinc-250 mt-1 block">
                           {job.before_stats?.duplicate_summary?.duplicate_rows_count} → {job.after_stats?.duplicate_summary?.duplicate_rows_count}
                         </span>
@@ -257,13 +454,22 @@ export default function HistoryView({ onLoadWorkspace }) {
                       </button>
 
                       {onLoadWorkspace && (
-                        <button 
-                          onClick={() => handleRestore(job)}
-                          disabled={restoreLoading}
-                          className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 transition duration-150 flex items-center gap-1 cursor-pointer disabled:opacity-50 ml-auto"
-                        >
-                          <Sparkles className="w-3.5 h-3.5" /> {restoreLoading ? "Restoring..." : "Restore to Workspace"}
-                        </button>
+                        <div className="flex items-center gap-2 ml-auto">
+                          <button 
+                            onClick={() => handleTrainModel(job)}
+                            disabled={restoreLoading}
+                            className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg bg-primary hover:bg-primary-dark text-white transition duration-150 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          >
+                            <BrainCircuit className="w-3.5 h-3.5" /> Train ML Model
+                          </button>
+                          <button 
+                            onClick={() => handleRestore(job)}
+                            disabled={restoreLoading}
+                            className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-650 text-white hover:from-violet-700 hover:to-indigo-750 transition duration-150 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" /> {restoreLoading ? "Restoring..." : "Restore to Clean Workspace"}
+                          </button>
+                        </div>
                       )}
                     </div>
 

@@ -17,7 +17,8 @@ import {
   HelpCircle,
   ArrowUpDown,
   Table,
-  FileText
+  FileText,
+  BrainCircuit
 } from "lucide-react";
 
 export default function CleanView({
@@ -34,7 +35,8 @@ export default function CleanView({
   afterReport,
   setAfterReport,
   cleanLogs,
-  setCleanLogs
+  setCleanLogs,
+  setActiveTab
 }) {
   // Loading and alerts
   const [uploading, setUploading] = useState(false);
@@ -524,6 +526,14 @@ export default function CleanView({
                 className="px-4 py-2 text-[13px] font-bold rounded-xl border-2 border-rose-500 text-rose-500 bg-white transition-colors duration-200 shadow-sm cursor-pointer hover:bg-rose-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed dark:bg-[#121212] dark:text-rose-400 dark:border-rose-500/50 dark:hover:bg-rose-500 dark:hover:text-white"
               > 
                 Reset Dataset 
+              </button>
+
+              {/* TRAIN ML MODEL BUTTON */}
+              <button 
+                onClick={() => setActiveTab("model-training")} 
+                className="px-4 py-2 text-[13px] font-bold rounded-xl border-2 border-primary text-white bg-primary hover:bg-primary-dark transition-colors duration-200 flex items-center gap-2 cursor-pointer shadow-sm"
+              > 
+                <BrainCircuit className="w-4 h-4" /> Train ML Model 
               </button>
 
               {/* UPLOAD NEW BUTTON (Inverts on hover) */}

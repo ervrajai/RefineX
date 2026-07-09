@@ -405,6 +405,16 @@ class DatasetPreviewView(APIView):
             sliced_df = df.iloc[offset:offset+limit].replace({np.nan: None})
             
             return Response({
+                "metadata": {
+                    "id": dataset.id,
+                    "name": dataset.name,
+                    "file_type": dataset.file_type,
+                    "file_size": dataset.file_size,
+                    "rows": dataset.rows_count or len(df),
+                    "columns": dataset.cols_count or len(df.columns),
+                    "encoding": dataset.encoding,
+                    "status": dataset.status
+                },
                 "columns": list(df.columns),
                 "rows": make_json_safe(sliced_df.to_dict(orient='records')),
                 "total_rows": len(df)

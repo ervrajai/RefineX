@@ -8,6 +8,7 @@ import Sidebar from "../../components/Dashboard/Sidebar";
 import SettingsView from "../../components/Dashboard/SettingsView";
 import CleanView from "../../components/Dashboard/CleanView";
 import HistoryView from "../../components/Dashboard/HistoryView";
+import ModelTrainingView from "../../components/Dashboard/ModelTrainingView";
 
 import { 
   Sparkles,
@@ -36,6 +37,18 @@ function Dashboard() {
   const [beforeReport, setBeforeReport] = useState(null);
   const [afterReport, setAfterReport] = useState(null);
   const [cleanLogs, setCleanLogs] = useState([]);
+
+  // Lifted Model Training configuration states
+  const [trainingMode, setTrainingMode] = useState("decide");
+  const [targetColumn, setTargetColumn] = useState("");
+  const [selectedFeatures, setSelectedFeatures] = useState([]);
+  const [modelChoice, setModelChoice] = useState("all");
+  const [selectedAlgorithms, setSelectedAlgorithms] = useState([]);
+  const [testSize, setTestSize] = useState(0.2);
+  const [randomState, setRandomState] = useState(42);
+  const [shuffle, setShuffle] = useState(true);
+  const [cvFolds, setCvFolds] = useState(5);
+  const [trainingJobDetail, setTrainingJobDetail] = useState(null);
 
   // Theme Sync on Mount
   useEffect(() => {
@@ -149,24 +162,50 @@ function Dashboard() {
               setAfterReport={setAfterReport}
               cleanLogs={cleanLogs}
               setCleanLogs={setCleanLogs}
+              setActiveTab={setActiveTab}
             />
           )}
 
           {/* TAB 3: MODEL TRAINING */}
           {activeTab === "model-training" && (
-            <div className="space-y-4 max-w-xl animate-fade-in text-black dark:text-white">
-              <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/10">
-                    <BrainCircuit className="w-5 h-5" />
-                  </div>
-                  <h2 className="text-sm font-bold text-slate-800 dark:text-zinc-150">Model Training Console</h2>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
-                  (Model Training Tab view is ready. Training metrics will be loaded subsequently.)
-                </p>
-              </div>
-            </div>
+            <ModelTrainingView
+              datasetId={datasetId}
+              setDatasetId={setDatasetId}
+              metadata={metadata}
+              setMetadata={setMetadata}
+              preview={preview}
+              setPreview={setPreview}
+              trainingMode={trainingMode}
+              setTrainingMode={setTrainingMode}
+              targetColumn={targetColumn}
+              setTargetColumn={setTargetColumn}
+              selectedFeatures={selectedFeatures}
+              setSelectedFeatures={setSelectedFeatures}
+              modelChoice={modelChoice}
+              setModelChoice={setModelChoice}
+              selectedAlgorithms={selectedAlgorithms}
+              setSelectedAlgorithms={setSelectedAlgorithms}
+              testSize={testSize}
+              setTestSize={setTestSize}
+              randomState={randomState}
+              setRandomState={setRandomState}
+              shuffle={shuffle}
+              setShuffle={setShuffle}
+              cvFolds={cvFolds}
+              setCvFolds={setCvFolds}
+              trainingJobDetail={trainingJobDetail}
+              setTrainingJobDetail={setTrainingJobDetail}
+              onLoadWorkspace={(dsId, meta, bReport, aReport, logs, previewData) => {
+                setDatasetId(dsId);
+                setMetadata(meta);
+                setReport(aReport || bReport);
+                setBeforeReport(bReport);
+                setAfterReport(aReport);
+                setCleanLogs(logs || []);
+                setPreview(previewData);
+              }}
+              setActiveTab={setActiveTab}
+            />
           )}
 
           {/* TAB 4: VISUALIZATION */}
@@ -197,7 +236,25 @@ function Dashboard() {
                 setAfterReport(aReport);
                 setCleanLogs(logs || []);
                 setPreview(previewData);
+              }}
+              onRestoreRedirect={() => {
                 setActiveTab("clean");
+              }}
+              onTrainModelRedirect={() => {
+                setActiveTab("model-training");
+              }}
+              onLoadTrainingWorkspace={(job) => {
+                setTargetColumn(job.target_column);
+                setSelectedFeatures(job.selected_features || []);
+                setTrainingMode(job.training_mode || "decide");
+                if (job.hyperparameters) {
+                  setTestSize(job.hyperparameters.test_size || 0.2);
+                  setRandomState(job.hyperparameters.random_state || 42);
+                  setShuffle(job.hyperparameters.shuffle ?? true);
+                  setCvFolds(job.hyperparameters.cv_folds || 5);
+                }
+                setTrainingJobDetail(job);
+                setActiveTab("model-training");
               }}
             />
           )}

@@ -72,13 +72,12 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
       if (isCollapsed) {
         setWidth(MIN_WIDTH);
       } else if (width <= MIN_WIDTH + 20) {
-        // Only force expand if the user clicks the toggle button while it's closed
         setWidth(MAX_WIDTH);
       }
     }
-  }, [isCollapsed]); // Removed isResizing dependency so it doesn't snap on mouse up
+  }, [isCollapsed]); 
 
-  // Handle Dragging
+  // Handle Dragging Desktop Sidebar
   useEffect(() => {
     if (!isResizing) return;
 
@@ -87,13 +86,11 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
       const sidebarRect = sidebarRef.current.getBoundingClientRect();
       let newWidth = e.clientX - sidebarRect.left;
 
-      // Restrict within bounds
       if (newWidth < MIN_WIDTH) newWidth = MIN_WIDTH;
       if (newWidth > MAX_WIDTH) newWidth = MAX_WIDTH;
       
       setWidth(newWidth);
       
-      // Auto toggle state based on threshold for fluid UI updates
       if (newWidth <= MIN_WIDTH + 20 && !isCollapsed) {
         setIsCollapsed(true);
       } else if (newWidth > MIN_WIDTH + 20 && isCollapsed) {
@@ -104,7 +101,7 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
     const handleMouseUp = () => {
       setIsResizing(false);
       document.body.style.cursor = "default";
-      document.body.classList.remove("select-none"); // Restore text selection
+      document.body.classList.remove("select-none"); 
     };
 
     document.addEventListener("mousemove", handleMouseMove);
@@ -120,7 +117,7 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
     e.preventDefault();
     setIsResizing(true);
     document.body.style.cursor = "ew-resize";
-    document.body.classList.add("select-none"); // Prevent text highlighting while dragging
+    document.body.classList.add("select-none"); 
   };
 
   const handleDoubleClick = () => {
@@ -136,157 +133,307 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
     return email ? email.charAt(0).toUpperCase() : "?";
   };
 
+  // --- MOBILE NAV DRAG & SNAP LOGIC ---
+  const mobileNavRef = useRef(null);
+  const hasDraggedRef = useRef(false);
+  const [dragX, setDragX] = useState(null);
+  const [isDraggingMenu, setIsDraggingMenu] = useState(false);
+  
+  // Calculate index directly from array
+  const activeIndex = Math.max(0, MENU_ITEMS.findIndex(item => item.id === activeTab));
+
+  const handlePointerDown = (e) => {
+    if (!mobileNavRef.current) return;
+    hasDraggedRef.current = false;
+    
+    const rect = mobileNavRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const itemWidth = rect.width / MENU_ITEMS.length;
+    
+    // Only start drag if interacting with the currently active pill
+    const clickedIndex = Math.floor(x / itemWidth);
+    if (clickedIndex === activeIndex) {
+      setIsDraggingMenu(true);
+      mobileNavRef.current.setPointerCapture(e.pointerId);
+      
+      // Calculate start coordinate exactly centered under the user's finger
+      let startDragX = x - (itemWidth / 2);
+      if (startDragX < 0) startDragX = 0;
+      if (startDragX > rect.width - itemWidth) startDragX = rect.width - itemWidth;
+      setDragX(startDragX);
+    }
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDraggingMenu || !mobileNavRef.current) return;
+    hasDraggedRef.current = true; // Mark as dragged so we block the onClick later
+    
+    const rect = mobileNavRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const itemWidth = rect.width / MENU_ITEMS.length;
+    
+    // Bind position to left/right container edges
+    let boundedX = x - itemWidth / 2;
+    if (boundedX < 0) boundedX = 0;
+    if (boundedX > rect.width - itemWidth) boundedX = rect.width - itemWidth;
+    
+    setDragX(boundedX);
+  };
+
+  const handlePointerUp = (e) => {
+    if (!isDraggingMenu || !mobileNavRef.current) return;
+    setIsDraggingMenu(false);
+    
+    const rect = mobileNavRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const itemWidth = rect.width / MENU_ITEMS.length;
+    
+    // Snap to the closest index based on drop coordinate
+    let newIndex = Math.floor(x / itemWidth);
+    if (newIndex < 0) newIndex = 0;
+    if (newIndex >= MENU_ITEMS.length) newIndex = MENU_ITEMS.length - 1;
+    
+    if (newIndex !== activeIndex) {
+      onTabChange(MENU_ITEMS[newIndex].id);
+    }
+    
+    setDragX(null);
+    mobileNavRef.current.releasePointerCapture(e.pointerId);
+    
+    // Allow a tiny window for JS event resolution before unblocking clicks
+    setTimeout(() => {
+      hasDraggedRef.current = false;
+    }, 50);
+  };
+
+  // Calculates whether the pill follows the finger (during drag) or uses smooth CSS transitions (on click/release)
+  const getPillStyle = () => {
+    if (isDraggingMenu && dragX !== null) {
+      return {
+        transform: `translateX(${dragX}px)`,
+        width: `${100 / MENU_ITEMS.length}%`,
+        transition: 'none'
+      };
+    }
+    return {
+      transform: `translateX(${activeIndex * 100}%)`,
+      width: `${100 / MENU_ITEMS.length}%`,
+      transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)'
+    };
+  };
+
   return (
-    <aside 
-      ref={sidebarRef}
-      style={{ width: `${width}px` }}
-      // Glassmorphism added: bg-opacity applied with backdrop-blur-xl
-      className={cn(
-        "shrink-0 flex flex-col justify-between h-screen border-r bg-[#fafafa]/80 dark:bg-[#0c0c0e]/80 backdrop-blur-2xl border-slate-200/60 dark:border-zinc-800/60 font-sans select-none relative z-40 overflow-visible",
-        // Disable transition while dragging so it's perfectly fluid, enable when clicking
-        isResizing ? "" : "transition-all duration-300 ease-out"
-      )}
-    >
-      {/* INVISIBLE DRAG HANDLE - Sits on the right edge */}
-      <div
-        onMouseDown={handleMouseDown}
-        onDoubleClick={handleDoubleClick}
-        className="absolute top-0 -right-1.5 w-3 h-full cursor-ew-resize z-50 flex items-center justify-center group"
+    <>
+      {/* 
+        =========================================
+        DESKTOP SIDEBAR (Hidden on mobile via md:flex) 
+        =========================================
+      */}
+      <aside 
+        ref={sidebarRef}
+        style={{ width: `${width}px` }}
+        className={cn(
+          "hidden md:flex shrink-0 flex-col justify-between h-screen border-r bg-[#fafafa]/80 dark:bg-[#0c0c0e]/80 backdrop-blur-2xl border-slate-200/60 dark:border-zinc-800/60 font-sans select-none relative z-40 overflow-visible",
+          isResizing ? "" : "transition-all duration-300 ease-out"
+        )}
       >
-        <div className="w-1 h-12 rounded-full bg-slate-300/0 dark:bg-zinc-700/0 group-hover:bg-slate-400/50 dark:group-hover:bg-zinc-600/50 transition-colors duration-200" />
-      </div>
-
-      <div className="flex flex-col gap-6 pt-5 px-3 overflow-hidden">
-        {/* Collapsible Header */}
-        <div className="flex items-center justify-between min-h-10 px-1 relative">
-          <div className={cn(
-            "flex items-center gap-2.5 shrink-0 transition-all duration-300",
-            isCollapsed ? "w-0 opacity-0 -translate-x-4" : "w-auto opacity-100 translate-x-0"
-          )}>
-            <img 
-              src={logoImg} 
-              alt="RefineX Logo" 
-              className="w-9 h-9 object-cover rounded-xl shadow-sm shrink-0 transform-gpu"
-              style={{ imageRendering: "auto" }}
-            />
-            <span className="font-display text-xl font-black tracking-wider inline-flex items-center text-black dark:text-white whitespace-nowrap">
-              Refine<span className="font-sans text-[#673ab7] text-2xl ml-0.5 leading-none">X</span>
-            </span>
-          </div>
-
-          <button
-            onClick={handleDoubleClick} // Connects to the exact same double-click toggle logic
-            className={cn(
-              "p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-200/60 dark:hover:bg-zinc-900/80 transition-all duration-150 ease-out cursor-pointer w-9 h-9 flex items-center justify-center shrink-0",
-              isCollapsed ? "mx-auto" : ""
-            )}
-            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            <MenuToggleIcon 
-              open={!isCollapsed} 
-              className="w-5.5 h-5.5 text-slate-600 dark:text-zinc-400"
-            />
-          </button>
+        <div
+          onMouseDown={handleMouseDown}
+          onDoubleClick={handleDoubleClick}
+          className="absolute top-0 -right-1.5 w-3 h-full cursor-ew-resize z-50 flex items-center justify-center group"
+        >
+          <div className="w-1 h-12 rounded-full bg-slate-300/0 dark:bg-zinc-700/0 group-hover:bg-slate-400/50 dark:group-hover:bg-zinc-600/50 transition-colors duration-200" />
         </div>
 
-        {/* Navigation Menu - Buttons cleverly merged for fluid resizing */}
-        <nav className="flex flex-col gap-2 mt-2">
-          {MENU_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            
-            return (
-              <button
-                key={item.id}
-                onClick={() => onTabChange(item.id)}
-                title={item.label}
-                className={cn(
-                  "group relative flex items-center rounded-xl font-bold transition-all duration-200 ease-out cursor-pointer overflow-hidden transform-gpu",
-                  isCollapsed ? "w-10 h-10 mx-auto justify-center" : "w-full px-3 py-2.5 gap-3 text-xs text-left",
-                  isActive
-                    ? "bg-slate-200/40 dark:bg-zinc-900/40 text-black dark:text-white border border-primary/50"
-                    : "bg-transparent text-slate-600 dark:text-zinc-400 border border-transparent hover:border-primary/30 hover:text-black dark:hover:text-white hover:bg-slate-200/20 dark:hover:bg-zinc-900/20"
-                )}
-              >
-                {/* Icon Wrapper */}
-                <div className={cn(
-                  "shrink-0 flex items-center justify-center transition-colors duration-150 ease-out",
-                  !isCollapsed && "p-1.5 rounded-lg border",
-                  !isCollapsed && isActive ? "border-primary bg-white/40 dark:bg-zinc-950/20 text-primary" : (!isCollapsed && "border-slate-200 dark:border-zinc-800")
-                )}>
-                  <Icon className={cn("shrink-0", isCollapsed ? "w-5 h-5" : "w-4 h-4")} strokeWidth={2.2} shapeRendering="geometricPrecision" />
-                </div>
+        <div className="flex flex-col gap-6 pt-5 px-3 overflow-hidden">
+          <div className="flex items-center justify-between min-h-10 px-1 relative">
+            <div className={cn(
+              "flex items-center gap-2.5 shrink-0 transition-all duration-300",
+              isCollapsed ? "w-0 opacity-0 -translate-x-4" : "w-auto opacity-100 translate-x-0"
+            )}>
+              <img 
+                src={logoImg} 
+                alt="RefineX Logo" 
+                className="w-9 h-9 object-cover rounded-xl shadow-sm shrink-0 transform-gpu"
+                style={{ imageRendering: "auto" }}
+              />
+              <span className="font-display text-xl font-black tracking-wider inline-flex items-center text-black dark:text-white whitespace-nowrap">
+                Refine<span className="font-sans text-[#673ab7] text-2xl ml-0.5 leading-none">X</span>
+              </span>
+            </div>
 
-                {/* Text Label - Truncates (VS Code style) when sidebar is dragged smaller */}
-                <span className={cn(
-                  "truncate transition-opacity duration-200 min-w-0",
-                  isCollapsed ? "opacity-0 w-0 hidden" : "opacity-100 flex-1"
-                )}>
-                  {item.label}
-                </span>
+            <button
+              onClick={handleDoubleClick}
+              className={cn(
+                "p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-200/60 dark:hover:bg-zinc-900/80 transition-all duration-150 ease-out cursor-pointer w-9 h-9 flex items-center justify-center shrink-0",
+                isCollapsed ? "mx-auto" : ""
+              )}
+              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              <MenuToggleIcon 
+                open={!isCollapsed} 
+                className="w-5.5 h-5.5 text-slate-600 dark:text-zinc-400"
+              />
+            </button>
+          </div>
 
-                {item.id === "history" && !isCollapsed && (
-                  <span className={cn(
-                    "text-[9px] px-1.5 py-0.5 rounded-full font-bold ml-auto shrink-0 transition-all duration-150",
-                    isActive ? "bg-primary/20 text-primary dark:bg-white/20 dark:text-white" : "bg-primary/10 text-primary"
+          <nav className="flex flex-col gap-2 mt-2">
+            {MENU_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => onTabChange(item.id)}
+                  title={item.label}
+                  className={cn(
+                    "group relative flex items-center rounded-xl font-bold transition-all duration-200 ease-out cursor-pointer overflow-hidden transform-gpu",
+                    isCollapsed ? "w-10 h-10 mx-auto justify-center" : "w-full px-3 py-2.5 gap-3 text-xs text-left",
+                    isActive
+                      ? "bg-slate-200/40 dark:bg-zinc-900/40 text-black dark:text-white border border-primary/50"
+                      : "bg-transparent text-slate-600 dark:text-zinc-400 border border-transparent hover:border-primary/30 hover:text-black dark:hover:text-white hover:bg-slate-200/20 dark:hover:bg-zinc-900/20"
+                  )}
+                >
+                  <div className={cn(
+                    "shrink-0 flex items-center justify-center transition-colors duration-150 ease-out",
+                    !isCollapsed && "p-1.5 rounded-lg border",
+                    !isCollapsed && isActive ? "border-primary bg-white/40 dark:bg-zinc-950/20 text-primary" : (!isCollapsed && "border-slate-200 dark:border-zinc-800")
                   )}>
-                    Live
+                    <Icon className={cn("shrink-0", isCollapsed ? "w-5 h-5" : "w-4 h-4")} strokeWidth={2.2} shapeRendering="geometricPrecision" />
+                  </div>
+
+                  <span className={cn(
+                    "truncate transition-opacity duration-200 min-w-0",
+                    isCollapsed ? "opacity-0 w-0 hidden" : "opacity-100 flex-1"
+                  )}>
+                    {item.label}
+                  </span>
+
+                  {item.id === "history" && !isCollapsed && (
+                    <span className={cn(
+                      "text-[9px] px-1.5 py-0.5 rounded-full font-bold ml-auto shrink-0 transition-all duration-150",
+                      isActive ? "bg-primary/20 text-primary dark:bg-white/20 dark:text-white" : "bg-primary/10 text-primary"
+                    )}>
+                      Live
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="p-3 border-t border-slate-200/50 dark:border-zinc-800/50 bg-white/10 dark:bg-zinc-950/10">
+          <div className={cn(
+            "flex items-center justify-between p-1.5 rounded-xl transition-all duration-300",
+            isCollapsed 
+              ? "justify-center border-transparent bg-transparent" 
+              : "bg-slate-100/50 dark:bg-zinc-900/40 border border-slate-200/40 dark:border-zinc-800/30"
+          )}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="relative shrink-0 w-8 h-8 rounded-lg overflow-hidden bg-slate-200 dark:bg-zinc-800 flex items-center justify-center border border-slate-300/40 dark:border-zinc-700/50">
+                {loading ? (
+                  <div className="w-full h-full animate-pulse bg-slate-300 dark:bg-zinc-700" />
+                ) : user?.profile_picture ? (
+                  <img src={user.profile_picture} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">
+                    {user ? getInitials(user.first_name, user.last_name, user.email) : "?"}
                   </span>
                 )}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* User Profile Footer */}
-      <div className="p-3 border-t border-slate-200/50 dark:border-zinc-800/50 bg-white/10 dark:bg-zinc-950/10">
-        <div className={cn(
-          "flex items-center justify-between p-1.5 rounded-xl transition-all duration-300",
-          isCollapsed 
-            ? "justify-center border-transparent bg-transparent" 
-            : "bg-slate-100/50 dark:bg-zinc-900/40 border border-slate-200/40 dark:border-zinc-800/30"
-        )}>
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="relative shrink-0 w-8 h-8 rounded-lg overflow-hidden bg-slate-200 dark:bg-zinc-800 flex items-center justify-center border border-slate-300/40 dark:border-zinc-700/50">
-              {loading ? (
-                <div className="w-full h-full animate-pulse bg-slate-300 dark:bg-zinc-700" />
-              ) : user?.profile_picture ? (
-                <img src={user.profile_picture} alt="avatar" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">
-                  {user ? getInitials(user.first_name, user.last_name, user.email) : "?"}
+                {!loading && <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-white dark:border-zinc-900" />}
+              </div>
+              
+              <div className={cn(
+                "flex flex-col text-left min-w-0 transition-opacity duration-300",
+                isCollapsed ? "w-0 opacity-0 hidden" : "flex-1 opacity-100"
+              )}>
+                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 truncate">
+                  {loading ? "Loading..." : (user?.first_name || user?.last_name ? `${user.first_name} ${user.last_name}` : "User")}
                 </span>
-              )}
-              {!loading && <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-white dark:border-zinc-900" />}
+                <span className="text-[10px] text-slate-400 dark:text-zinc-500 truncate">
+                  {loading ? "..." : user?.email}
+                </span>
+              </div>
             </div>
-            
-            <div className={cn(
-              "flex flex-col text-left min-w-0 transition-opacity duration-300",
-              isCollapsed ? "w-0 opacity-0 hidden" : "flex-1 opacity-100"
-            )}>
-              <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 truncate">
-                {loading ? "Loading..." : (user?.first_name || user?.last_name ? `${user.first_name} ${user.last_name}` : "User")}
-              </span>
-              <span className="text-[10px] text-slate-400 dark:text-zinc-500 truncate">
-                {loading ? "..." : user?.email}
-              </span>
-            </div>
-          </div>
 
-          {!isCollapsed && (
-            <button
-              onClick={handleLogout}
-              disabled={loggingOut}
-              title="Log Out"
-              className="p-1.5 rounded-lg text-slate-400 dark:text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 transition duration-150 cursor-pointer disabled:opacity-50"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          )}
+            {!isCollapsed && (
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                title="Log Out"
+                className="p-1.5 rounded-lg text-slate-400 dark:text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 transition duration-150 cursor-pointer disabled:opacity-50"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+
+      {/* 
+        =========================================
+        MOBILE BOTTOM NAVIGATION (Perfect iOS Aesthetics)
+        =========================================
+      */}
+      <nav className="md:hidden fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[380px] pointer-events-auto">
+        
+        {/* Dark/White Spread (Glow) behind the bar */}
+        <div className="absolute -inset-[3px] rounded-full bg-black/20 dark:bg-white/10 blur-xl opacity-80 -z-10 pointer-events-none" />
+
+        {/* Main Glassmorphic Track with solid black/white border */}
+        <div className="relative flex items-center p-1.5 h-[64px] rounded-full bg-white/70 dark:bg-[#0c0c0e]/70 backdrop-blur-3xl border border-black/30 dark:border-white/30 shadow-[0_8px_30px_rgba(0,0,0,0.2)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.8)] touch-none select-none">
+          <div 
+            ref={mobileNavRef}
+            className="relative flex w-full h-full items-center"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+          >
+            {/* Draggable Active Pill Background with solid black/white border */}
+            <div 
+              className="absolute top-0 bottom-0 rounded-full border border-black/30 dark:border-white/30 bg-white/95 dark:bg-zinc-700/90 shadow-sm z-0 cursor-grab active:cursor-grabbing"
+              style={getPillStyle()}
+            />
+
+            {/* Menu Buttons (Overlaid on top of the sliding pill) */}
+            {MENU_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    // Prevent standard click event if the user just finished dragging
+                    if (!hasDraggedRef.current) {
+                      onTabChange(item.id);
+                    }
+                  }}
+                  title={item.label}
+                  className={cn(
+                    "relative z-10 flex-1 flex items-center justify-center h-full rounded-full transition-colors duration-300 ease-out",
+                    isActive 
+                      ? "text-slate-900 dark:text-white" 
+                      : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-slate-300/20 dark:hover:bg-zinc-600/20"
+                  )}
+                >
+                  <Icon 
+                    className={cn(
+                      "w-5 h-5 transition-transform duration-300", 
+                      isActive && "scale-110"
+                    )} 
+                    strokeWidth={isActive ? 2.5 : 2.2} 
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </nav>
+    </>
   );
 }
 

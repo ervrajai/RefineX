@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import api from "../../services/api";
+import { MdHistory } from "react-icons/md"; // Upgraded history icon
 import {
-  Clock,
   Download,
   ChevronDown,
   ChevronUp,
@@ -153,13 +153,13 @@ export default function HistoryView({
 
   if (loading) {
     return (
-      <div className="space-y-4 max-w-4xl animate-fade-in">
+      <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
         <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
-          <div className="h-6 w-48 bg-slate-200 dark:bg-zinc-800 rounded animate-pulse mb-4" />
-          <div className="space-y-3">
-            <div className="h-12 bg-slate-100 dark:bg-zinc-800/50 rounded animate-pulse" />
-            <div className="h-12 bg-slate-100 dark:bg-zinc-800/50 rounded animate-pulse" />
-            <div className="h-12 bg-slate-100 dark:bg-zinc-800/50 rounded animate-pulse" />
+          <div className="h-7 w-56 bg-slate-200 dark:bg-zinc-800 rounded animate-pulse mb-6" />
+          <div className="space-y-4">
+            <div className="h-16 bg-slate-100 dark:bg-zinc-800/50 rounded animate-pulse" />
+            <div className="h-16 bg-slate-100 dark:bg-zinc-800/50 rounded animate-pulse" />
+            <div className="h-16 bg-slate-100 dark:bg-zinc-800/50 rounded animate-pulse" />
           </div>
         </div>
       </div>
@@ -167,42 +167,42 @@ export default function HistoryView({
   }
 
   return (
-    <div className="space-y-6 text-slate-800 dark:text-zinc-100 max-w-4xl animate-fade-in font-sans">
+    <div className="space-y-6 text-slate-800 dark:text-zinc-100 max-w-4xl mx-auto animate-fade-in font-sans pb-10">
       
       {/* Header */}
       <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-xl font-black text-black dark:text-white tracking-tight flex items-center gap-2">
-            <Clock className="w-5 h-5 text-primary" /> Execution & Audit History
+          <h1 className="text-xl sm:text-2xl font-black text-black dark:text-white tracking-tight flex items-center gap-3">
+            <MdHistory className="w-7 h-7 text-primary" /> Execution & Audit History
           </h1>
-          <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
+          <p className="text-sm text-slate-500 dark:text-zinc-400 mt-2">
             Browse and download previously cleaned datasets, quality score records, and cleaning logs.
           </p>
         </div>
         <button 
           onClick={fetchHistory}
-          className="px-4 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition duration-150 cursor-pointer self-start sm:self-center"
+          className="px-5 py-2.5 text-sm font-bold rounded-xl border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800/80 transition duration-150 cursor-pointer self-stretch sm:self-center text-center shadow-sm"
         >
           Refresh Log
         </button>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-xs font-semibold text-rose-600 flex items-center gap-2">
-          <AlertCircle className="w-4.5 h-4.5" /> {error}
+        <div className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-sm font-semibold text-rose-600 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" /> {error}
         </div>
       )}
 
       {history.length === 0 ? (
-        <div className="p-12 text-center border-2 border-dashed border-slate-200 dark:border-zinc-800 rounded-3xl bg-white dark:bg-[#121212]/20">
-          <Info className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-          <h3 className="text-sm font-bold text-black dark:text-white">No execution records found</h3>
-          <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-xs mx-auto mt-2 leading-relaxed">
+        <div className="p-12 text-center border-2 border-dashed border-slate-200 dark:border-zinc-800 rounded-3xl bg-slate-50/50 dark:bg-[#121212]/20">
+          <Info className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+          <h3 className="text-base font-bold text-black dark:text-white">No execution records found</h3>
+          <p className="text-sm text-slate-500 dark:text-zinc-400 max-w-sm mx-auto mt-2 leading-relaxed">
             You haven't run any cleaning operations yet. Upload a dataset inside the Clean tab to get started.
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {history.map((job) => {
             const isExpanded = expandedJobId === job.id;
             const isML = job.type === "training";
@@ -218,114 +218,110 @@ export default function HistoryView({
                   className="rounded-2xl border border-primary/20 dark:border-primary/25 bg-white dark:bg-[#121212] shadow-sm overflow-hidden transition-all duration-300"
                 >
                   
-                  {/* Job Summary Row */}
+                  {/* ML Job Summary Row */}
                   <div 
                     onClick={() => toggleExpand(job.id)}
-                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-900/30 transition duration-150"
+                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 cursor-pointer hover:bg-slate-50/80 dark:hover:bg-zinc-900/40 transition duration-150"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/15 mt-0.5 animate-pulse">
+                    <div className="flex items-start gap-4">
+                      <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/15 mt-1 animate-pulse">
                         <BrainCircuit className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-black text-black dark:text-white tracking-tight">{job.dataset_name}</h3>
-                          <span className="px-2 py-0.5 rounded bg-primary/15 border border-primary/20 text-primary text-[8px] font-black uppercase tracking-wider">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-base font-black text-black dark:text-white tracking-tight">{job.dataset_name}</h3>
+                          <span className="px-2.5 py-1 rounded-md bg-primary/15 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-wider">
                             ML Model
                           </span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[10px] font-bold text-slate-400 dark:text-zinc-550">
-                          <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {formatDate(job.created_at)}</span>
-                          <span>• Target (Y): <strong className="text-slate-600 dark:text-zinc-300 font-extrabold">{job.target_column}</strong></span>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-xs font-semibold text-slate-500 dark:text-zinc-400">
+                          <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatDate(job.created_at)}</span>
+                          <span>• Target (Y): <strong className="text-slate-700 dark:text-zinc-200 font-extrabold">{job.target_column}</strong></span>
                           <span>• Job ID: #{job.id}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Score comparison & Expand button */}
-                    <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-2">
+                    {/* Score & Expand */}
+                    <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-zinc-800">
+                      <div className="flex items-center gap-3">
                         <div className="text-right">
-                          <span className="text-[8.5px] uppercase font-bold text-slate-450 block">Best Model ({job.best_model_name?.replace('_', ' ') || "N/A"})</span>
-                          <strong className="text-xs font-black text-emerald-500 block mt-0.5">{metricKey}: {(bestScore * 100).toFixed(2)}%</strong>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Best Model ({job.best_model_name?.replace('_', ' ') || "N/A"})</span>
+                          <strong className="text-sm font-black text-emerald-600 dark:text-emerald-400 block mt-0.5">{metricKey}: {(bestScore * 100).toFixed(2)}%</strong>
                         </div>
-                        <span className="p-1 rounded bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400">
-                          <TrendingUp className="w-3.5 h-3.5" />
+                        <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400">
+                          <TrendingUp className="w-4 h-4" />
                         </span>
                       </div>
-
-                      <button className="text-slate-400 dark:text-zinc-500 p-1 rounded-lg border border-slate-200 dark:border-zinc-800 bg-[#fafafa] dark:bg-zinc-900 cursor-pointer">
-                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      <button className="text-slate-500 dark:text-zinc-400 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700 transition">
+                        {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                       </button>
                     </div>
 
                   </div>
 
-                  {/* Expanded Details panel */}
+                  {/* ML Expanded Details */}
                   {isExpanded && (
-                    <div className="p-5 border-t border-slate-100 dark:border-zinc-800 bg-[#fafafa]/50 dark:bg-zinc-950/10 space-y-4 animate-fade-in">
+                    <div className="p-5 border-t border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/20 space-y-5 animate-fade-in">
                       
-                      {/* Stats grid */}
+                      {/* Stats Grid - Highlighted */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
-                          <span className="text-[9px] uppercase font-bold text-slate-450 block">Champion Model</span>
-                          <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 mt-1 block capitalize">
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Champion Model</span>
+                          <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block capitalize truncate">
                             {job.best_model_name?.replace('_', ' ') || "N/A"}
                           </span>
                         </div>
-
-                        <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
-                          <span className="text-[9px] uppercase font-bold text-slate-450 block">Best Performance</span>
-                          <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 mt-1 block">
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Best Performance</span>
+                          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 block">
                             {(bestScore * 100).toFixed(2)}% ({metricKey})
                           </span>
                         </div>
-
-                        <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
-                          <span className="text-[9px] uppercase font-bold text-slate-450 block">Target Column</span>
-                          <span className="text-xs font-bold text-slate-850 dark:text-zinc-250 mt-1 block">
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Target Column</span>
+                          <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block truncate">
                             {job.target_column}
                           </span>
                         </div>
-
-                        <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
-                          <span className="text-[9px] uppercase font-bold text-slate-450 block">Train Duration</span>
-                          <span className="text-xs font-bold text-slate-850 dark:text-zinc-250 mt-1 block">
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Train Duration</span>
+                          <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
                             {job.training_duration?.toFixed(3)}s
                           </span>
                         </div>
                       </div>
 
-                      {/* Action buttons */}
-                      <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100 dark:border-zinc-800/80 items-center">
-                        <button 
-                          onClick={() => handleDownloadML(job.id, "model")}
-                          className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg bg-primary text-white hover:bg-primary-dark transition duration-150 flex items-center gap-1 cursor-pointer"
-                        >
-                          <Download className="w-3.5 h-3.5" /> Download joblib Model
-                        </button>
-                        <button 
-                          onClick={() => handleDownloadML(job.id, "predictions")}
-                          className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900 transition duration-150 flex items-center gap-1 cursor-pointer"
-                        >
-                          <Download className="w-3.5 h-3.5" /> Predictions CSV
-                        </button>
-                        <button 
-                          onClick={() => handleDownloadML(job.id, "report")}
-                          className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900 transition duration-150 flex items-center gap-1 cursor-pointer"
-                        >
-                          <Download className="w-3.5 h-3.5" /> PDF Summary Report
-                        </button>
-
-                        <div className="flex items-center gap-2 ml-auto">
+                      {/* Action Buttons */}
+                      <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800 items-center justify-between">
+                        <div className="flex flex-wrap gap-3 w-full sm:w-auto">
                           <button 
-                            onClick={() => handleRestoreMLJob(job)}
-                            disabled={restoreLoading}
-                            className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-650 text-white hover:from-violet-700 hover:to-indigo-750 transition duration-150 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            onClick={() => handleDownloadML(job.id, "model")}
+                            className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg bg-primary text-white hover:bg-primary-dark transition duration-150 flex justify-center items-center gap-2 cursor-pointer shadow-sm"
                           >
-                            <BrainCircuit className="w-3.5 h-3.5" /> {restoreLoading ? "Loading Workspace..." : "Setup Training Workspace"}
+                            <Download className="w-4 h-4" /> Download Model
+                          </button>
+                          <button 
+                            onClick={() => handleDownloadML(job.id, "predictions")}
+                            className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
+                          >
+                            <Download className="w-4 h-4" /> Predictions CSV
+                          </button>
+                          <button 
+                            onClick={() => handleDownloadML(job.id, "report")}
+                            className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
+                          >
+                            <Download className="w-4 h-4" /> PDF Report
                           </button>
                         </div>
+                        
+                        <button 
+                          onClick={() => handleRestoreMLJob(job)}
+                          disabled={restoreLoading}
+                          className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 transition duration-150 flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm"
+                        >
+                          <BrainCircuit className="w-4 h-4" /> {restoreLoading ? "Loading..." : "Setup Training Workspace"}
+                        </button>
                       </div>
 
                     </div>
@@ -335,7 +331,7 @@ export default function HistoryView({
               );
             }
 
-            // Otherwise, render Data Cleaning Job layout
+            // Data Cleaning Job layout
             const beforeScore = job.before_stats?.quality_score || 0;
             const afterScore = job.after_stats?.quality_score || 0;
             
@@ -345,141 +341,135 @@ export default function HistoryView({
                 className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm overflow-hidden transition-all duration-300"
               >
                 
-                {/* Job Summary Row */}
+                {/* Data Cleaning Summary Row */}
                 <div 
                   onClick={() => toggleExpand(job.id)}
-                  className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-900/30 transition duration-150"
+                  className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 cursor-pointer hover:bg-slate-50/80 dark:hover:bg-zinc-900/40 transition duration-150"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/15 mt-0.5">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/15 mt-1">
                       <FileSpreadsheet className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-black dark:text-white tracking-tight">{job.dataset_name}</h3>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[10px] font-bold text-slate-400 dark:text-zinc-550">
-                        <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {formatDate(job.cleaned_at)}</span>
+                      <h3 className="text-base font-black text-black dark:text-white tracking-tight">{job.dataset_name}</h3>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-xs font-semibold text-slate-500 dark:text-zinc-400">
+                        <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatDate(job.cleaned_at)}</span>
                         <span>• Job ID: #{job.id}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Quality Score comparison & Expand button */}
-                  <div className="flex items-center gap-6">
-                    
-                    {/* Score badge */}
-                    <div className="flex items-center gap-2">
+                  {/* Quality Score & Expand */}
+                  <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-zinc-800">
+                    <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <span className="text-[8.5px] uppercase font-bold text-slate-400 block">Quality Score</span>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[10px] line-through text-slate-400">{beforeScore}</span>
-                          <span className="text-xs font-black text-emerald-500">{afterScore}</span>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Quality Score</span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs line-through text-slate-400">{beforeScore}</span>
+                          <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{afterScore}</span>
                         </div>
                       </div>
-                      <span className="p-1 rounded bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400">
-                        <TrendingUp className="w-3.5 h-3.5" />
+                      <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400">
+                        <TrendingUp className="w-4 h-4" />
                       </span>
                     </div>
 
-                    {/* Expand icon */}
-                    <button className="text-slate-400 dark:text-zinc-500 p-1 rounded-lg border border-slate-200 dark:border-zinc-800 bg-[#fafafa] dark:bg-zinc-900 cursor-pointer">
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    <button className="text-slate-500 dark:text-zinc-400 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700 transition">
+                      {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                     </button>
-
                   </div>
 
                 </div>
 
                 {/* Expanded Details panel */}
                 {isExpanded && (
-                  <div className="p-5 border-t border-slate-100 dark:border-zinc-800 bg-[#fafafa]/50 dark:bg-zinc-950/10 space-y-4 animate-fade-in">
+                  <div className="p-5 border-t border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/20 space-y-5 animate-fade-in">
                     
                     {/* Stats comparison grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      
-                      <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
-                        <span className="text-[9px] uppercase font-bold text-slate-455 block">Rows Change</span>
-                        <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 mt-1 block">
-                          {job.before_stats?.rows} → {job.after_stats?.rows}
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Rows Change</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                          {job.before_stats?.rows} <span className="text-slate-400">→</span> {job.after_stats?.rows}
                         </span>
                       </div>
-
-                      <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
-                        <span className="text-[9px] uppercase font-bold text-slate-455 block">Columns Change</span>
-                        <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 mt-1 block">
-                          {job.before_stats?.columns} → {job.after_stats?.columns}
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Columns Change</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                          {job.before_stats?.columns} <span className="text-slate-400">→</span> {job.after_stats?.columns}
                         </span>
                       </div>
-
-                      <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
-                        <span className="text-[9px] uppercase font-bold text-slate-455 block">Missing Cells</span>
-                        <span className="text-xs font-bold text-slate-850 dark:text-zinc-250 mt-1 block">
-                          {job.before_stats?.missing_summary?.total_missing} → {job.after_stats?.missing_summary?.total_missing}
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Missing Cells</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                          {job.before_stats?.missing_summary?.total_missing} <span className="text-slate-400">→</span> {job.after_stats?.missing_summary?.total_missing}
                         </span>
                       </div>
-
-                      <div className="p-3 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50">
-                        <span className="text-[9px] uppercase font-bold text-slate-455 block">Duplicate Rows</span>
-                        <span className="text-xs font-bold text-slate-850 dark:text-zinc-250 mt-1 block">
-                          {job.before_stats?.duplicate_summary?.duplicate_rows_count} → {job.after_stats?.duplicate_summary?.duplicate_rows_count}
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Duplicate Rows</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                          {job.before_stats?.duplicate_summary?.duplicate_rows_count} <span className="text-slate-400">→</span> {job.after_stats?.duplicate_summary?.duplicate_rows_count}
                         </span>
                       </div>
-
                     </div>
 
                     {/* Actions and Restore */}
-                    <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100 dark:border-zinc-800/80 items-center">
-                      <button 
-                        onClick={() => handleDownload(job.dataset_id, "csv")}
-                        className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg bg-primary text-white hover:bg-primary-dark transition duration-150 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Download className="w-3.5 h-3.5" /> CSV
-                      </button>
-                      <button 
-                        onClick={() => handleDownload(job.dataset_id, "excel")}
-                        className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900 transition duration-150 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Download className="w-3.5 h-3.5" /> Excel
-                      </button>
-                      <button 
-                        onClick={() => handleDownload(job.dataset_id, "report")}
-                        className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900 transition duration-150 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Download className="w-3.5 h-3.5" /> PDF Audit Report
-                      </button>
-                      <button 
-                        onClick={() => handleDownload(job.dataset_id, "log")}
-                        className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900 transition duration-150 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Download className="w-3.5 h-3.5" /> Operations Log
-                      </button>
+                    <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-4 mt-4 border-t border-slate-200 dark:border-zinc-800 items-center justify-between">
+                      <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+                        <button 
+                          onClick={() => handleDownload(job.dataset_id, "csv")}
+                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg bg-primary text-white hover:bg-primary-dark transition duration-150 flex justify-center items-center gap-2 cursor-pointer shadow-sm"
+                        >
+                          <Download className="w-4 h-4" /> CSV
+                        </button>
+                        <button 
+                          onClick={() => handleDownload(job.dataset_id, "excel")}
+                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
+                        >
+                          <Download className="w-4 h-4" /> Excel
+                        </button>
+                        <button 
+                          onClick={() => handleDownload(job.dataset_id, "report")}
+                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
+                        >
+                          <Download className="w-4 h-4" /> Audit Report
+                        </button>
+                        <button 
+                          onClick={() => handleDownload(job.dataset_id, "log")}
+                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
+                        >
+                          <Download className="w-4 h-4" /> Logs
+                        </button>
+                      </div>
 
                       {onLoadWorkspace && (
-                        <div className="flex items-center gap-2 ml-auto">
+                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                           <button 
                             onClick={() => handleTrainModel(job)}
                             disabled={restoreLoading}
-                            className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg bg-primary hover:bg-primary-dark text-white transition duration-150 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            className="px-5 py-2.5 text-xs font-bold rounded-lg bg-primary hover:bg-primary-dark text-white transition duration-150 flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm"
                           >
-                            <BrainCircuit className="w-3.5 h-3.5" /> Train ML Model
+                            <BrainCircuit className="w-4 h-4" /> Train Model
                           </button>
                           <button 
                             onClick={() => handleRestore(job)}
                             disabled={restoreLoading}
-                            className="px-3.5 py-1.5 text-[10px] font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-650 text-white hover:from-violet-700 hover:to-indigo-750 transition duration-150 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            className="px-5 py-2.5 text-xs font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 transition duration-150 flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm"
                           >
-                            <Sparkles className="w-3.5 h-3.5" /> {restoreLoading ? "Restoring..." : "Restore to Clean Workspace"}
+                            <Sparkles className="w-4 h-4" /> {restoreLoading ? "Restoring..." : "Restore Workspace"}
                           </button>
                         </div>
                       )}
                     </div>
 
-                    {/* logs */}
+                    {/* Logs Output */}
                     {job.logs && job.logs.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Actions Logs</span>
-                        <div className="p-3.5 rounded-xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 font-mono text-[9px] text-slate-600 dark:text-zinc-350 space-y-1 max-h-36 overflow-y-auto">
+                      <div className="space-y-2 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800">
+                        <span className="text-[11px] uppercase font-bold text-slate-500 block">Actions Logs</span>
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] font-mono text-xs text-slate-700 dark:text-zinc-300 space-y-1.5 max-h-48 overflow-y-auto shadow-inner">
                           {job.logs.map((log, lidx) => (
-                            <div key={lidx} className="flex items-start gap-1">
+                            <div key={lidx} className="flex items-start gap-2 border-b border-slate-100 dark:border-zinc-800/50 pb-1 last:border-0 last:pb-0">
+                              <span className="text-slate-400">›</span> 
                               <span>{log}</span>
                             </div>
                           ))}

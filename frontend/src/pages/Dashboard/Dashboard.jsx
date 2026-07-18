@@ -271,10 +271,6 @@ function Dashboard() {
         </main>
 
         {/* Footer info banner */}
-        <footer className="px-6 py-3 border-t border-slate-200 dark:border-zinc-800 bg-[#fafafa]/50 dark:bg-[#0c0c0e]/50 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-550 flex items-center justify-between select-none">
-          <span>RefineX Platform</span>
-          <span>© {new Date().getFullYear()} — DB Optimizer</span>
-        </footer>
 
       </div>
     </div>

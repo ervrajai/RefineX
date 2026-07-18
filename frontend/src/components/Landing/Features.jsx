@@ -1,5 +1,6 @@
 // src/components/Landing/Features.jsx
 import React from "react";
+import { motion } from "framer-motion";
 
 function FeatureCard({ title, steps }) {
   return (
@@ -82,6 +83,32 @@ function FeatureCard({ title, steps }) {
   );
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15, // Time delay between each card appearing
+    },
+  },
+};
+
+const cardVariants = {
+  hidden: { 
+    opacity: 0, 
+    y: 30 // Starts 30px lower down
+  },
+  visible: { 
+    opacity: 1, 
+    y: 0, // Floats up to its natural position
+    transition: { 
+      type: "spring", 
+      stiffness: 100, 
+      damping: 15 
+    } 
+  },
+};
+
 export default function Features() {
   const cleaningSteps = [
     { name: "Upload Dataset", desc: "Import your raw CSV safely." },
@@ -115,14 +142,30 @@ export default function Features() {
           </p>
         </div>
 
-        {/* Feature Cards Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-          <FeatureCard title="Data Cleaning" steps={cleaningSteps} />
-          <FeatureCard title="Model Training" steps={trainingSteps} />
-          <FeatureCard title="Visualization" steps={visualizationSteps} />
-        </div>
+        {/* CHANGED: Animated Feature Cards Grid Container */}
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }} // Triggers when cards are 100px into view
+          className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8"
+        >
+          {/* CHANGED: Wrapped each card in a motion item variant */}
+          <motion.div variants={cardVariants}>
+            <FeatureCard title="Data Cleaning" steps={cleaningSteps} />
+          </motion.div>
+          
+          <motion.div variants={cardVariants}>
+            <FeatureCard title="Model Training" variables={trainingSteps} steps={trainingSteps} />
+          </motion.div>
+          
+          <motion.div variants={cardVariants}>
+            <FeatureCard title="Visualization" steps={visualizationSteps} />
+          </motion.div>
+        </motion.div>
         
       </div>
     </section>
   );
+
 }

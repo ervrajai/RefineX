@@ -1,11 +1,18 @@
 // src/components/Landing/Hero.jsx
 import React, { useRef, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, Zap } from "lucide-react";
 
 export default function Hero() {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
+
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end start"]
+  });
+  
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -196,7 +203,10 @@ export default function Hero() {
       ></canvas>
 
       {/* Overlay HTML Content exactly from your provided code */}
-      <div className="relative z-10 text-center p-6 mt-16 md:mt-20">
+      <motion.div 
+        style={{ y }} 
+        className="relative z-10 text-center p-6 mt-16 md:mt-20"
+      >
         <motion.div
           custom={0}
           variants={fadeUpVariants}
@@ -267,7 +277,7 @@ export default function Hero() {
             accept=".csv,.xlsx,.xls,.json"
           />
         </motion.div>
-      </div>
+      </motion.div>
     </section>
   );
 }

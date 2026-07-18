@@ -22,6 +22,16 @@ const MENU_ITEMS = [
   { id: "settings", label: "Settings", icon: Cog },
 ];
 
+// Specific mapping for shorter mobile labels
+const MOBILE_LABELS = {
+  "overview": "Home",
+  "clean": "Clean",
+  "model-training": "Train",
+  "visualization": "Graph",
+  "history": "History",
+  "settings": "Settings"
+};
+
 export function MenuToggleIcon({ open, className, fill = "none", stroke = "currentColor", strokeWidth = 2.2, strokeLinecap = "round", strokeLinejoin = "round", duration = 300, ...props }) {
   return (
     <svg
@@ -133,6 +143,37 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
     return email ? email.charAt(0).toUpperCase() : "?";
   };
 
+  // --- MOBILE NAV SCROLL HIDE/SHOW LOGIC ---
+  const [isNavVisible, setIsNavVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = (e) => {
+      const target = e.target;
+      // Capture scroll events specifically from the main scroll container
+      if (!target || target.id !== "main-scroll-container") return;
+
+      const currentScrollY = target.scrollTop;
+
+      // Prevent negative scroll values (like iOS rubber-banding bounce) from hiding the nav bar
+      if (currentScrollY < 0) {
+        setIsNavVisible(true);
+        return;
+      }
+      
+      // Hide on scroll down, show on scroll up 
+      if (currentScrollY > lastScrollY.current && currentScrollY > 60) {
+        setIsNavVisible(false); // Scrolling down (hide)
+      } else {
+        setIsNavVisible(true); // Scrolling up (show)
+      }
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", handleScroll, { capture: true });
+  }, []);
+
   // --- MOBILE NAV DRAG & SNAP LOGIC ---
   const mobileNavRef = useRef(null);
   const hasDraggedRef = useRef(false);
@@ -156,7 +197,6 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
       setIsDraggingMenu(true);
       mobileNavRef.current.setPointerCapture(e.pointerId);
       
-      // Calculate start coordinate exactly centered under the user's finger
       let startDragX = x - (itemWidth / 2);
       if (startDragX < 0) startDragX = 0;
       if (startDragX > rect.width - itemWidth) startDragX = rect.width - itemWidth;
@@ -166,13 +206,12 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
 
   const handlePointerMove = (e) => {
     if (!isDraggingMenu || !mobileNavRef.current) return;
-    hasDraggedRef.current = true; // Mark as dragged so we block the onClick later
+    hasDraggedRef.current = true; 
     
     const rect = mobileNavRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const itemWidth = rect.width / MENU_ITEMS.length;
     
-    // Bind position to left/right container edges
     let boundedX = x - itemWidth / 2;
     if (boundedX < 0) boundedX = 0;
     if (boundedX > rect.width - itemWidth) boundedX = rect.width - itemWidth;
@@ -188,7 +227,6 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
     const x = e.clientX - rect.left;
     const itemWidth = rect.width / MENU_ITEMS.length;
     
-    // Snap to the closest index based on drop coordinate
     let newIndex = Math.floor(x / itemWidth);
     if (newIndex < 0) newIndex = 0;
     if (newIndex >= MENU_ITEMS.length) newIndex = MENU_ITEMS.length - 1;
@@ -200,13 +238,11 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
     setDragX(null);
     mobileNavRef.current.releasePointerCapture(e.pointerId);
     
-    // Allow a tiny window for JS event resolution before unblocking clicks
     setTimeout(() => {
       hasDraggedRef.current = false;
     }, 50);
   };
 
-  // Calculates whether the pill follows the finger (during drag) or uses smooth CSS transitions (on click/release)
   const getPillStyle = () => {
     if (isDraggingMenu && dragX !== null) {
       return {
@@ -224,11 +260,7 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
 
   return (
     <>
-      {/* 
-        =========================================
-        DESKTOP SIDEBAR (Hidden on mobile via md:flex) 
-        =========================================
-      */}
+      {/* --- DESKTOP SIDEBAR --- */}
       <aside 
         ref={sidebarRef}
         style={{ width: `${width}px` }}
@@ -372,17 +404,15 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
         </div>
       </aside>
 
-      {/* 
-        =========================================
-        MOBILE BOTTOM NAVIGATION (Perfect iOS Aesthetics)
-        =========================================
-      */}
-      <nav className="md:hidden fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[380px] pointer-events-auto">
+      {/* --- MOBILE BOTTOM NAVIGATION --- */}
+      <nav className={cn(
+        "md:hidden fixed left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[380px] pointer-events-auto transition-transform duration-300 ease-in-out",
+        isNavVisible ? "translate-y-0 bottom-5" : "translate-y-32 bottom-5"
+      )}>
         
         {/* Dark/White Spread (Glow) behind the bar */}
         <div className="absolute -inset-[3px] rounded-full bg-black/20 dark:bg-white/10 blur-xl opacity-80 -z-10 pointer-events-none" />
 
-        {/* Main Glassmorphic Track with solid black/white border */}
         <div className="relative flex items-center p-1.5 h-[64px] rounded-full bg-white/70 dark:bg-[#0c0c0e]/70 backdrop-blur-3xl border border-black/30 dark:border-white/30 shadow-[0_8px_30px_rgba(0,0,0,0.2)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.8)] touch-none select-none">
           <div 
             ref={mobileNavRef}
@@ -392,13 +422,13 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
           >
-            {/* Draggable Active Pill Background with solid black/white border */}
+            {/* Draggable Active Pill Background */}
             <div 
               className="absolute top-0 bottom-0 rounded-full border border-black/30 dark:border-white/30 bg-white/95 dark:bg-zinc-700/90 shadow-sm z-0 cursor-grab active:cursor-grabbing"
               style={getPillStyle()}
             />
 
-            {/* Menu Buttons (Overlaid on top of the sliding pill) */}
+            {/* Menu Buttons */}
             {MENU_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -407,26 +437,36 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
                 <button
                   key={item.id}
                   onClick={() => {
-                    // Prevent standard click event if the user just finished dragging
                     if (!hasDraggedRef.current) {
                       onTabChange(item.id);
                     }
                   }}
                   title={item.label}
                   className={cn(
-                    "relative z-10 flex-1 flex items-center justify-center h-full rounded-full transition-colors duration-300 ease-out",
+                    "relative z-10 flex-1 flex flex-col items-center justify-center h-full rounded-full transition-colors duration-300 ease-out",
                     isActive 
                       ? "text-slate-900 dark:text-white" 
-                      : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-slate-300/20 dark:hover:bg-zinc-600/20"
+                      : "text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
                   )}
                 >
-                  <Icon 
-                    className={cn(
-                      "w-5 h-5 transition-transform duration-300", 
-                      isActive && "scale-110"
-                    )} 
-                    strokeWidth={isActive ? 2.5 : 2.2} 
-                  />
+                  <div className="flex flex-col items-center justify-center w-full h-full relative">
+                    <Icon 
+                      className={cn(
+                        "w-[22px] h-[22px] transition-all duration-300 ease-out", 
+                        isActive ? "translate-y-0 scale-110" : "-translate-y-2 scale-105"
+                      )} 
+                      strokeWidth={isActive ? 2.5 : 2.2} 
+                    />
+                    
+                    <span 
+                      className={cn(
+                        "text-[9px] font-semibold absolute bottom-0.5 transition-all duration-300 ease-out",
+                        isActive ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
+                      )}
+                    >
+                      {MOBILE_LABELS[item.id]}
+                    </span>
+                  </div>
                 </button>
               );
             })}

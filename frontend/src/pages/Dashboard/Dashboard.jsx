@@ -133,7 +133,7 @@ function Dashboard() {
         </div>
 
         {/* Dynamic content area - listens for scroll to hide/show bell */}
-        <main onScroll={handleScroll} className="flex-1 overflow-y-auto p-6 space-y-6 pt-16">
+        <main id="main-scroll-container" onScroll={handleScroll} className="flex-1 overflow-y-auto p-6 space-y-6 pt-16">
           
           {/* Main Error Banner */}
           {error && (

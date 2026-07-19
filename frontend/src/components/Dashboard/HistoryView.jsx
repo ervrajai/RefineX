@@ -11,14 +11,16 @@ import {
   Calendar,
   AlertCircle,
   Sparkles,
-  BrainCircuit
+  BrainCircuit,
+  LineChart
 } from "lucide-react";
 
 export default function HistoryView({ 
   onLoadWorkspace, 
   onRestoreRedirect, 
   onTrainModelRedirect,
-  onLoadTrainingWorkspace
+  onLoadTrainingWorkspace,
+  onLoadVisualizationWorkspace
 }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -134,6 +136,39 @@ export default function HistoryView({
       setRestoreLoading(false);
     }
   };
+  
+  const handleRestoreVisualization = async (job) => {
+    setRestoreLoading(true);
+    setError("");
+    try {
+      let previewData = null;
+      let metaData = null;
+      if (job.dataset_id) {
+        const res = await api.get(`cleaning/${job.dataset_id}/preview/?offset=0&limit=100`);
+        previewData = res.data;
+        metaData = previewData.metadata;
+      }
+      
+      if (onLoadWorkspace) {
+        onLoadWorkspace(
+          job.dataset_id,
+          metaData,
+          null,
+          null,
+          [],
+          previewData
+        );
+      }
+      
+      if (onLoadVisualizationWorkspace) {
+        onLoadVisualizationWorkspace(job);
+      }
+    } catch (err) {
+      setError("Failed to restore chart. The dataset file might have been deleted.");
+    } finally {
+      setRestoreLoading(false);
+    }
+  };
 
   const formatDate = (isoString) => {
     try {
@@ -206,6 +241,74 @@ export default function HistoryView({
           {history.map((job) => {
             const isExpanded = expandedJobId === job.id;
             const isML = job.type === "training";
+
+            if (job.type === "visualization") {
+              return (
+                <div 
+                  key={`vis-${job.id}`} 
+                  className="rounded-2xl border border-violet-500/20 dark:border-violet-500/25 bg-white dark:bg-[#121212] shadow-sm overflow-hidden transition-all duration-300"
+                >
+                  <div 
+                    onClick={() => toggleExpand(job.id)}
+                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 cursor-pointer hover:bg-slate-50/80 dark:hover:bg-zinc-900/40 transition duration-150"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/15 mt-1">
+                        <LineChart className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-base font-black text-black dark:text-white tracking-tight">{job.name}</h3>
+                          <span className="px-2.5 py-1 rounded-md bg-violet-500/15 border border-violet-500/20 text-violet-600 dark:text-violet-400 text-[10px] font-black uppercase tracking-wider">
+                            {job.graph_type} ({job.library})
+                          </span>
+                          {job.is_favorite && (
+                            <span className="px-2.5 py-1 rounded-md bg-rose-500/15 border border-rose-500/20 text-rose-600 dark:text-rose-450 text-[10px] font-black uppercase tracking-wider">
+                              ❤️ Favorite
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-xs font-semibold text-slate-500 dark:text-zinc-400">
+                          <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatDate(job.created_at)}</span>
+                          <span>• Dataset: <strong className="text-slate-700 dark:text-zinc-200 font-extrabold">{job.dataset_name}</strong></span>
+                          <span>• Download Count: {job.download_count}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-zinc-800">
+                      <button className="text-slate-500 dark:text-zinc-400 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700 transition">
+                        {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {isExpanded && (
+                    <div className="p-5 border-t border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/20 flex flex-col md:flex-row gap-6 animate-fade-in">
+                      {job.preview_data && (
+                        <div className="w-full md:w-1/3 bg-slate-100 dark:bg-zinc-800 rounded-xl overflow-hidden flex items-center justify-center p-2 border border-slate-200 dark:border-zinc-700 max-h-40">
+                          <img src={job.preview_data} alt={job.name} className="max-h-full max-w-full object-contain rounded" />
+                        </div>
+                      )}
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div className="text-xs text-slate-600 dark:text-zinc-350 space-y-2">
+                          <p><span className="font-bold text-slate-700 dark:text-zinc-300">Chart Name:</span> {job.name}</p>
+                          <p><span className="font-bold text-slate-700 dark:text-zinc-300">Target Library:</span> {job.library}</p>
+                          <p><span className="font-bold text-slate-700 dark:text-zinc-300">Columns Plotted:</span> X: {job.config.x_column || "N/A"}, Y: {job.config.y_column || "N/A"}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800 items-center justify-end">
+                          <button 
+                            onClick={() => handleRestoreVisualization(job)}
+                            className="px-5 py-2.5 text-xs font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 transition duration-150 flex justify-center items-center gap-2 cursor-pointer shadow-sm"
+                          >
+                            <LineChart className="w-4 h-4" /> Open in Studio
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
 
             if (isML) {
               const bestScore = job.best_model_score || 0;

@@ -24,7 +24,8 @@ import {
   ChevronLeft,
   Calendar,
   Layers,
-  ArrowLeft
+  ArrowLeft,
+  LineChart
 } from "lucide-react";
 
 export default function ModelTrainingView({
@@ -730,6 +731,14 @@ export default function ModelTrainingView({
                   )}
                   <button
                     onClick={() => {
+                      if (setActiveTab) setActiveTab("visualization");
+                    }}
+                    className="w-full mt-2 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl transition duration-150 shadow flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <LineChart className="w-3.5 h-3.5" /> Visualize Dataset
+                  </button>
+                  <button
+                    onClick={() => {
                       setDatasetId(null);
                       setMetadata(null);
                       setPreview(null);
@@ -1219,6 +1228,15 @@ export default function ModelTrainingView({
                   className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-650 text-white font-bold text-[10px] rounded-xl hover:shadow shadow-md transition cursor-pointer"
                 >
                   🔄 Retrain Setup
+                </button>
+                <button
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    if (setActiveTab) setActiveTab("visualization");
+                  }}
+                  className="px-4 py-2 bg-violet-600 hover:bg-violet-750 text-white font-bold text-[10px] rounded-xl hover:shadow shadow-md transition cursor-pointer flex items-center gap-1"
+                >
+                  <LineChart className="w-3.5 h-3.5" /> Visualize Dataset
                 </button>
                 <button
                   onClick={() => setIsModalOpen(false)}

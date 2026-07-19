@@ -18,7 +18,8 @@ import {
   ArrowUpDown,
   Table,
   FileText,
-  BrainCircuit
+  BrainCircuit,
+  LineChart
 } from "lucide-react";
 
 export default function CleanView({
@@ -526,6 +527,14 @@ export default function CleanView({
                 className="px-4 py-2 text-[13px] font-bold rounded-xl border-2 border-rose-500 text-rose-500 bg-white transition-colors duration-200 shadow-sm cursor-pointer hover:bg-rose-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed dark:bg-[#121212] dark:text-rose-400 dark:border-rose-500/50 dark:hover:bg-rose-500 dark:hover:text-white"
               > 
                 Reset Dataset 
+              </button>
+
+              {/* VISUALIZE DATASET BUTTON */}
+              <button 
+                onClick={() => setActiveTab("visualization")} 
+                className="px-4 py-2 text-[13px] font-bold rounded-xl border-2 border-violet-500 text-white bg-violet-600 hover:bg-violet-700 transition-colors duration-200 flex items-center gap-2 cursor-pointer shadow-sm"
+              > 
+                <LineChart className="w-4 h-4" /> Visualize Dataset 
               </button>
 
               {/* TRAIN ML MODEL BUTTON */}

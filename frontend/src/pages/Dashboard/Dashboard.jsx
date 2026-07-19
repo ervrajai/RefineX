@@ -9,6 +9,7 @@ import SettingsView from "../../components/Dashboard/SettingsView";
 import CleanView from "../../components/Dashboard/CleanView";
 import HistoryView from "../../components/Dashboard/HistoryView";
 import ModelTrainingView from "../../components/Dashboard/ModelTrainingView";
+import VisualizationView from "../../components/Dashboard/VisualizationView";
 
 import { 
   Sparkles,
@@ -49,6 +50,7 @@ function Dashboard() {
   const [shuffle, setShuffle] = useState(true);
   const [cvFolds, setCvFolds] = useState(5);
   const [trainingJobDetail, setTrainingJobDetail] = useState(null);
+  const [restoredGraph, setRestoredGraph] = useState(null);
 
   // Theme Sync on Mount
   useEffect(() => {
@@ -206,25 +208,26 @@ function Dashboard() {
               }}
               setActiveTab={setActiveTab}
             />
-          )}
-
-          {/* TAB 4: VISUALIZATION */}
+          )}          {/* TAB 4: VISUALIZATION */}
           {activeTab === "visualization" && (
-            <div className="space-y-4 max-w-xl animate-fade-in text-black dark:text-white">
-              <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/10">
-                    <LineChart className="w-5 h-5" />
-                  </div>
-                  <h2 className="text-sm font-bold text-slate-800 dark:text-zinc-150">Data Visualization</h2>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
-                  (Visualization Tab view is ready. Dashboard plots will be loaded subsequently.)
-                </p>
-              </div>
-            </div>
+            <VisualizationView
+              datasetId={datasetId}
+              setDatasetId={setDatasetId}
+              metadata={metadata}
+              setMetadata={setMetadata}
+              report={report}
+              setReport={setReport}
+              preview={preview}
+              setPreview={setPreview}
+              setBeforeReport={setBeforeReport}
+              setAfterReport={setAfterReport}
+              setCleanLogs={setCleanLogs}
+              setActiveTab={setActiveTab}
+              restoredGraph={restoredGraph}
+              setRestoredGraph={setRestoredGraph}
+            />
           )}
-
+ 
           {/* TAB 5: HISTORY */}
           {activeTab === "history" && (
             <HistoryView
@@ -255,6 +258,10 @@ function Dashboard() {
                 }
                 setTrainingJobDetail(job);
                 setActiveTab("model-training");
+              }}
+              onLoadVisualizationWorkspace={(graph) => {
+                setRestoredGraph(graph);
+                setActiveTab("visualization");
               }}
             />
           )}

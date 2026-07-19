@@ -148,7 +148,7 @@ function Dashboard() {
           {activeTab === "overview" && null}
 
           {/* TAB 2: CLEAN */}
-          {activeTab === "clean" && (
+          <div className={activeTab === "clean" ? "" : "hidden"}>
             <CleanView
               datasetId={datasetId}
               setDatasetId={setDatasetId}
@@ -166,10 +166,10 @@ function Dashboard() {
               setCleanLogs={setCleanLogs}
               setActiveTab={setActiveTab}
             />
-          )}
+          </div>
 
           {/* TAB 3: MODEL TRAINING */}
-          {activeTab === "model-training" && (
+          <div className={activeTab === "model-training" ? "" : "hidden"}>
             <ModelTrainingView
               datasetId={datasetId}
               setDatasetId={setDatasetId}
@@ -208,8 +208,10 @@ function Dashboard() {
               }}
               setActiveTab={setActiveTab}
             />
-          )}          {/* TAB 4: VISUALIZATION */}
-          {activeTab === "visualization" && (
+          </div>
+
+          {/* TAB 4: VISUALIZATION */}
+          <div className={activeTab === "visualization" ? "" : "hidden"}>
             <VisualizationView
               datasetId={datasetId}
               setDatasetId={setDatasetId}
@@ -226,7 +228,7 @@ function Dashboard() {
               restoredGraph={restoredGraph}
               setRestoredGraph={setRestoredGraph}
             />
-          )}
+          </div>
  
           {/* TAB 5: HISTORY */}
           {activeTab === "history" && (

@@ -128,6 +128,7 @@ class GraphGenerationView(APIView):
             config["sampled"] = len(processed_df) < len(df)
             config["file_type"] = dataset.file_type
             config["encoding"] = dataset.encoding
+            config["dataset_name"] = dataset.name
             
             # Generate graph
             result = generate_graph(processed_df, config)

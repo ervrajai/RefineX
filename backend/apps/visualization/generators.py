@@ -24,20 +24,72 @@ def generate_graph(df, config):
     library = config.get("library", "plotly").lower()
     graph_type = config.get("graph_type", "").lower().replace(" ", "").replace("_", "")
     
+    # Sanitize empty string values to None
+    for key in ["x_column", "y_column", "z_column", "color_column", "size_column", "source_column", "target_column"]:
+        val = config.get(key)
+        if not val or val == "" or str(val).lower() in ["none", "-- none --"]:
+            config[key] = None
+            
+    x_col = config.get("x_column")
+    y_col = config.get("y_column")
+    
+    # 1. Validation checks
+    if graph_type in ["networkgraph", "network", "relationshipchart"]:
+        source = config.get("source_column")
+        target = config.get("target_column")
+        if not source or source not in df.columns:
+            return {"success": False, "error": "Network Graph requires a valid Source Column."}
+        if not target or target not in df.columns:
+            return {"success": False, "error": "Network Graph requires a valid Target Column."}
+    elif graph_type in ["heatmap", "correlationchart"]:
+        if config.get("heatmap_pivoted", False):
+            if not x_col or x_col not in df.columns:
+                return {"success": False, "error": "Pivoted Heatmap requires a valid X Column."}
+            if not y_col or y_col not in df.columns:
+                return {"success": False, "error": "Pivoted Heatmap requires a valid Y Column."}
+    elif graph_type in ["histogram", "dist", "distplot"]:
+        if not x_col or x_col not in df.columns:
+            return {"success": False, "error": "Histogram requires a valid X Axis Column."}
+    elif graph_type in ["scattermatrix", "splom"]:
+        dims = config.get("dimensions", [])
+        if not dims:
+            return {"success": False, "error": "Scatter Matrix requires at least one Dimension Column."}
+        for d in dims:
+            if d not in df.columns:
+                return {"success": False, "error": f"Dimension '{d}' is not in the dataset."}
+    else:
+        # Standard plot check
+        if not x_col or x_col not in df.columns:
+            return {"success": False, "error": "Please select a valid X Axis Column."}
+        if not y_col or y_col not in df.columns:
+            return {"success": False, "error": "Please select a valid Y Axis Column."}
+    
     # Apply theme colors
     # We will adjust standard matplotlib styles based on light/dark mode
-    is_dark = config.get("dark_mode", False)
-    if is_dark:
+    bg_color = config.get("background_color", "#ffffff")
+    text_color = config.get("text_color", "#1e293b")
+    
+    def is_hex_dark(hex_str):
+        try:
+            hex_str = hex_str.lstrip('#')
+            if len(hex_str) == 3:
+                hex_str = ''.join([c*2 for c in hex_str])
+            r = int(hex_str[0:2], 16)
+            g = int(hex_str[2:4], 16)
+            b = int(hex_str[4:6], 16)
+            return ((r * 299) + (g * 587) + (b * 114)) / 1000 < 128
+        except:
+            return False
+
+    if is_hex_dark(bg_color):
         plt.style.use('dark_background')
         plotly_template = "plotly_dark"
-        text_color = config.get("text_color", "#ffffff")
-        bg_color = config.get("background_color", "#121212")
     else:
         plt.style.use('default')
         plotly_template = "plotly_white"
-        text_color = config.get("text_color", "#1e293b")
-        bg_color = config.get("background_color", "#ffffff")
         
+    plt.rcParams['figure.facecolor'] = bg_color
+    plt.rcParams['axes.facecolor'] = bg_color
     # Configure Matplotlib/Seaborn fonts and sizes globally for this run
     plt.rcParams['font.size'] = float(config.get("font_size", 10))
     plt.rcParams['text.color'] = text_color
@@ -272,9 +324,17 @@ def draw_plotly(df, config, template):
         width = int(config.get("width", 800))
         height = int(config.get("height", 500))
         
+        bg_color = config.get("background_color", "#ffffff")
+        text_color = config.get("text_color", "#1e293b")
+        font_family = config.get("font_family", "sans-serif")
+        font_size = float(config.get("font_size", 10))
+
         fig.update_layout(
             width=width,
             height=height,
+            paper_bgcolor=bg_color,
+            plot_bgcolor=bg_color,
+            font=dict(color=text_color, family=font_family, size=font_size),
             margin=dict(
                 l=int(config.get("margin_left", 40)),
                 r=int(config.get("margin_right", 40)),
@@ -283,6 +343,21 @@ def draw_plotly(df, config, template):
             ),
             showlegend=config.get("legend", True)
         )
+        
+        grid_enabled = config.get("grid", True)
+        fig.update_xaxes(showgrid=grid_enabled, gridcolor="rgba(128,128,128,0.15)", zeroline=grid_enabled, zerolinecolor="rgba(128,128,128,0.2)")
+        fig.update_yaxes(showgrid=grid_enabled, gridcolor="rgba(128,128,128,0.15)", zeroline=grid_enabled, zerolinecolor="rgba(128,128,128,0.2)")
+        
+        rotation = int(config.get("axis_rotation", 0))
+        if rotation > 0:
+            fig.update_xaxes(tickangle=rotation)
+            
+        opacity = float(config.get("opacity", 1.0))
+        if opacity < 1.0:
+            try:
+                fig.update_traces(opacity=opacity)
+            except:
+                pass
         
         # Subtitle
         subtitle = config.get("subtitle", "")
@@ -410,20 +485,23 @@ def draw_matplotlib(df, config):
         
         # 1. Line Plot
         if graph_type in ["line", "lineplot"]:
+            plot_df = df.sort_values(by=x_col).reset_index(drop=True)
             if color_col:
-                for label, group in df.groupby(color_col):
+                for label, group in plot_df.groupby(color_col):
                     ax.plot(group[x_col], group[y_col], label=label, alpha=float(config.get("opacity", 1.0)))
                 ax.legend()
             else:
-                ax.plot(df[x_col], df[y_col], alpha=float(config.get("opacity", 1.0)))
+                ax.plot(plot_df[x_col], plot_df[y_col], alpha=float(config.get("opacity", 1.0)))
                 
         # 2. Bar Plot
         elif graph_type in ["bar", "barplot"]:
             orientation = config.get("orientation", "vertical")
+            x_data = df[x_col].astype(str)
+            y_data = df[y_col]
             if orientation == "horizontal":
-                ax.barh(df[x_col], df[y_col], alpha=float(config.get("opacity", 1.0)), height=float(config.get("bar_width", 0.8)))
+                ax.barh(x_data, y_data, alpha=float(config.get("opacity", 1.0)), height=float(config.get("bar_width", 0.8)))
             else:
-                ax.bar(df[x_col], df[y_col], alpha=float(config.get("opacity", 1.0)), width=float(config.get("bar_width", 0.8)))
+                ax.bar(x_data, y_data, alpha=float(config.get("opacity", 1.0)), width=float(config.get("bar_width", 0.8)))
                 
         # 3. Scatter Plot
         elif graph_type in ["scatter", "scatterplot"]:

@@ -31,11 +31,12 @@ def compile_python_code(config):
     code.append("\n# 1. Load the dataset (adjust file path or encoding as needed)")
     # Since dataset is typically CSV or Excel, generate standard pandas reading
     file_type = config.get("file_type", "csv")
+    dataset_name = config.get("dataset_name", f"dataset.{file_type}")
     if file_type.lower() in ["xlsx", "xls"]:
-        code.append("df = pd.read_excel('dataset.xlsx')")
+        code.append(f"df = pd.read_excel('{dataset_name}')")
     else:
         encoding = config.get("encoding", "utf-8")
-        code.append(f"df = pd.read_csv('dataset.csv', encoding='{encoding}')")
+        code.append(f"df = pd.read_csv('{dataset_name}', encoding='{encoding}')")
         
     # 2. Smart decisions / Data prep code
     code.append("\n# 2. Data Preparation & Preprocessing")
@@ -74,6 +75,19 @@ def compile_python_code(config):
         code.append("\n# Sample dataset for plotting performance (optional)")
         code.append("df = df.sample(n=2000, random_state=42) if len(df) > 10000 else df")
         
+    # Helper to check if color is dark
+    def is_hex_dark(hex_str):
+        try:
+            hex_str = hex_str.lstrip('#')
+            if len(hex_str) == 3:
+                hex_str = ''.join([c*2 for c in hex_str])
+            r = int(hex_str[0:2], 16)
+            g = int(hex_str[2:4], 16)
+            b = int(hex_str[4:6], 16)
+            return ((r * 299) + (g * 587) + (b * 114)) / 1000 < 128
+        except:
+            return False
+
     # 3. Graph drawing code
     code.append("\n# 3. Create the Visualization")
     
@@ -81,7 +95,10 @@ def compile_python_code(config):
     title = config.get("title", "")
     subtitle = config.get("subtitle", "")
     caption = config.get("caption", "")
-    is_dark = config.get("dark_mode", False)
+    bg_color = config.get("background_color", "#ffffff")
+    text_color = config.get("text_color", "#1e293b")
+    font_family = config.get("font_family", "sans-serif")
+    is_dark = is_hex_dark(bg_color)
     font_size = float(config.get("font_size", 10))
     
     width = int(config.get("width", 800))
@@ -101,21 +118,18 @@ def compile_python_code(config):
         g_class = "nx.DiGraph" if is_directed else "nx.Graph"
         code.append(f"G = nx.from_pandas_edgelist(df, source='{source}', target='{target}', create_using={g_class}())")
         code.append(f"fig, ax = plt.subplots(figsize=({width / 100}, {height / 100}))")
-        if is_dark:
-            code.append("fig.patch.set_facecolor('#121212')")
-            code.append("ax.set_facecolor('#121212')")
+        code.append(f"fig.patch.set_facecolor('{bg_color}')")
+        code.append(f"ax.set_facecolor('{bg_color}')")
             
         code.append(f"pos = nx.{layout}_layout(G)")
         code.append(f"nx.draw_networkx_nodes(G, pos, node_color='{node_color}', node_size={node_size}, ax=ax)")
         code.append(f"nx.draw_networkx_edges(G, pos, edge_color='{edge_color}', width={edge_width}, arrows={is_directed}, ax=ax)")
         if show_labels:
-            font_color = "#ffffff" if is_dark else "#1e293b"
-            code.append(f"nx.draw_networkx_labels(G, pos, font_size={font_size}, font_color='{font_color}', ax=ax)")
+            code.append(f"nx.draw_networkx_labels(G, pos, font_size={font_size}, font_color='{text_color}', ax=ax)")
             
         code.append("ax.axis('off')")
         if title:
-            font_color = "#ffffff" if is_dark else "#1e293b"
-            code.append(f"ax.set_title('{title}', color='{font_color}', fontsize={font_size + 2})")
+            code.append(f"ax.set_title('{title}', color='{text_color}', fontsize={font_size + 2})")
         code.append("plt.tight_layout()")
         code.append("plt.show()")
         
@@ -167,11 +181,27 @@ def compile_python_code(config):
             code.append(f"fig.update_layout(scene_camera=dict(eye=dict(x={eye_x}, y={eye_y}, z={eye_z})))")
             
         template = "plotly_dark" if is_dark else "plotly_white"
-        code.append(f"fig.update_layout(template='{template}', width={width}, height={height})")
+        code.append(f"fig.update_layout(template='{template}', width={width}, height={height}, paper_bgcolor='{bg_color}', plot_bgcolor='{bg_color}', font=dict(color='{text_color}', family='{font_family}'))")
         
         # Legend setting
         show_legend = "True" if config.get("legend", True) else "False"
         code.append(f"fig.update_layout(showlegend={show_legend})")
+        
+        # Margins setting
+        margin_left = int(config.get("margin_left", 40))
+        margin_right = int(config.get("margin_right", 40))
+        margin_top = int(config.get("margin_top", 60))
+        margin_bottom = int(config.get("margin_bottom", 40))
+        code.append(f"fig.update_layout(margin=dict(l={margin_left}, r={margin_right}, t={margin_top}, b={margin_bottom}))")
+        
+        # Axis grid and rotation settings
+        show_grid = "True" if config.get("grid", True) else "False"
+        axis_rotation = int(config.get("axis_rotation", 0))
+        if axis_rotation != 0:
+            code.append(f"fig.update_xaxes(showgrid={show_grid}, tickangle={axis_rotation})")
+        else:
+            code.append(f"fig.update_xaxes(showgrid={show_grid})")
+        code.append(f"fig.update_yaxes(showgrid={show_grid})")
         
         # Annotations for subtitle and caption
         if subtitle:
@@ -187,6 +217,12 @@ def compile_python_code(config):
         else:
             code.append("plt.style.use('default')")
             
+        code.append(f"plt.rcParams['figure.facecolor'] = '{bg_color}'")
+        code.append(f"plt.rcParams['axes.facecolor'] = '{bg_color}'")
+        code.append(f"plt.rcParams['text.color'] = '{text_color}'")
+        code.append(f"plt.rcParams['axes.labelcolor'] = '{text_color}'")
+        code.append(f"plt.rcParams['xtick.color'] = '{text_color}'")
+        code.append(f"plt.rcParams['ytick.color'] = '{text_color}'")
         code.append(f"plt.rcParams['font.size'] = {font_size}")
         code.append(f"fig, ax = plt.subplots(figsize=({width / 100}, {height / 100}))")
         
@@ -266,7 +302,12 @@ def compile_python_code(config):
         if caption:
             code.append(f"fig.text(0.01, 0.01, '{caption}', transform=fig.transFigure, fontsize={font_size}, color='gray')")
             
-        code.append("plt.tight_layout()")
+        # Margins
+        margin_left = float(config.get("margin_left", 40)) / 400
+        margin_right = 1.0 - float(config.get("margin_right", 40)) / 400
+        margin_top = 1.0 - float(config.get("margin_top", 60)) / 450
+        margin_bottom = float(config.get("margin_bottom", 40)) / 400
+        code.append(f"fig.subplots_adjust(left={round(margin_left, 3)}, right={round(margin_right, 3)}, top={round(margin_top, 3)}, bottom={round(margin_bottom, 3)})")
         code.append("plt.show()")
         
     return "\n".join(code)

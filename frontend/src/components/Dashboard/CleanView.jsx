@@ -483,82 +483,74 @@ export default function CleanView({
       )}
 
       {/* HEADER SECTION */}
-      <div className="mb-6 flex flex-col gap-4 animate-fade-in">
-        
-        {/* TOP ROW: Title & Global Buttons (Outside the card) */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          
-          {/* Cool, Styled Section Title */}
-          <div className="flex items-center gap-2.5 px-1">
-            <div className="p-1.5 rounded-lg bg-[#673ab7]/10 dark:bg-[#673ab7]/20">
-              <BrushCleaning className="w-4 h-4 text-[#673ab7] dark:text-[#9373d1]" />
-            </div>
-            <h1 className="text-xs font-black uppercase tracking-[0.2em] bg-gradient-to-r from-[#673ab7] to-indigo-500 bg-clip-text text-transparent select-none">
-              Dataset Cleaning Console
-            </h1>
-          </div>
-          
-          {/* Top Right Global Buttons */}
-          {datasetId && (
-            <div className="flex flex-wrap items-center gap-3">
-              
-              {/* DOWNLOAD BUTTON */}
-              <div className="relative" ref={downloadRef}>
-                <button 
-                  onClick={() => setDownloadOpen(!downloadOpen)}
-                  className="px-4 py-2 text-[13px] font-bold rounded-xl border-2 border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-zinc-300 hover:bg-slate-800 hover:border-slate-800 hover:text-white dark:hover:bg-zinc-200 dark:hover:border-zinc-200 dark:hover:text-black transition-colors duration-200 flex items-center gap-2 cursor-pointer shadow-sm bg-white dark:bg-[#121212]"
-                >
-                  <FileDown className="w-4 h-4" /> Download
-                </button>
-                {downloadOpen && (
-                  <div className="absolute right-0 top-full mt-2.5 z-50 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl w-48 overflow-hidden py-1">
-                    <button onClick={() => { handleDownload("csv"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-zinc-300 hover:bg-[#673ab7] hover:text-white transition-colors cursor-pointer">Clean CSV</button>
-                    <button onClick={() => { handleDownload("excel"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-zinc-300 hover:bg-[#673ab7] hover:text-white transition-colors cursor-pointer">Clean Excel</button>
-                    <button onClick={() => { handleDownload("report"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-zinc-300 hover:bg-[#673ab7] hover:text-white transition-colors cursor-pointer">PDF Audit Report</button>
-                    <button onClick={() => { handleDownload("log"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-zinc-300 hover:bg-[#673ab7] hover:text-white transition-colors cursor-pointer">Cleaning Log</button>
-                  </div>
-                )}
-              </div>
-
-              {/* DATASET RESET BUTTON */}
-              <button 
-                onClick={handleReset} 
-                disabled={processing} 
-                className="px-4 py-2 text-[13px] font-bold rounded-xl border-2 border-rose-500 text-rose-500 bg-white transition-colors duration-200 shadow-sm cursor-pointer hover:bg-rose-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed dark:bg-[#121212] dark:text-rose-400 dark:border-rose-500/50 dark:hover:bg-rose-500 dark:hover:text-white"
-              > 
-                Reset Dataset 
-              </button>
-
-              {/* VISUALIZE DATASET BUTTON */}
-              <button 
-                onClick={() => setActiveTab("visualization")} 
-                className="px-4 py-2 text-[13px] font-bold rounded-xl border-2 border-violet-500 text-white bg-violet-600 hover:bg-violet-700 transition-colors duration-200 flex items-center gap-2 cursor-pointer shadow-sm"
-              > 
-                <LineChart className="w-4 h-4" /> Visualize Dataset 
-              </button>
-
-              {/* TRAIN ML MODEL BUTTON */}
-              <button 
-                onClick={() => setActiveTab("model-training")} 
-                className="px-4 py-2 text-[13px] font-bold rounded-xl border-2 border-primary text-white bg-primary hover:bg-primary-dark transition-colors duration-200 flex items-center gap-2 cursor-pointer shadow-sm"
-              > 
-                <BrainCircuit className="w-4 h-4" /> Train ML Model 
-              </button>
-
-              {/* UPLOAD NEW BUTTON (Inverts on hover) */}
-              <button
-                onClick={() => {
-                  setDatasetId(null); setMetadata(null); setReport(null); setPreview(null);
-                  setBeforeReport(null); setAfterReport(null); setCleanLogs([]); setSelectedUnwanted([]);
-                }}
-                className="px-4 py-2 text-[13px] font-bold rounded-xl border-2 border-black dark:border-white text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors duration-200 flex items-center gap-2 cursor-pointer shadow-sm bg-white dark:bg-[#121212]"
-              >
-                <UploadCloud className="w-4 h-4" /> Upload New
-              </button>
-
-            </div>
-          )}
+      <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col lg:flex-row justify-between lg:items-center gap-6 mb-6 animate-fade-in">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-black dark:text-white tracking-tight flex items-center gap-3">
+            <BrushCleaning className="w-7 h-7 text-primary" /> RefineX Dataset Cleaning Console
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-zinc-400 mt-2">
+            Detect and resolve duplicates, missing cells, constant variables, and formatting conflicts.
+          </p>
         </div>
+        
+        {datasetId && (
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* DOWNLOAD BUTTON */}
+            <div className="relative" ref={downloadRef}>
+              <button 
+                onClick={() => setDownloadOpen(!downloadOpen)}
+                className="px-3.5 py-1.5 text-2xs font-bold rounded-lg border border-slate-200 dark:border-zinc-700 text-slate-650 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm bg-white dark:bg-[#121212]"
+              >
+                <FileDown className="w-3.5 h-3.5" /> Download
+              </button>
+              {downloadOpen && (
+                <div className="absolute right-0 top-full mt-2 z-50 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl w-44 overflow-hidden py-1">
+                  <button onClick={() => { handleDownload("csv"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-violet-650 hover:text-white transition-colors cursor-pointer">Clean CSV</button>
+                  <button onClick={() => { handleDownload("excel"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-violet-650 hover:text-white transition-colors cursor-pointer">Clean Excel</button>
+                  <button onClick={() => { handleDownload("report"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-violet-650 hover:text-white transition-colors cursor-pointer">PDF Audit Report</button>
+                  <button onClick={() => { handleDownload("log"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-violet-650 hover:text-white transition-colors cursor-pointer">Cleaning Log</button>
+                </div>
+              )}
+            </div>
+
+            {/* DATASET RESET BUTTON */}
+            <button 
+              onClick={handleReset} 
+              disabled={processing} 
+              className="px-3.5 py-1.5 text-2xs font-bold rounded-lg border border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 bg-white dark:bg-[#121212] transition duration-200 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            > 
+              Reset Dataset 
+            </button>
+
+            {/* VISUALIZE DATASET BUTTON */}
+            <button 
+              onClick={() => setActiveTab("visualization")} 
+              className="px-3.5 py-1.5 text-2xs font-bold rounded-lg bg-violet-600 hover:bg-violet-700 text-white transition duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm"
+            > 
+              <LineChart className="w-3.5 h-3.5" /> Visualize
+            </button>
+
+            {/* TRAIN ML MODEL BUTTON */}
+            <button 
+              onClick={() => setActiveTab("model-training")} 
+              className="px-3.5 py-1.5 text-2xs font-bold rounded-lg bg-primary hover:bg-primary-dark text-white transition duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm"
+            > 
+              <BrainCircuit className="w-3.5 h-3.5" /> Train Model
+            </button>
+
+            {/* UPLOAD NEW BUTTON */}
+            <button
+              onClick={() => {
+                setDatasetId(null); setMetadata(null); setReport(null); setPreview(null);
+                setBeforeReport(null); setAfterReport(null); setCleanLogs([]); setSelectedUnwanted([]);
+              }}
+              className="px-3.5 py-1.5 text-2xs font-bold rounded-lg border border-slate-900 dark:border-zinc-700 bg-slate-900 hover:bg-black hover:dark:bg-zinc-800 text-white transition duration-205 flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <UploadCloud className="w-3.5 h-3.5" /> Upload New
+            </button>
+          </div>
+        )}
+      </div>
 
         {/* DATASET INFO CARD (Main Section) */}
         {datasetId && metadata && (
@@ -579,33 +571,32 @@ export default function CleanView({
               
               <div className="flex flex-col justify-center px-4 py-2 min-w-[100px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
                 <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Type</span>
-                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{metadata.file_type.toUpperCase()}</span>
+                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{metadata.file_type ? metadata.file_type.toUpperCase() : "N/A"}</span>
               </div>
 
               <div className="flex flex-col justify-center px-4 py-2 min-w-[100px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
                 <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Rows</span>
-                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{metadata.rows.toLocaleString()}</span>
+                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{(metadata.rows ?? 0).toLocaleString()}</span>
               </div>
 
               <div className="flex flex-col justify-center px-4 py-2 min-w-[100px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
                 <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Cols</span>
-                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{metadata.columns.toLocaleString()}</span>
+                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{(metadata.columns ?? 0).toLocaleString()}</span>
               </div>
 
               <div className="flex flex-col justify-center px-4 py-2 min-w-[110px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
                 <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Size</span>
-                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{formatSize(metadata.file_size)}</span>
+                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{metadata.file_size ? formatSize(metadata.file_size) : "N/A"}</span>
               </div>
 
               <div className="flex flex-col justify-center px-4 py-2 min-w-[110px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
                 <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Encoding</span>
-                <span className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase">{metadata.encoding}</span>
+                <span className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase">{metadata.encoding ? metadata.encoding.toUpperCase() : "UTF-8"}</span>
               </div>
 
             </div>
           </article>
         )}
-      </div>  
 
       {/* NO DATASET / UPLOADER STATE */}
       {!datasetId ? (

@@ -1,3 +1,4 @@
+import os
 import secrets
 from smtplib import SMTPException
 from datetime import timedelta
@@ -16,6 +17,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import User
+from apps.core.services import ActivityService
 from .serializers import (
     CompleteSignupSerializer,
     ForgotPasswordOtpRequestSerializer,
@@ -252,8 +254,12 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
-        login(request, user)
-        request.session.set_expiry(60 * 60 * 24 * 30 if serializer.validated_data["remember_me"] else 0)
+        
+        django_request = getattr(request, "_request", request)
+        user.backend = "django.contrib.auth.backends.ModelBackend"
+        login(django_request, user, backend="django.contrib.auth.backends.ModelBackend")
+        
+        django_request.session.set_expiry(60 * 60 * 24 * 30 if serializer.validated_data.get("remember_me") else 0)
 
         ActivityService.log_activity(
             user=user,
@@ -264,7 +270,6 @@ class LoginView(APIView):
         )
 
         return Response(UserSerializer(user).data)
-
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -278,9 +283,11 @@ class LogoutView(APIView):
 
 
 class CurrentUserView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request):
+        if not request.user or not request.user.is_authenticated:
+            return Response(None, status=status.HTTP_200_OK)
         return Response(UserSerializer(request.user).data)
 
 
@@ -366,7 +373,7 @@ class ResetPasswordView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             user.set_password(serializer.validated_data["password"])
-            user.save(update_fields=["password"])
+            user.save()
         _clear_otp(request, "password_reset")
         return Response({"detail": "Password updated successfully."})
 
@@ -415,8 +422,24 @@ class UserProfileView(APIView):
             return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
+class VerifyPasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    def post(self, request):
+        password = request.data.get("password")
+        if not password:
+            return Response({"valid": False, "detail": "Current password is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if request.user.check_password(password):
+            return Response({"valid": True, "detail": "Current password verified."}, status=status.HTTP_200_OK)
+        return Response({"valid": False, "detail": "Current password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
@@ -432,6 +455,7 @@ class ChangePasswordView(APIView):
             return Response({"detail": "Password updated successfully."}, status=status.HTTP_200_OK)
         except ValueError as err:
             return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class EmailUpdateOtpRequestView(APIView):
@@ -490,4 +514,93 @@ class EmailUpdateVerifyView(APIView):
 
         OtpService.clear_otp(request, "email_update")
         return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class DeleteAccountOtpRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    def post(self, request):
+        user = request.user
+        email = user.email.lower()
+
+        cooldown_response = _resend_cooldown_response(request, "delete_account", email)
+        if cooldown_response:
+            return cooldown_response
+
+        otp = _generate_otp()
+        try:
+            _send_otp(email, otp, "Confirm Refinex Account Deletion")
+        except (BadHeaderError, SMTPException, OSError):
+            return _otp_email_error_response()
+
+        _store_otp(request, "delete_account", email=email, otp=otp)
+        return Response({"detail": f"OTP sent to {email}"})
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class DeleteAccountConfirmView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    def post(self, request):
+        user = request.user
+        provider = user.auth_provider
+
+        if provider == User.AuthProvider.EMAIL:
+            password = request.data.get("password")
+            if not password:
+                return Response({"detail": "Password is required to delete account."}, status=status.HTTP_400_BAD_REQUEST)
+            if not user.check_password(password):
+                return Response({"detail": "Incorrect password."}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            otp = request.data.get("otp")
+            if not otp:
+                return Response({"detail": "OTP is required to delete account."}, status=status.HTTP_400_BAD_REQUEST)
+            record, error = _get_otp_record(request, "delete_account")
+            if error:
+                return Response({"detail": error}, status=status.HTTP_400_BAD_REQUEST)
+
+            if record["email"] != user.email.lower():
+                return Response({"detail": "OTP does not match this account email."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not secrets.compare_digest(record["otp"], str(otp)):
+                record["attempts"] = record.get("attempts", 0) + 1
+                request.session[_otp_session_key("delete_account")] = record
+                request.session.modified = True
+                return Response({"detail": "Invalid OTP verification code."}, status=status.HTTP_400_BAD_REQUEST)
+
+            _clear_otp(request, "delete_account")
+
+        # Permanently erase physical CSV and model files from local PC disk storage
+        for ds in user.datasets.all():
+            if ds.original_file:
+                try:
+                    if os.path.isfile(ds.original_file.path):
+                        os.remove(ds.original_file.path)
+                except Exception:
+                    pass
+            if ds.cleaned_file:
+                try:
+                    if os.path.isfile(ds.cleaned_file.path):
+                        os.remove(ds.cleaned_file.path)
+                except Exception:
+                    pass
+
+        if hasattr(user, "model_training_jobs"):
+            for job in user.model_training_jobs.all():
+                if job.trained_model_file:
+                    try:
+                        if os.path.isfile(job.trained_model_file.path):
+                            os.remove(job.trained_model_file.path)
+                    except Exception:
+                        pass
+
+        # Delete database records (CASCADE deletes datasets, cleaning jobs, training jobs, graphs, profile)
+        logout(request)
+        user.delete()
+        return Response({"detail": "Account and all associated files deleted successfully."}, status=status.HTTP_200_OK)
+
+
 

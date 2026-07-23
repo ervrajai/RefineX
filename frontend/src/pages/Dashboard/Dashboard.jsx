@@ -305,6 +305,7 @@ function Dashboard() {
               loading={loading}
               error={error}
               handleLogout={handleLogout}
+              onProfileUpdate={(updatedUser) => setUser(updatedUser)}
             />
           )}
 

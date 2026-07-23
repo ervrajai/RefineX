@@ -21,7 +21,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     api
       .get("accounts/me/")
-      .then((res) => setUser(res.data))
+      .then((res) => setUser(res.data ? res.data : false))
       .catch(() => setUser(false))
       .finally(() => setChecking(false));
   }, []);

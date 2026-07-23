@@ -303,6 +303,7 @@ class GraphCodeView(APIView):
         return Response({"python_code": code}, status=status.HTTP_200_OK)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class HistoryViewSet(ModelViewSet):
     serializer_class = SavedGraphSerializer
     permission_classes = [permissions.IsAuthenticated]

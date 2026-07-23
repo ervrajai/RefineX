@@ -1,6 +1,8 @@
 import uuid
 from django.db import models
 from django.conf import settings
+from django.dispatch import receiver
+from django.db.models.signals import post_delete
 from apps.cleaning.models import Dataset
 
 class ModelTrainingJob(models.Model):
@@ -67,4 +69,19 @@ class ModelTrainingJob(models.Model):
 
     def __str__(self):
         return f"ModelTrainingJob #{self.id} for {self.dataset_name}"
+
+
+@receiver(post_delete, sender=ModelTrainingJob)
+def auto_delete_file_on_model_job_delete(sender, instance, **kwargs):
+    """
+    Deletes physical trained model files (.joblib) from local disk when ModelTrainingJob is deleted.
+    """
+    import os
+    if instance.trained_model_file:
+        try:
+            if os.path.isfile(instance.trained_model_file.path):
+                os.remove(instance.trained_model_file.path)
+        except Exception:
+            pass
+
 

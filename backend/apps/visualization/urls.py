@@ -1,18 +1,24 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from .views import (
-    DatasetListView,
-    VisualizationGenerateView,
-    GenerateAllView,
+    DatasetAnalysisView,
     GraphRecommendationView,
-    SavedGraphListView,
-    SavedGraphDetailView,
+    GraphValidationView,
+    GraphGenerationView,
+    GraphExportView,
+    GraphCodeView,
+    HistoryViewSet
 )
 
+router = DefaultRouter()
+router.register("history", HistoryViewSet, basename="visualization-history")
+
 urlpatterns = [
-    path("datasets/", DatasetListView.as_view(), name="visualization-datasets"),
-    path("<int:dataset_id>/generate/", VisualizationGenerateView.as_view(), name="visualization-generate"),
-    path("<int:dataset_id>/generate-all/", GenerateAllView.as_view(), name="visualization-generate-all"),
-    path("<int:dataset_id>/recommendations/", GraphRecommendationView.as_view(), name="visualization-recommendations"),
-    path("history/", SavedGraphListView.as_view(), name="visualization-history"),
-    path("history/<int:pk>/", SavedGraphDetailView.as_view(), name="visualization-history-detail"),
+    path("", include(router.urls)),
+    path("analyze/<int:dataset_id>/", DatasetAnalysisView.as_view(), name="dataset-analyze"),
+    path("recommend/<int:dataset_id>/", GraphRecommendationView.as_view(), name="graph-recommend"),
+    path("validate/", GraphValidationView.as_view(), name="graph-validate"),
+    path("generate/", GraphGenerationView.as_view(), name="graph-generate"),
+    path("export/", GraphExportView.as_view(), name="graph-export"),
+    path("code/", GraphCodeView.as_view(), name="graph-code"),
 ]

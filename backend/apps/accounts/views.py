@@ -549,7 +549,7 @@ class DeleteAccountConfirmView(APIView):
         provider = user.auth_provider
 
         if provider == User.AuthProvider.EMAIL:
-            password = request.data.get("password")
+            password = (request.data.get("password") or "").strip()
             if not password:
                 return Response({"detail": "Password is required to delete account."}, status=status.HTTP_400_BAD_REQUEST)
             if not user.check_password(password):

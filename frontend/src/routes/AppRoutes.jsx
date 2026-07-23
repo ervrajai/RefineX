@@ -33,11 +33,7 @@ function AppRoutes() {
       />
       <Route
         path="/forgot-password"
-        element={
-          <GuestRoute>
-            <ForgotPassword />
-          </GuestRoute>
-        }
+        element={<ForgotPassword />}
       />
 
       {/* Protected routes: redirect to /login if not logged in */}

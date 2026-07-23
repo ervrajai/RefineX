@@ -4,6 +4,7 @@ from datetime import timedelta
 from smtplib import SMTPException
 
 from django.conf import settings
+from django.contrib.auth import login, update_session_auth_hash
 from django.core.mail import BadHeaderError, send_mail
 from django.utils import timezone
 
@@ -144,6 +145,12 @@ class AccountSecurityService:
         user.set_password(new_password)
         user.password_last_updated = timezone.now()
         user.save()
+
+        if request is not None:
+            django_request = getattr(request, "_request", request)
+            user.backend = "django.contrib.auth.backends.ModelBackend"
+            update_session_auth_hash(django_request, user)
+            login(django_request, user)
 
         ActivityService.log_activity(
             user=user,

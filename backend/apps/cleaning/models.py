@@ -1,6 +1,8 @@
 import uuid
 from django.db import models
 from django.conf import settings
+from django.dispatch import receiver
+from django.db.models.signals import post_delete
 
 class Dataset(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
@@ -83,4 +85,26 @@ class CleaningJob(models.Model):
 
     def __str__(self):
         return f"CleanJob #{self.id} for {self.dataset.name}"
+
+
+@receiver(post_delete, sender=Dataset)
+def auto_delete_file_on_dataset_delete(sender, instance, **kwargs):
+    """
+    Deletes physical CSV files from local disk when Dataset object is deleted.
+    """
+    import os
+    if instance.original_file:
+        try:
+            if os.path.isfile(instance.original_file.path):
+                os.remove(instance.original_file.path)
+        except Exception:
+            pass
+
+    if instance.cleaned_file:
+        try:
+            if os.path.isfile(instance.cleaned_file.path):
+                os.remove(instance.cleaned_file.path)
+        except Exception:
+            pass
+
 

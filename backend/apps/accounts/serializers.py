@@ -34,28 +34,26 @@ class LoginSerializer(serializers.Serializer):
     remember_me = serializers.BooleanField(required=False, default=False)
 
     def validate(self, attrs):
-        email = attrs.get("email", "").lower()
-        # Find if user exists first to check their provider
-        try:
-            user_obj = User.objects.get(email__iexact=email)
-            if user_obj.auth_provider != User.AuthProvider.EMAIL:
-                # User exists but is OAuth provider
-                provider_display = dict(User.AuthProvider.choices).get(user_obj.auth_provider, user_obj.auth_provider.title())
-                raise serializers.ValidationError(
-                    f"This account is associated with {provider_display}. Please sign in using {provider_display} instead."
-                )
-        except User.DoesNotExist:
-            pass
+        email = attrs.get("email", "").strip().lower()
+        password = attrs.get("password", "")
 
-        user = authenticate(
-            request=self.context.get("request"),
-            username=attrs["email"],
-            password=attrs["password"],
-        )
+        user = User.objects.filter(email__iexact=email).first()
         if not user:
             raise serializers.ValidationError("Invalid email or password.")
+
+        if user.auth_provider != User.AuthProvider.EMAIL:
+            provider_display = dict(User.AuthProvider.choices).get(user.auth_provider, user.auth_provider.title())
+            raise serializers.ValidationError(
+                f"This account is associated with {provider_display}. Please sign in using {provider_display} instead."
+            )
+
+        if not user.check_password(password):
+            raise serializers.ValidationError("Invalid email or password.")
+
         if not user.is_active:
             raise serializers.ValidationError("This account is inactive.")
+
+        user.backend = "django.contrib.auth.backends.ModelBackend"
         attrs["user"] = user
         return attrs
 

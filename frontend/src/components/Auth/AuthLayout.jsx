@@ -1,10 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { 
-  ArrowRight, 
-  Star
-} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowRight, Star } from "lucide-react";
 import { Particles } from "./Particles";
 
 function AuthLayout({ title, subtitle, children, footerText, footerLink, footerLabel }) {
@@ -12,7 +9,15 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
   const navigate = useNavigate();
   const isLogin = location.pathname === "/login";
   const isSignup = location.pathname === "/signup";
-  const [hoveredTab, setHoveredTab] = useState(null);
+
+  // Track slide direction (-1 for left/login, 1 for right/signup)
+  const [direction, setDirection] = useState(isSignup ? 1 : -1);
+
+  const handleTabSwitch = (targetPath) => {
+    if (location.pathname === targetPath) return;
+    setDirection(targetPath === "/signup" ? 1 : -1);
+    navigate(targetPath);
+  };
 
   // Sync theme with landing page / prefers-color-scheme on mount
   useEffect(() => {
@@ -98,6 +103,22 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
 
   const dynamicContent = getDynamicContent();
 
+  // Motion variants for sliding form card content
+  const cardSlideVariants = {
+    enter: (dir) => ({
+      x: dir > 0 ? 40 : -40,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (dir) => ({
+      x: dir > 0 ? -40 : 40,
+      opacity: 0,
+    }),
+  };
+
   return (
     <div className="relative h-screen w-screen bg-white dark:bg-black text-slate-900 dark:text-white overflow-hidden font-sans flex flex-col justify-center items-center transition-colors duration-300 select-none">
       {/* SCOPED ANIMATIONS */}
@@ -155,97 +176,103 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
 
           {/* --- RIGHT COLUMN (Centered Form Card) --- */}
           <div className="lg:col-span-5 flex justify-center items-center w-full">
-            {/* Auth Form Card - Using Navbar Border & Background Style */}
             <div className="w-full max-w-md animate-fade-in delay-200 relative overflow-hidden rounded-2xl border border-lightBorder/55 dark:border-gray-800/80 bg-gray-50/80 dark:bg-[#121212]/80 p-6 backdrop-blur-xl shadow-2xl flex flex-col transition-colors duration-300">
               
               {/* Card Glow Effect */}
               <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-primary/5 dark:bg-primary/10 blur-3xl pointer-events-none" />
 
               <div className="relative z-10 w-full">
-                {/* Pill Switcher with Gliding Outline Hover Effect */}
+                
+                {/* --- OPPO COLOROS STYLE TAB SWITCHER --- */}
                 {(isLogin || isSignup) && (
-                  <div 
-                    className="relative mb-5 flex rounded-full border border-lightBorder/50 dark:border-gray-800/80 bg-gray-50/80 dark:bg-[#121212]/80 p-0.5"
-                    onMouseLeave={() => setHoveredTab(null)}
-                  >
-                    
-                    {/* Active Tab indicator (High contrast for light/dark mode visibility) */}
-                    <div 
-                      className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-full border border-gray-900 dark:border-white bg-transparent transition-all duration-300 ease-in-out ${
-                        isSignup ? "left-[calc(50%+1px)]" : "left-0.5"
-                      }`}
-                    />
-                    
-                    {/* Log In Tab */}
-                    <button
-                      onMouseEnter={() => setHoveredTab("login")}
-                      onClick={() => navigate("/login")}
-                      className={`relative z-10 flex-1 rounded-full py-1.5 text-center text-xs font-semibold transition-colors duration-200 cursor-pointer ${
-                        isLogin ? "text-gray-900 dark:text-white" : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
-                      }`}
-                    >
-                      Log In
-                      {/* Gliding transparent outline for hover tab - matching Navbar */}
-                      {hoveredTab === "login" && !isLogin && (
-                        <motion.div
-                          layoutId="pill-hover"
-                          className="absolute inset-0 border border-brand dark:border-white/50 rounded-full pointer-events-none"
-                          initial={false}
-                          transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-                        />
-                      )}
-                    </button>
-                    
-                    {/* Sign Up Tab */}
-                    <button
-                      onMouseEnter={() => setHoveredTab("signup")}
-                      onClick={() => navigate("/signup")}
-                      className={`relative z-10 flex-1 rounded-full py-1.5 text-center text-xs font-semibold transition-colors duration-200 cursor-pointer ${
-                        isSignup ? "text-gray-900 dark:text-white" : "text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white"
-                      }`}
-                    >
-                      Sign Up
-                      {/* Gliding transparent outline for hover tab - matching Navbar */}
-                      {hoveredTab === "signup" && !isSignup && (
-                        <motion.div
-                          layoutId="pill-hover"
-                          className="absolute inset-0 border border-brand dark:border-white/50 rounded-full pointer-events-none"
-                          initial={false}
-                          transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-                        />
-                      )}
-                    </button>
+                  <div className="relative mb-6 flex items-center justify-center">
+                    <div className="relative inline-flex items-center rounded-full bg-gray-200/80 dark:bg-[#252525] p-1 shadow-inner">
+                      
+                      {/* Sliding Capsule Indicator */}
+                      <motion.div
+                        className="absolute inset-y-1 rounded-full bg-white dark:bg-[#424242] shadow-sm"
+                        initial={false}
+                        animate={{
+                          left: isLogin ? "4px" : "50%",
+                          width: "calc(50% - 4px)",
+                        }}
+                        transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                      />
+
+                      {/* Log In Tab */}
+                      <button
+                        type="button"
+                        onClick={() => handleTabSwitch("/login")}
+                        className={`relative z-10 min-w-[100px] px-5 py-1.5 text-center text-xs font-medium transition-colors duration-200 ${
+                          isLogin
+                            ? "text-gray-900 dark:text-white"
+                            : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200"
+                        }`}
+                      >
+                        Log In
+                      </button>
+
+                      {/* Sign Up Tab */}
+                      <button
+                        type="button"
+                        onClick={() => handleTabSwitch("/signup")}
+                        className={`relative z-10 min-w-[100px] px-5 py-1.5 text-center text-xs font-medium transition-colors duration-200 ${
+                          isSignup
+                            ? "text-gray-900 dark:text-white"
+                            : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200"
+                        }`}
+                      >
+                        Sign Up
+                      </button>
+                    </div>
                   </div>
                 )}
 
-                {/* Form Header */}
-                <div className="mb-4">
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h2>
-                  <p className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">{subtitle}</p>
-                </div>
+                {/* --- SLIDING FORM CONTENT --- */}
+                <AnimatePresence mode="wait" custom={direction}>
+                  <motion.div
+                    key={location.pathname}
+                    custom={direction}
+                    variants={cardSlideVariants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={{
+                      x: { type: "spring", stiffness: 380, damping: 30 },
+                      opacity: { duration: 0.15 },
+                    }}
+                  >
+                    {/* Form Header */}
+                    <div className="mb-4">
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h2>
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">{subtitle}</p>
+                    </div>
 
-                {/* Children forms */}
-                {children}
+                    {/* Children forms */}
+                    {children}
 
-                {/* Footer link for forgot password */}
-                {footerText && !isLogin && !isSignup && (
-                  <p className="mt-4 text-center text-xs text-slate-500 dark:text-zinc-400">
-                    {footerText}{" "}
-                    <Link to={footerLink} className="font-semibold text-primary hover:text-primary-dark hover:underline transition-all">
-                      {footerLabel}
-                    </Link>
-                  </p>
-                )}
-                
-                {/* Fallback reset link for Login page */}
-                {isLogin && (
-                  <p className="mt-4 text-center text-xs text-slate-500 dark:text-zinc-400">
-                    Having trouble logging in?{" "}
-                    <Link to="/forgot-password" className="font-semibold text-primary hover:text-primary-dark hover:underline transition-all">
-                      Reset Password
-                    </Link>
-                  </p>
-                )}
+                    {/* Footer link for forgot password */}
+                    {footerText && !isLogin && !isSignup && (
+                      <p className="mt-4 text-center text-xs text-slate-500 dark:text-zinc-400">
+                        {footerText}{" "}
+                        <Link to={footerLink} className="font-semibold text-primary hover:text-primary-dark hover:underline transition-all">
+                          {footerLabel}
+                        </Link>
+                      </p>
+                    )}
+                    
+                    {/* Fallback reset link for Login page */}
+                    {isLogin && (
+                      <p className="mt-4 text-center text-xs text-slate-500 dark:text-zinc-400">
+                        Having trouble logging in?{" "}
+                        <Link to="/forgot-password" className="font-semibold text-primary hover:text-primary-dark hover:underline transition-all">
+                          Reset Password
+                        </Link>
+                      </p>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+
               </div>
             </div>
           </div>

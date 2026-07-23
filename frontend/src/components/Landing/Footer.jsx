@@ -67,9 +67,27 @@ const footerData = {
     { title: "Legal", links: ["Privacy Policy", "Terms of Service"] },
   ],
   social: [
-    { href: "#", label: "Twitter", icon: <Twitter className="w-4 h-4" /> },
-    { href: "https://github.com/Pranay0412/RefineX", label: "GitHub", icon: <Github className="w-4 h-4" /> },
-    { href: "#", label: "LinkedIn", icon: <Linkedin className="w-4 h-4" /> },
+    { 
+      href: "#", 
+      label: "Twitter", 
+      icon: <Twitter className="w-4 h-4" />,
+      // Added explicit dark:hover classes for Twitter Blue
+      hoverClass: "hover:bg-[#1DA1F2] hover:border-[#1DA1F2] hover:text-white dark:hover:bg-[#1DA1F2] dark:hover:border-[#1DA1F2] dark:hover:text-white" 
+    },
+    { 
+      href: "https://github.com/Pranay0412/RefineX", 
+      label: "GitHub", 
+      icon: <Github className="w-4 h-4" />,
+      // GitHub remains the same (White in dark mode, Black in light mode)
+      hoverClass: "hover:bg-[#181717] hover:border-[#181717] hover:text-white dark:hover:bg-white dark:hover:border-white dark:hover:text-black" 
+    },
+    { 
+      href: "#", 
+      label: "LinkedIn", 
+      icon: <Linkedin className="w-4 h-4" />,
+      // Added explicit dark:hover classes for LinkedIn Blue
+      hoverClass: "hover:bg-[#0A66C2] hover:border-[#0A66C2] hover:text-white dark:hover:bg-[#0A66C2] dark:hover:border-[#0A66C2] dark:hover:text-white" 
+    },
   ],
   subtitle: "Turn raw data into actionable intelligence.",
   copyright: `© ${new Date().getFullYear()} RefineX Team. Made in Ahmedabad.`,
@@ -211,9 +229,10 @@ export default function Footer() {
                   target="_blank"
                   rel="noreferrer"
                   title={social.label}
-                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  // Removed the whileHover completely so it stays still
                   whileTap={{ scale: 0.9 }}
-                  className="w-9 h-9 rounded-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 flex items-center justify-center text-slate-600 dark:text-zinc-400 hover:bg-[#673ab7] hover:border-[#673ab7] hover:text-white dark:hover:bg-[#673ab7] dark:hover:text-white transition-colors duration-300 shadow-sm"
+                  // Replaced the hardcoded purple with `${social.hoverClass}`
+                  className={`w-9 h-9 rounded-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 flex items-center justify-center text-slate-600 dark:text-zinc-400 transition-colors duration-300 shadow-sm ${social.hoverClass}`}
                 >
                   {social.icon}
                 </motion.a>

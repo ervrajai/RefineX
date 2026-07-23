@@ -15,3 +15,46 @@
     @apply bg-white text-black dark:bg-[#111111] dark:text-[#f8f8f8] font-sans antialiased transition-colors duration-300;
   }
 }
+
+/* Custom Non-Transform Animations for File Upload & Theme UI */
+@keyframes uploadGlow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(103, 58, 183, 0.25);
+    border-color: rgba(103, 58, 183, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(103, 58, 183, 0.6);
+    border-color: rgba(103, 58, 183, 0.95);
+  }
+}
+
+@keyframes opacityPulse {
+  0%, 100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes progressShimmer {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 200% 0%;
+  }
+}
+
+.animate-upload-glow {
+  animation: uploadGlow 2.2s infinite ease-in-out;
+}
+
+.animate-opacity-pulse {
+  animation: opacityPulse 1.6s infinite ease-in-out;
+}
+
+.animate-progress-shimmer {
+  background-size: 200% 100%;
+  animation: progressShimmer 2s linear infinite;
+}

@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { 
-  KeyRound, 
-  Sun, 
-  Moon, 
-  TvMinimal, 
-  LogOut, 
-  Check, 
-  AlertCircle, 
+import {
+  KeyRound,
+  Sun,
+  Moon,
+  TvMinimal,
+  LogOut,
+  Check,
+  AlertCircle,
   Loader2,
   Edit3,
   Eye,
@@ -16,11 +16,9 @@ import {
   AlertTriangle,
   Pencil,
   Search,
-
   ShieldAlert,
   Mail,
   Calendar,
-  ArrowLeft
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
@@ -34,15 +32,15 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
   const { setLoggedOut } = useAuth();
   const [themeMode, setThemeMode] = useState("auto");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const searchInputRef = useRef(null);
 
   // Profile Edit State
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [firstName, setFirstName] = useState(user?.first_name || "");
   const [lastName, setLastName] = useState(user?.last_name || "");
   const [username, setUsername] = useState(user?.username || "");
-  const [avatar, setAvatar] = useState(user?.profile_picture || user?.avatar || "");
+  const [avatar, setAvatar] = useState(
+    user?.profile_picture || user?.avatar || "",
+  );
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState({ type: "", text: "" });
 
@@ -74,7 +72,9 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
     if (user) {
       setFirstName(user.first_name || "");
       setLastName(user.last_name || "");
-      setUsername(user.username || (user.email ? user.email.split("@")[0] : ""));
+      setUsername(
+        user.username || (user.email ? user.email.split("@")[0] : ""),
+      );
       setAvatar(user.profile_picture || user.avatar || "");
     }
   }, [user]);
@@ -84,16 +84,10 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
     setThemeMode(savedTheme);
   }, []);
 
-  useEffect(() => {
-    if (isMobileSearchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [isMobileSearchOpen]);
-
   const changeTheme = (mode) => {
     setThemeMode(mode);
     localStorage.setItem("theme", mode);
-    
+
     const root = document.documentElement;
     if (mode === "dark") {
       root.classList.add("dark");
@@ -119,9 +113,12 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
 
   const getProviderBadge = (provider) => {
     switch (provider) {
-      case "google": return "Google";
-      case "github": return "GitHub";
-      default: return "Email";
+      case "google":
+        return "Google";
+      case "github":
+        return "GitHub";
+      default:
+        return "Email";
     }
   };
 
@@ -141,7 +138,7 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
         last_name: lastName.trim(),
         username: username.trim(),
         profile_picture: avatar.trim(),
-        avatar: avatar.trim()
+        avatar: avatar.trim(),
       });
       setProfileMsg({ type: "success", text: "Profile updated successfully!" });
       setIsEditingProfile(false);
@@ -173,7 +170,9 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
     setPassModalVerifying(true);
     setPassModalVerifyError("");
     try {
-      await api.post("accounts/verify-password/", { password: currentPassword });
+      await api.post("accounts/verify-password/", {
+        password: currentPassword,
+      });
       setPasswordModalStep(2);
     } catch (err) {
       setPassModalVerifyError("Incorrect password.");
@@ -228,9 +227,10 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
     setDeleteLoading(true);
 
     try {
-      const payload = user?.auth_provider === "email" 
-        ? { password: deletePassword }
-        : { otp: deleteOtp };
+      const payload =
+        user?.auth_provider === "email"
+          ? { password: deletePassword }
+          : { otp: deleteOtp };
 
       await api.post("accounts/delete-account/confirm/", payload);
       if (setLoggedOut) setLoggedOut();
@@ -252,119 +252,68 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
   };
 
   const query = searchQuery.trim().toLowerCase();
-  const matchesSearch = (...keywords) => !query || keywords.some((kw) => kw && kw.toLowerCase().includes(query));
+  const matchesSearch = (...keywords) =>
+    !query || keywords.some((kw) => kw && kw.toLowerCase().includes(query));
 
-  const showAppearance = matchesSearch("appearance", "theme", "dark", "light", "mode");
-  const showProfile = matchesSearch("profile", "name", "email", "username", "edit");
-  const showUpdatePassword = matchesSearch("security", "password", "update password");
+  const showAppearance = matchesSearch(
+    "appearance",
+    "theme",
+    "dark",
+    "light",
+    "mode",
+  );
+  const showProfile = matchesSearch(
+    "profile",
+    "name",
+    "email",
+    "username",
+    "edit",
+  );
+  const showUpdatePassword = matchesSearch(
+    "security",
+    "password",
+    "update password",
+  );
   const showLogout = matchesSearch("logout", "log out", "sign out");
   const showDelete = matchesSearch("delete", "danger", "remove account");
 
-  const hasMatches = showAppearance || showProfile || showUpdatePassword || showLogout || showDelete;
+  const hasMatches =
+    showAppearance ||
+    showProfile ||
+    showUpdatePassword ||
+    showLogout ||
+    showDelete;
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 w-full max-w-md md:max-w-3xl lg:max-w-4xl mx-auto font-sans antialiased text-slate-900 dark:text-zinc-100 pb-16 px-3 sm:px-4 md:px-0">
-      
-      {/* WhatsApp-Style Smooth Expanding Header Bar */}
-      <div className="relative flex items-center justify-between min-h-[48px] px-1 py-1">
-        
-        {/* Page Title - Smooth Fade out on search open */}
-        <AnimatePresence>
-          {!isMobileSearchOpen && (
-            <motion.div 
-              initial={{ opacity: 0, x: -12 }} 
-              animate={{ opacity: 1, x: 0 }} 
-              exit={{ opacity: 0, x: -12 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="flex flex-col"
-            >
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Settings</h1>
-              <p className="text-[11px] sm:text-xs font-medium text-slate-400 dark:text-zinc-400 mt-0.5">
-                Manage your account, profile, and security preferences
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* WhatsApp Mobile Expanding Search Bar - Anchored Right */}
-        <div className="sm:hidden flex items-center ml-auto">
-          <motion.div
-            initial={false}
-            animate={{ 
-              width: isMobileSearchOpen ? "100%" : "42px",
-              borderRadius: isMobileSearchOpen ? "24px" : "9999px" 
-            }}
-            transition={{ type: "spring", stiffness: 350, damping: 30 }}
-            className={`flex items-center bg-slate-100 dark:bg-zinc-800/90 border border-slate-200/80 dark:border-zinc-700/70 overflow-hidden shadow-xs ${
-              isMobileSearchOpen 
-                ? "absolute right-0 left-0 top-0 bottom-0 z-30 px-2 h-11" 
-                : "h-10 justify-center cursor-pointer hover:bg-slate-200/60 dark:hover:bg-zinc-700/60 transition-colors"
-            }`}
-          >
-            {!isMobileSearchOpen ? (
-              <button
-                type="button"
-                onClick={() => setIsMobileSearchOpen(true)}
-                className="w-10 h-10 flex items-center justify-center text-slate-600 dark:text-zinc-300"
-                aria-label="Open Search"
-              >
-                <Search className="w-4 h-4" />
-              </button>
-            ) : (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.15 }}
-                className="flex items-center w-full gap-2"
-              >
-                {/* WhatsApp style Back Arrow Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileSearchOpen(false);
-                    setSearchQuery("");
-                  }}
-                  className="p-1.5 rounded-full text-purple-600 dark:text-purple-400 hover:bg-purple-100/50 dark:hover:bg-purple-900/40 shrink-0 transition-colors"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </button>
-
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search settings..."
-                  className="w-full bg-transparent text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
-                />
-
-                {searchQuery && (
-                  <button 
-                    type="button" 
-                    onClick={() => setSearchQuery("")} 
-                    className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </motion.div>
-            )}
-          </motion.div>
+      {/* Settings Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 py-1">
+        {/* Page Title */}
+        <div className="flex flex-col">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Settings
+          </h1>
+          <p className="text-[11px] sm:text-xs font-medium text-slate-400 dark:text-zinc-400 mt-0.5">
+            Manage your account, profile, and security preferences
+          </p>
         </div>
 
-        {/* Desktop Inline Search Bar */}
-        <div className="hidden sm:flex relative w-64 lg:w-72 ml-auto">
+        {/* Search Bar - Full Width below title on Mobile, Right-aligned on Desktop */}
+        <div className="relative w-full sm:w-64 lg:w-72">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search settings..."
-            className="w-full pl-9 pr-8 py-2 rounded-2xl bg-slate-100 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700/60 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all shadow-xs"
+            className="w-full pl-9 pr-8 py-3 rounded-4xl bg-slate-100 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700/60 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all shadow-xs"
           />
           {searchQuery && (
-            <button type="button" onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white">
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+            >
               <X className="w-3.5 h-3.5" />
             </button>
           )}
@@ -374,8 +323,14 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
       {!hasMatches && (
         <div className="p-6 rounded-3xl bg-slate-100/60 dark:bg-zinc-900/60 border border-slate-200/80 dark:border-zinc-800/80 flex flex-col items-center text-center gap-2">
           <Search className="w-5 h-5 text-slate-400" />
-          <p className="text-xs text-slate-400">No settings found matching "{searchQuery}"</p>
-          <button type="button" onClick={() => setSearchQuery("")} className="px-3.5 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition">
+          <p className="text-xs text-slate-400">
+            No settings found matching "{searchQuery}"
+          </p>
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="px-3.5 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition"
+          >
             Clear Search
           </button>
         </div>
@@ -385,53 +340,97 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
       {showProfile && (
         <div className="flex flex-col gap-3">
           <div className="relative flex flex-col w-full rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 shadow-sm overflow-hidden">
-            
-            {/* Banner Backdrop with Deep Purple Backcover & Neural Network / Face Mesh Graphic */}
+            {/* Banner Backdrop */}
             <div className="relative h-28 sm:h-40 lg:h-48 w-full bg-[#0a0314] overflow-hidden">
-              
-              {/* Purple Multi-Layer Gradient Background */}
               <div className="absolute inset-0 bg-gradient-to-r from-[#110826] via-[#210b42] to-[#3b0764]" />
-              
-              {/* Radial Purple Glows */}
               <div className="absolute right-6 top-1/2 -translate-y-1/2 w-72 h-72 bg-purple-600/30 rounded-full blur-3xl pointer-events-none" />
               <div className="absolute right-28 top-1/3 -translate-y-1/2 w-48 h-48 bg-cyan-400/20 rounded-full blur-2xl pointer-events-none" />
               <div className="absolute left-10 -bottom-10 w-44 h-44 bg-fuchsia-600/20 rounded-full blur-2xl pointer-events-none" />
 
-              {/* Advanced SVG Neural Network / Digital Face Mesh (Right-Anchored) */}
               <div className="absolute right-0 top-0 bottom-0 w-3/4 sm:w-3/5 pointer-events-none opacity-95">
-                <svg className="w-full h-full" viewBox="0 0 500 200" preserveAspectRatio="xMaxYMid slice" xmlns="http://www.w3.org/2000/svg">
+                <svg
+                  className="w-full h-full"
+                  viewBox="0 0 500 200"
+                  preserveAspectRatio="xMaxYMid slice"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
                   <defs>
-                    <linearGradient id="purpleGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <linearGradient
+                      id="purpleGlow"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="100%"
+                    >
                       <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.9" />
-                      <stop offset="50%" stopColor="#c084fc" stopOpacity="0.7" />
-                      <stop offset="100%" stopColor="#e879f9" stopOpacity="0.4" />
+                      <stop
+                        offset="50%"
+                        stopColor="#c084fc"
+                        stopOpacity="0.7"
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="#e879f9"
+                        stopOpacity="0.4"
+                      />
                     </linearGradient>
 
                     <radialGradient id="cyanStar" cx="50%" cy="50%" r="50%">
                       <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
-                      <stop offset="30%" stopColor="#38bdf8" stopOpacity="0.9" />
+                      <stop
+                        offset="30%"
+                        stopColor="#38bdf8"
+                        stopOpacity="0.9"
+                      />
                       <stop offset="100%" stopColor="#38bdf8" stopOpacity="0" />
                     </radialGradient>
 
                     <radialGradient id="purpleStar" cx="50%" cy="50%" r="50%">
                       <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
-                      <stop offset="35%" stopColor="#d8b4fe" stopOpacity="0.9" />
+                      <stop
+                        offset="35%"
+                        stopColor="#d8b4fe"
+                        stopOpacity="0.9"
+                      />
                       <stop offset="100%" stopColor="#c084fc" stopOpacity="0" />
                     </radialGradient>
                   </defs>
 
-                  {/* Neural Grid / Digital Mesh Poly-Lines */}
-                  <g stroke="url(#purpleGlow)" strokeWidth="0.8" fill="none" opacity="0.8">
-                    {/* Face Profile Polygons */}
-                    <polygon points="340,15 380,35 365,75" fill="rgba(56, 189, 248, 0.12)" />
-                    <polygon points="380,35 435,25 415,85" fill="rgba(192, 132, 252, 0.15)" />
-                    <polygon points="415,85 465,65 475,115" fill="rgba(56, 189, 248, 0.08)" />
-                    <polygon points="365,75 415,85 390,135" fill="rgba(232, 121, 249, 0.12)" />
-                    <polygon points="390,135 445,145 415,85" fill="rgba(192, 132, 252, 0.1)" />
-                    <polygon points="320,95 365,75 350,145" fill="rgba(56, 189, 248, 0.06)" />
-                    <polygon points="445,145 475,115 485,175" fill="rgba(168, 85, 247, 0.12)" />
-                    
-                    {/* Floating Connection Vectors */}
+                  <g
+                    stroke="url(#purpleGlow)"
+                    strokeWidth="0.8"
+                    fill="none"
+                    opacity="0.8"
+                  >
+                    <polygon
+                      points="340,15 380,35 365,75"
+                      fill="rgba(56, 189, 248, 0.12)"
+                    />
+                    <polygon
+                      points="380,35 435,25 415,85"
+                      fill="rgba(192, 132, 252, 0.15)"
+                    />
+                    <polygon
+                      points="415,85 465,65 475,115"
+                      fill="rgba(56, 189, 248, 0.08)"
+                    />
+                    <polygon
+                      points="365,75 415,85 390,135"
+                      fill="rgba(232, 121, 249, 0.12)"
+                    />
+                    <polygon
+                      points="390,135 445,145 415,85"
+                      fill="rgba(192, 132, 252, 0.1)"
+                    />
+                    <polygon
+                      points="320,95 365,75 350,145"
+                      fill="rgba(56, 189, 248, 0.06)"
+                    />
+                    <polygon
+                      points="445,145 475,115 485,175"
+                      fill="rgba(168, 85, 247, 0.12)"
+                    />
+
                     <line x1="340" y1="15" x2="295" y2="45" />
                     <line x1="380" y1="35" x2="400" y2="5" />
                     <line x1="435" y1="25" x2="485" y2="15" />
@@ -440,7 +439,6 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                     <line x1="485" y1="175" x2="440" y2="195" />
                   </g>
 
-                  {/* Interconnected Neural Nodes */}
                   <g fill="#38bdf8">
                     <circle cx="340" cy="15" r="2.5" />
                     <circle cx="380" cy="35" r="3" />
@@ -454,7 +452,6 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                     <circle cx="475" cy="115" r="3.5" fill="#ffffff" />
                   </g>
 
-                  {/* Radiant Neural Starburst Points */}
                   <circle cx="415" cy="85" r="12" fill="url(#cyanStar)" />
                   <circle cx="380" cy="35" r="10" fill="url(#purpleStar)" />
                   <circle cx="475" cy="115" r="11" fill="url(#cyanStar)" />
@@ -466,21 +463,26 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
             {/* Profile Detail Content */}
             <div className="relative px-3.5 sm:px-6 pb-4 sm:pb-6 pt-0">
               <div className="flex justify-between items-end -mt-8 sm:-mt-14 mb-3">
-                <div 
+                <div
                   className="relative cursor-pointer group"
                   onClick={() => setIsEditingProfile(!isEditingProfile)}
                 >
                   <div className="w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-full bg-slate-200 dark:bg-zinc-800 border-2 sm:border-4 border-white dark:border-zinc-900 overflow-hidden shadow-md flex items-center justify-center transition-transform group-hover:scale-102">
                     {user?.profile_picture || user?.avatar ? (
-                      <img 
-                        src={user?.profile_picture || user?.avatar} 
-                        alt="Profile" 
+                      <img
+                        src={user?.profile_picture || user?.avatar}
+                        alt="Profile"
                         className="w-full h-full object-cover"
-                        onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.style.display = "none";
+                        }}
                       />
                     ) : (
                       <span className="text-xl sm:text-3xl font-extrabold text-purple-600 dark:text-purple-400">
-                        {user?.first_name ? user.first_name[0].toUpperCase() : "U"}
+                        {user?.first_name
+                          ? user.first_name[0].toUpperCase()
+                          : "U"}
                       </span>
                     )}
                   </div>
@@ -489,12 +491,16 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                   </div>
                 </div>
 
-                <button 
+                <button
                   type="button"
                   onClick={() => setIsEditingProfile(!isEditingProfile)}
                   className="flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700 text-xs font-semibold hover:bg-slate-200/80 dark:hover:bg-zinc-700/80 transition cursor-pointer shadow-xs"
                 >
-                  {isEditingProfile ? <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Edit3 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-500" />}
+                  {isEditingProfile ? (
+                    <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  ) : (
+                    <Edit3 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-500" />
+                  )}
                   <span>{isEditingProfile ? "Cancel" : "Edit Profile"}</span>
                 </button>
               </div>
@@ -502,24 +508,50 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
               <div className="flex flex-col gap-0.5 sm:gap-1">
                 <div className="flex items-center gap-1.5">
                   <h2 className="text-base sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                    {loading ? "..." : (user?.first_name || user?.last_name ? `${user.first_name} ${user.last_name}` : "User")}
+                    {loading
+                      ? "..."
+                      : user?.first_name || user?.last_name
+                        ? `${user.first_name} ${user.last_name}`
+                        : "User"}
                   </h2>
                   {user?.is_email_verified && (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 sm:w-5 sm:h-5">
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="shrink-0 sm:w-5 sm:h-5"
+                    >
                       <defs>
-                        <linearGradient id="purpleGradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                        <linearGradient
+                          id="purpleGradient"
+                          x1="2"
+                          y1="2"
+                          x2="22"
+                          y2="22"
+                          gradientUnits="userSpaceOnUse"
+                        >
                           <stop offset="0%" stopColor="#A855F7" />
                           <stop offset="100%" stopColor="#6B21A8" />
                         </linearGradient>
                       </defs>
-                      <path d="M12 2L14.15 3.55L16.74 3.19L18.12 5.43L20.67 6.07L21.03 8.68L22.95 10.45L22.18 12.95L22.95 15.45L21.03 17.22L20.67 19.83L18.12 20.47L16.74 22.71L14.15 22.35L12 23.9L9.85 22.35L7.26 22.71L5.88 20.47L3.33 19.83L2.97 17.22L1.05 15.45L1.82 12.95L1.05 10.45L2.97 8.68L3.33 6.07L5.88 5.43L7.26 3.19L9.85 3.55L12 2Z" fill="url(#purpleGradient)"/>
-                      <path d="M9.8 15.6L6.7 12.5L5.3 13.9L9.8 18.4L18.7 9.5L17.3 8.1L9.8 15.6Z" fill="white"/>
+                      <path
+                        d="M12 2L14.15 3.55L16.74 3.19L18.12 5.43L20.67 6.07L21.03 8.68L22.95 10.45L22.18 12.95L22.95 15.45L21.03 17.22L20.67 19.83L18.12 20.47L16.74 22.71L14.15 22.35L12 23.9L9.85 22.35L7.26 22.71L5.88 20.47L3.33 19.83L2.97 17.22L1.05 15.45L1.82 12.95L1.05 10.45L2.97 8.68L3.33 6.07L5.88 5.43L7.26 3.19L9.85 3.55L12 2Z"
+                        fill="url(#purpleGradient)"
+                      />
+                      <path
+                        d="M9.8 15.6L6.7 12.5L5.3 13.9L9.8 18.4L18.7 9.5L17.3 8.1L9.8 15.6Z"
+                        fill="white"
+                      />
                     </svg>
                   )}
                 </div>
 
                 <p className="text-[11px] sm:text-xs font-semibold text-purple-600 dark:text-purple-400">
-                  @{user?.username || (user?.email ? user.email.split("@")[0] : "user")}
+                  @
+                  {user?.username ||
+                    (user?.email ? user.email.split("@")[0] : "user")}
                 </p>
 
                 <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-5 gap-y-1 text-[11px] sm:text-xs font-normal text-slate-400 dark:text-zinc-400 pt-2.5 border-t border-slate-100 dark:border-zinc-800/80 mt-2">
@@ -527,7 +559,7 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                     <Mail className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400" />
                     <span>{user?.email}</span>
                   </div>
-                  
+
                   <div className="flex items-center gap-1">
                     <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400" />
                     <span>Joined {formatDate(user?.date_joined)}</span>
@@ -538,38 +570,42 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                   </span>
                 </div>
               </div>
-
             </div>
           </div>
 
           {/* Edit Profile Form */}
           <AnimatePresence>
             {isEditingProfile && (
-              <motion.form 
+              <motion.form
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                onSubmit={handleProfileSubmit} 
+                onSubmit={handleProfileSubmit}
                 className="overflow-hidden"
               >
                 <div className="p-4 sm:p-5 rounded-3xl bg-slate-100/90 dark:bg-zinc-900/90 border border-slate-200 dark:border-zinc-800 flex flex-col gap-3.5">
                   <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Edit3 className="w-3.5 h-3.5 text-purple-500" /> Edit Profile Details
+                    <Edit3 className="w-3.5 h-3.5 text-purple-500" /> Edit
+                    Profile Details
                   </h3>
 
                   {profileMsg.text && (
-                    <div className={`p-2.5 rounded-xl border text-xs font-medium flex items-center gap-1.5 ${
-                      profileMsg.type === "success" 
-                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400" 
-                        : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
-                    }`}>
+                    <div
+                      className={`p-2.5 rounded-xl border text-xs font-medium flex items-center gap-1.5 ${
+                        profileMsg.type === "success"
+                          ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                          : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
+                      }`}
+                    >
                       {profileMsg.text}
                     </div>
                   )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1">
-                      <label className="text-[10px] sm:text-xs font-semibold text-slate-400">First Name</label>
+                      <label className="text-[10px] sm:text-xs font-semibold text-slate-400">
+                        First Name
+                      </label>
                       <input
                         type="text"
                         value={firstName}
@@ -579,7 +615,9 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <label className="text-[10px] sm:text-xs font-semibold text-slate-400">Last Name</label>
+                      <label className="text-[10px] sm:text-xs font-semibold text-slate-400">
+                        Last Name
+                      </label>
                       <input
                         type="text"
                         value={lastName}
@@ -590,7 +628,9 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] sm:text-xs font-semibold text-slate-400">Username</label>
+                    <label className="text-[10px] sm:text-xs font-semibold text-slate-400">
+                      Username
+                    </label>
                     <input
                       type="text"
                       value={username}
@@ -612,7 +652,11 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                       disabled={profileSaving}
                       className="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow flex items-center gap-1 disabled:opacity-50 transition"
                     >
-                      {profileSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      {profileSaving ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Check className="w-3.5 h-3.5" />
+                      )}
                       Save Changes
                     </button>
                   </div>
@@ -628,7 +672,9 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
         <div className="flex flex-col p-4 sm:p-5 rounded-3xl bg-slate-100/70 dark:bg-zinc-900/70 border border-slate-200/80 dark:border-zinc-800/80">
           <div className="flex items-center gap-1.5 mb-0.5">
             <Moon className="w-4 h-4 text-purple-500" />
-            <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Appearance</h3>
+            <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+              Appearance
+            </h3>
           </div>
           <p className="text-[11px] sm:text-xs text-slate-400 dark:text-zinc-400 mb-3">
             Select your preferred display theme
@@ -657,7 +703,11 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                     <motion.div
                       layoutId="theme-tab-responsive"
                       className="absolute inset-0 bg-white dark:bg-zinc-700 rounded-lg sm:rounded-xl shadow-xs"
-                      transition={{ type: "spring", bounce: 0.1, duration: 0.3 }}
+                      transition={{
+                        type: "spring",
+                        bounce: 0.1,
+                        duration: 0.3,
+                      }}
                     />
                   )}
                   <span className="relative z-10 flex items-center gap-1.5 text-[11px] sm:text-xs">
@@ -678,9 +728,15 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
             <div className="p-4 rounded-3xl bg-slate-100/70 dark:bg-zinc-900/70 border border-slate-200/80 dark:border-zinc-800/80 flex items-center gap-3">
               <ShieldAlert className="w-4 h-4 text-purple-500 shrink-0" />
               <div>
-                <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Social Account Connected</h4>
+                <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                  Social Account Connected
+                </h4>
                 <p className="text-[10px] sm:text-xs text-slate-400">
-                  Signed in via <span className="capitalize font-semibold">{user.auth_provider}</span>.
+                  Signed in via{" "}
+                  <span className="capitalize font-semibold">
+                    {user.auth_provider}
+                  </span>
+                  .
                 </p>
               </div>
             </div>
@@ -691,9 +747,13 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                   <KeyRound className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Security & Password</p>
+                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                    Security & Password
+                  </p>
                   <p className="text-[10px] sm:text-xs text-slate-400 dark:text-zinc-400">
-                    {user?.password_last_updated ? `Updated ${formatDate(user.password_last_updated)}` : "Sign-in credentials"}
+                    {user?.password_last_updated
+                      ? `Updated ${formatDate(user.password_last_updated)}`
+                      : "Sign-in credentials"}
                   </p>
                 </div>
               </div>
@@ -734,10 +794,16 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                 <div className="flex items-center gap-1.5">
                   <KeyRound className="w-4 h-4 text-purple-500" />
                   <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-                    {passwordModalStep === 1 ? "Verify Current Password" : "Set New Password"}
+                    {passwordModalStep === 1
+                      ? "Verify Current Password"
+                      : "Set New Password"}
                   </h3>
                 </div>
-                <button type="button" onClick={closePasswordModal} className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white">
+                <button
+                  type="button"
+                  onClick={closePasswordModal}
+                  className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -747,7 +813,9 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                   <div
                     key={s}
                     className={`h-1 flex-1 rounded-full transition-all ${
-                      passwordModalStep >= s ? "bg-purple-600" : "bg-slate-200 dark:bg-zinc-800"
+                      passwordModalStep >= s
+                        ? "bg-purple-600"
+                        : "bg-slate-200 dark:bg-zinc-800"
                     }`}
                   />
                 ))}
@@ -775,8 +843,14 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
 
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] sm:text-xs font-semibold text-slate-400">Current Password</label>
-                        <Link to="/forgot-password" className="text-[10px] sm:text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline" onClick={closePasswordModal}>
+                        <label className="text-[10px] sm:text-xs font-semibold text-slate-400">
+                          Current Password
+                        </label>
+                        <Link
+                          to="/forgot-password"
+                          className="text-[10px] sm:text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline"
+                          onClick={closePasswordModal}
+                        >
                           Forgot?
                         </Link>
                       </div>
@@ -792,8 +866,18 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                           placeholder="Current password"
                           className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800 border-none text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30"
                         />
-                        <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                          {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowCurrentPassword(!showCurrentPassword)
+                          }
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        >
+                          {showCurrentPassword ? (
+                            <EyeOff className="w-3.5 h-3.5" />
+                          ) : (
+                            <Eye className="w-3.5 h-3.5" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -804,7 +888,11 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                       disabled={passModalVerifying || !currentPassword.trim()}
                       className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow transition flex justify-center items-center gap-1.5 disabled:opacity-50 mt-1 cursor-pointer"
                     >
-                      {passModalVerifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Continue"}
+                      {passModalVerifying ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        "Continue"
+                      )}
                     </button>
                   </motion.div>
                 ) : (
@@ -823,7 +911,9 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                     )}
 
                     <div className="flex flex-col gap-1">
-                      <label className="text-[10px] sm:text-xs font-semibold text-slate-400">New Password</label>
+                      <label className="text-[10px] sm:text-xs font-semibold text-slate-400">
+                        New Password
+                      </label>
                       <div className="relative">
                         <input
                           type={showNewPassword ? "text" : "password"}
@@ -833,16 +923,28 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                           placeholder="New password"
                           className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800 border-none text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30"
                         />
-                        <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                          {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        >
+                          {showNewPassword ? (
+                            <EyeOff className="w-3.5 h-3.5" />
+                          ) : (
+                            <Eye className="w-3.5 h-3.5" />
+                          )}
                         </button>
                       </div>
                     </div>
 
-                    {newPassword.length > 0 && <PasswordChecklist password={newPassword} />}
+                    {newPassword.length > 0 && (
+                      <PasswordChecklist password={newPassword} />
+                    )}
 
                     <div className="flex flex-col gap-1">
-                      <label className="text-[10px] sm:text-xs font-semibold text-slate-400">Confirm Password</label>
+                      <label className="text-[10px] sm:text-xs font-semibold text-slate-400">
+                        Confirm Password
+                      </label>
                       <div className="relative">
                         <input
                           type={showConfirmPassword ? "text" : "password"}
@@ -851,8 +953,18 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                           placeholder="Confirm password"
                           className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800 border-none text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30"
                         />
-                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                          {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowConfirmPassword(!showConfirmPassword)
+                          }
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="w-3.5 h-3.5" />
+                          ) : (
+                            <Eye className="w-3.5 h-3.5" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -868,10 +980,16 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                       <button
                         type="button"
                         onClick={handleSubmitNewPassword}
-                        disabled={passModalSaving || !newPassword || !confirmPassword}
+                        disabled={
+                          passModalSaving || !newPassword || !confirmPassword
+                        }
                         className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow flex justify-center items-center gap-1.5 disabled:opacity-50 transition"
                       >
-                        {passModalSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save Password"}
+                        {passModalSaving ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          "Save Password"
+                        )}
                       </button>
                     </div>
                   </motion.div>
@@ -890,8 +1008,12 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
               <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Log Out</h3>
-              <p className="text-[10px] sm:text-xs text-slate-400">Sign out on this device</p>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                Log Out
+              </h3>
+              <p className="text-[10px] sm:text-xs text-slate-400">
+                Sign out on this device
+              </p>
             </div>
           </div>
 
@@ -913,8 +1035,12 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
               <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h3 className="text-xs sm:text-sm font-bold text-rose-600 dark:text-rose-400">Delete Account</h3>
-              <p className="text-[10px] sm:text-xs text-slate-400">Permanent data erasure</p>
+              <h3 className="text-xs sm:text-sm font-bold text-rose-600 dark:text-rose-400">
+                Delete Account
+              </h3>
+              <p className="text-[10px] sm:text-xs text-slate-400">
+                Permanent data erasure
+              </p>
             </div>
           </div>
 
@@ -932,7 +1058,7 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
       <AnimatePresence>
         {showDeleteModal && (
           <div className="fixed inset-0 z-[140] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs">
-            <motion.div 
+            <motion.div
               initial={{ y: "100%", opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}
@@ -944,9 +1070,15 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-rose-600" />
-                  <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">Delete Account</h3>
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                    Delete Account
+                  </h3>
                 </div>
-                <button type="button" onClick={() => setShowDeleteModal(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -963,7 +1095,10 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
               )}
 
               {user?.auth_provider === "email" ? (
-                <form onSubmit={handleDeleteAccountConfirm} className="flex flex-col gap-3">
+                <form
+                  onSubmit={handleDeleteAccountConfirm}
+                  className="flex flex-col gap-3"
+                >
                   <div className="relative">
                     <input
                       type={showDeletePassword ? "text" : "password"}
@@ -973,40 +1108,84 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                       placeholder="Account password"
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800 border-none text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/30"
                     />
-                    <button type="button" onClick={() => setShowDeletePassword(!showDeletePassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                      {showDeletePassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <button
+                      type="button"
+                      onClick={() => setShowDeletePassword(!showDeletePassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    >
+                      {showDeletePassword ? (
+                        <EyeOff className="w-3.5 h-3.5" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5" />
+                      )}
                     </button>
                   </div>
 
                   <div className="flex justify-end gap-2 pt-1">
-                    <button type="button" onClick={() => setShowDeleteModal(false)} className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-zinc-800 text-slate-500 text-xs font-semibold hover:bg-slate-300/60 transition">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteModal(false)}
+                      className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-zinc-800 text-slate-500 text-xs font-semibold hover:bg-slate-300/60 transition"
+                    >
                       Cancel
                     </button>
-                    <button type="submit" disabled={deleteLoading || !deletePassword} className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow disabled:opacity-50 transition">
+                    <button
+                      type="submit"
+                      disabled={deleteLoading || !deletePassword}
+                      className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow disabled:opacity-50 transition"
+                    >
                       Confirm Delete
                     </button>
                   </div>
                 </form>
               ) : (
                 <div className="flex flex-col gap-3">
-                  {deleteMsg && <p className="text-xs text-purple-600 text-center">{deleteMsg}</p>}
+                  {deleteMsg && (
+                    <p className="text-xs text-purple-600 text-center">
+                      {deleteMsg}
+                    </p>
+                  )}
                   {deleteOtpStep === 1 ? (
                     <div className="flex justify-end gap-2 pt-1">
-                      <button type="button" onClick={() => setShowDeleteModal(false)} className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-zinc-800 text-slate-500 text-xs font-semibold hover:bg-slate-300/60 transition">
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteModal(false)}
+                        className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-zinc-800 text-slate-500 text-xs font-semibold hover:bg-slate-300/60 transition"
+                      >
                         Cancel
                       </button>
-                      <button type="button" disabled={deleteLoading} onClick={handleDeleteRequestOtp} className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow disabled:opacity-50 transition">
+                      <button
+                        type="button"
+                        disabled={deleteLoading}
+                        onClick={handleDeleteRequestOtp}
+                        className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow disabled:opacity-50 transition"
+                      >
                         Send OTP
                       </button>
                     </div>
                   ) : (
-                    <form onSubmit={handleDeleteAccountConfirm} className="flex flex-col gap-3">
-                      <OtpInput length={6} value={deleteOtp} onChange={(val) => setDeleteOtp(val)} />
+                    <form
+                      onSubmit={handleDeleteAccountConfirm}
+                      className="flex flex-col gap-3"
+                    >
+                      <OtpInput
+                        length={6}
+                        value={deleteOtp}
+                        onChange={(val) => setDeleteOtp(val)}
+                      />
                       <div className="flex justify-end gap-2 pt-1">
-                        <button type="button" onClick={() => setShowDeleteModal(false)} className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-zinc-800 text-slate-500 text-xs font-semibold hover:bg-slate-300/60 transition">
+                        <button
+                          type="button"
+                          onClick={() => setShowDeleteModal(false)}
+                          className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-zinc-800 text-slate-500 text-xs font-semibold hover:bg-slate-300/60 transition"
+                        >
                           Cancel
                         </button>
-                        <button type="submit" disabled={deleteLoading || deleteOtp.length !== 6} className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow disabled:opacity-50 transition">
+                        <button
+                          type="submit"
+                          disabled={deleteLoading || deleteOtp.length !== 6}
+                          className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow disabled:opacity-50 transition"
+                        >
                           Confirm Delete
                         </button>
                       </div>
@@ -1018,7 +1197,6 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
           </div>
         )}
       </AnimatePresence>
-
     </div>
   );
 }

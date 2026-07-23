@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import api from "../../services/api";
 import GraphCanvas from "./GraphCanvas";
+import visualizationImg from "../../assets/icons/Visualization.png";
 import {
   Sparkles,
   LineChart,
   BarChart2,
+  BarChart3,
   PieChart,
   Activity,
   Sliders,
@@ -28,7 +30,13 @@ import {
   ChevronDown,
   Eye,
   Check,
-  Code
+  Code,
+  Upload,
+  FolderOpen,
+  SlidersHorizontal,
+  Layers,
+  Palette as PaletteIcon,
+  X,
 } from "lucide-react";
 
 // Initial Configuration Map
@@ -42,7 +50,7 @@ const initialConfig = {
   size_column: "",
   source_column: "",
   target_column: "",
-  
+
   // globals
   title: "",
   subtitle: "",
@@ -61,40 +69,40 @@ const initialConfig = {
   background_color: "#ffffff",
   text_color: "#1e293b",
   font_family: "sans-serif",
-  
+
   // bar
   orientation: "vertical",
   barmode: "group",
   bar_width: 0.8,
   aggregation: "sum",
   sorting: "none",
-  
+
   // pie
   donut: false,
   hole_size: 0.4,
-  
+
   // histogram
   bins: 20,
   histnorm: "count",
-  
+
   // scatter
   trend_line: false,
   marker_size: 20,
-  
+
   // bubble
   max_bubble_size: 30,
-  
+
   // heatmap
   color_palette: "viridis",
   annotations: true,
   grid_width: 0.5,
   square_cells: false,
   color_bar: true,
-  
+
   // box
   box_width: 0.5,
   show_outliers: true,
-  
+
   // network graph
   directed: false,
   node_size: 500,
@@ -103,11 +111,11 @@ const initialConfig = {
   edge_color: "#94a3b8",
   show_labels: true,
   layout: "spring",
-  
+
   // 3d
   camera_x: 1.25,
   camera_y: 1.25,
-  camera_z: 1.25
+  camera_z: 1.25,
 };
 
 export default function VisualizationView({
@@ -124,7 +132,7 @@ export default function VisualizationView({
   setCleanLogs,
   setActiveTab,
   restoredGraph,
-  setRestoredGraph
+  setRestoredGraph,
 }) {
   // App States
   const [profile, setProfile] = useState(null);
@@ -143,12 +151,14 @@ export default function VisualizationView({
     setLoadingDatasetId(ds.id);
     setProfileLoading(true);
     try {
-      const previewRes = await api.get(`cleaning/${ds.id}/preview/?offset=0&limit=100`);
+      const previewRes = await api.get(
+        `cleaning/${ds.id}/preview/?offset=0&limit=100`,
+      );
       const previewData = previewRes.data;
-      
+
       const analyzeRes = await api.get(`visualization/analyze/${ds.id}/`);
       const analysisReport = analyzeRes.data;
-      
+
       setDatasetId(ds.id);
       setMetadata(previewData.metadata);
       setPreview(previewData);
@@ -163,17 +173,17 @@ export default function VisualizationView({
       setLoadingDatasetId(null);
     }
   };
-  
+
   // Active config & undo/redo stacks
   const [config, setConfig] = useState(initialConfig);
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
-  
+
   // Result States
   const [chartHtml, setChartHtml] = useState("");
   const [chartImage, setChartImage] = useState("");
   const [pythonCode, setPythonCode] = useState("");
-  
+
   // UI states
   const [activeSubTab, setActiveSubTab] = useState("data"); // data, properties, customization
   const [copiedCode, setCopiedCode] = useState(false);
@@ -190,7 +200,10 @@ export default function VisualizationView({
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
-      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target)) {
+      if (
+        exportDropdownRef.current &&
+        !exportDropdownRef.current.contains(e.target)
+      ) {
         setShowExportDropdown(false);
       }
     };
@@ -203,10 +216,18 @@ export default function VisualizationView({
     const numCols = profile.numeric_columns || [];
     const catCols = profile.categorical_columns || [];
     const dateCols = profile.date_columns || [];
-    
+
     const type = config.graph_type;
-    
-    if (["Scatter Plot", "Bubble Chart", "3D Scatter Plot", "Histogram", "Box Plot"].includes(type)) {
+
+    if (
+      [
+        "Scatter Plot",
+        "Bubble Chart",
+        "3D Scatter Plot",
+        "Histogram",
+        "Box Plot",
+      ].includes(type)
+    ) {
       return numCols;
     }
     if (type === "Pie Chart") {
@@ -225,9 +246,19 @@ export default function VisualizationView({
     if (!profile) return [];
     const numCols = profile.numeric_columns || [];
     const catCols = profile.categorical_columns || [];
-    
+
     const type = config.graph_type;
-    if (["Bar Chart", "Line Chart", "Scatter Plot", "Pie Chart", "Bubble Chart", "3D Scatter Plot", "Box Plot"].includes(type)) {
+    if (
+      [
+        "Bar Chart",
+        "Line Chart",
+        "Scatter Plot",
+        "Pie Chart",
+        "Bubble Chart",
+        "3D Scatter Plot",
+        "Box Plot",
+      ].includes(type)
+    ) {
       return numCols;
     }
     return [...numCols, ...catCols];
@@ -241,19 +272,20 @@ export default function VisualizationView({
     if (!profile || !config.x_column) return null;
     const xCol = config.x_column;
     const yCol = config.y_column;
-    
+
     const isXNum = profile.numeric_columns?.includes(xCol);
     const isXCat = profile.categorical_columns?.includes(xCol);
     const isXDate = profile.date_columns?.includes(xCol);
-    
+
     const isYNum = yCol ? profile.numeric_columns?.includes(yCol) : false;
     const isYCat = yCol ? profile.categorical_columns?.includes(yCol) : false;
-    
+
     if (yCol) {
       if (isXDate && isYNum) return { library: "plotly", type: "Line Chart" };
       if (isXCat && isYNum) return { library: "plotly", type: "Bar Chart" };
       if (isXNum && isYNum) return { library: "plotly", type: "Scatter Plot" };
-      if (isXCat && isYCat) return { library: "network", type: "Network Graph" };
+      if (isXCat && isYCat)
+        return { library: "network", type: "Network Graph" };
     } else {
       if (isXNum) return { library: "plotly", type: "Histogram" };
       if (isXCat) return { library: "plotly", type: "Pie Chart" };
@@ -270,20 +302,59 @@ export default function VisualizationView({
 
   const highlightPythonCode = (codeText) => {
     if (!codeText) return "";
-    
+
     const lines = codeText.split("\n");
     const keywords = new Set([
-      "import", "as", "from", "def", "return", "if", "else", "elif", "in", 
-      "for", "while", "and", "or", "not", "True", "False", "None"
+      "import",
+      "as",
+      "from",
+      "def",
+      "return",
+      "if",
+      "else",
+      "elif",
+      "in",
+      "for",
+      "while",
+      "and",
+      "or",
+      "not",
+      "True",
+      "False",
+      "None",
     ]);
     const builtins = new Set([
-      "print", "len", "range", "str", "int", "float", "dict", "list", "set",
-      "read_csv", "read_excel", "groupby", "update_layout", "plot", "show",
-      "bar", "barh", "scatter", "hist", "pie", "heatmap", "lineplot", "boxplot",
-      "corr", "subplots", "update_xaxes", "update_yaxes", "add_annotation"
+      "print",
+      "len",
+      "range",
+      "str",
+      "int",
+      "float",
+      "dict",
+      "list",
+      "set",
+      "read_csv",
+      "read_excel",
+      "groupby",
+      "update_layout",
+      "plot",
+      "show",
+      "bar",
+      "barh",
+      "scatter",
+      "hist",
+      "pie",
+      "heatmap",
+      "lineplot",
+      "boxplot",
+      "corr",
+      "subplots",
+      "update_xaxes",
+      "update_yaxes",
+      "add_annotation",
     ]);
-    
-    const highlightedLines = lines.map(line => {
+
+    const highlightedLines = lines.map((line) => {
       let mainPart = line;
       let commentPart = "";
       const hashIdx = line.indexOf("#");
@@ -291,13 +362,16 @@ export default function VisualizationView({
         mainPart = line.substring(0, hashIdx);
         commentPart = line.substring(hashIdx);
       }
-      
+
       const regex = /('[^']*'|"[^"]*"|[a-zA-Z_]\w*|[^a-zA-Z_'"\s]+|\s+)/g;
       let tokens = mainPart.match(regex) || [];
-      
-      const processedTokens = tokens.map(token => {
+
+      const processedTokens = tokens.map((token) => {
         const trimmed = token.trim();
-        if ((token.startsWith("'") && token.endsWith("'")) || (token.startsWith('"') && token.endsWith('"'))) {
+        if (
+          (token.startsWith("'") && token.endsWith("'")) ||
+          (token.startsWith('"') && token.endsWith('"'))
+        ) {
           return `<span class="text-emerald-600 dark:text-emerald-400 font-semibold">${escapeHtml(token)}</span>`;
         }
         if (keywords.has(trimmed)) {
@@ -311,14 +385,14 @@ export default function VisualizationView({
         }
         return escapeHtml(token);
       });
-      
+
       let finalLine = processedTokens.join("");
       if (commentPart) {
         finalLine += `<span class="text-slate-400 dark:text-zinc-500 font-normal">${escapeHtml(commentPart)}</span>`;
       }
       return finalLine;
     });
-    
+
     const html = highlightedLines.join("\n");
     return <code dangerouslySetInnerHTML={{ __html: html }} />;
   };
@@ -343,13 +417,13 @@ export default function VisualizationView({
       // Filter out clean jobs and unique dataset ids
       const uniqueDatasets = [];
       const seenIds = new Set();
-      res.data.forEach(item => {
+      res.data.forEach((item) => {
         if (item.dataset_id && !seenIds.has(item.dataset_id)) {
           seenIds.add(item.dataset_id);
           uniqueDatasets.push({
             id: item.dataset_id,
             name: item.dataset_name,
-            created_at: item.created_at
+            created_at: item.created_at,
           });
         }
       });
@@ -385,7 +459,7 @@ export default function VisualizationView({
 
   // Push new state to undo stack
   const updateConfig = (newConfig) => {
-    setUndoStack(prev => [...prev, config]);
+    setUndoStack((prev) => [...prev, config]);
     setRedoStack([]);
     setConfig(newConfig);
   };
@@ -393,16 +467,16 @@ export default function VisualizationView({
   const handleUndo = () => {
     if (undoStack.length === 0) return;
     const previous = undoStack[undoStack.length - 1];
-    setUndoStack(prev => prev.slice(0, -1));
-    setRedoStack(prev => [...prev, config]);
+    setUndoStack((prev) => prev.slice(0, -1));
+    setRedoStack((prev) => [...prev, config]);
     setConfig(previous);
   };
 
   const handleRedo = () => {
     if (redoStack.length === 0) return;
     const next = redoStack[redoStack.length - 1];
-    setRedoStack(prev => prev.slice(0, -1));
-    setUndoStack(prev => [...prev, config]);
+    setRedoStack((prev) => prev.slice(0, -1));
+    setUndoStack((prev) => [...prev, config]);
     setConfig(next);
   };
 
@@ -411,43 +485,47 @@ export default function VisualizationView({
   };
 
   // Trigger chart generation with debouncing
-  const triggerGeneration = useCallback((currentConfig) => {
-    if (!datasetId) return;
-    
-    setGenerating(true);
-    setGenError("");
-    setGenReason("");
-    setGenRec("");
-    
-    api.post("visualization/generate/", {
-      dataset_id: datasetId,
-      config: currentConfig
-    })
-    .then(res => {
-      setChartHtml(res.data.html);
-      setChartImage(res.data.image);
-      setPythonCode(res.data.python_code);
-      setGenNotes(res.data.notes || []);
-    })
-    .catch(err => {
-      const data = err.response?.data || {};
-      setGenError(data.error || "Failed to generate graph.");
-      setGenReason(data.reason || "Invalid column configurations.");
-      setGenRec(data.recommended || "");
-      setChartHtml("");
-      setChartImage("");
-    })
-    .finally(() => {
-      setGenerating(false);
-    });
-  }, [datasetId]);
+  const triggerGeneration = useCallback(
+    (currentConfig) => {
+      if (!datasetId) return;
+
+      setGenerating(true);
+      setGenError("");
+      setGenReason("");
+      setGenRec("");
+
+      api
+        .post("visualization/generate/", {
+          dataset_id: datasetId,
+          config: currentConfig,
+        })
+        .then((res) => {
+          setChartHtml(res.data.html);
+          setChartImage(res.data.image);
+          setPythonCode(res.data.python_code);
+          setGenNotes(res.data.notes || []);
+        })
+        .catch((err) => {
+          const data = err.response?.data || {};
+          setGenError(data.error || "Failed to generate graph.");
+          setGenReason(data.reason || "Invalid column configurations.");
+          setGenRec(data.recommended || "");
+          setChartHtml("");
+          setChartImage("");
+        })
+        .finally(() => {
+          setGenerating(false);
+        });
+    },
+    [datasetId],
+  );
 
   useEffect(() => {
     if (restoredGraph) {
       if (restoredGraph.config) {
         setConfig({
           ...initialConfig,
-          ...restoredGraph.config
+          ...restoredGraph.config,
         });
       }
       setRestoredGraph(null);
@@ -459,11 +537,11 @@ export default function VisualizationView({
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
-    
+
     debounceTimer.current = setTimeout(() => {
       triggerGeneration(config);
     }, 400); // 400ms debounce
-    
+
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
@@ -471,16 +549,16 @@ export default function VisualizationView({
 
   const handleApplyRecommendation = (rec) => {
     const cols = rec.recommended_columns || [];
-    let updated = { 
-      ...initialConfig, 
-      background_color: config.background_color, 
+    let updated = {
+      ...initialConfig,
+      background_color: config.background_color,
       text_color: config.text_color,
       font_family: config.font_family,
       font_size: config.font_size,
       width: config.width,
-      height: config.height
+      height: config.height,
     };
-    
+
     // Deduce chart type
     if (rec.graph_type === "Heatmap") {
       updated.graph_type = "Heatmap";
@@ -531,7 +609,7 @@ export default function VisualizationView({
       updated.library = "plotly";
       updated.dimensions = cols;
     }
-    
+
     // Auto title
     updated.title = `${rec.graph_type} for ${metadata.name}`;
     updateConfig(updated);
@@ -556,7 +634,7 @@ export default function VisualizationView({
         library: config.library,
         config: config,
         preview_data: chartImage,
-        python_code: pythonCode
+        python_code: pythonCode,
       });
       setSavedSuccess(true);
       setTimeout(() => {
@@ -574,18 +652,29 @@ export default function VisualizationView({
     setExportLoading(true);
     setShowExportDropdown(false);
     try {
-      const res = await api.post("visualization/export/", {
-        dataset_id: datasetId,
-        config: config,
-        format: format
-      }, { responseType: "blob" });
-      
+      const res = await api.post(
+        "visualization/export/",
+        {
+          dataset_id: datasetId,
+          config: config,
+          format: format,
+        },
+        { responseType: "blob" },
+      );
+
       const blob = new Blob([res.data]);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      
-      const fileExt = format === "csv" ? "csv" : format === "json" ? "json" : format === "html" ? "html" : format;
+
+      const fileExt =
+        format === "csv"
+          ? "csv"
+          : format === "json"
+            ? "json"
+            : format === "html"
+              ? "html"
+              : format;
       link.setAttribute("download", `refinex_chart.${fileExt}`);
       document.body.appendChild(link);
       link.click();
@@ -615,56 +704,89 @@ export default function VisualizationView({
   // Empty state selector
   if (!datasetId) {
     return (
-      <div className="space-y-6 max-w-4xl mx-auto animate-fade-in font-sans pb-10">
-        <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col items-center justify-center text-center py-12">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center text-2xl font-bold mb-6 select-none">
-            📊
+      <div className="space-y-6 max-w-4xl mx-auto font-sans pb-10">
+        <div className="p-8 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col items-center justify-center text-center py-14">
+          <div className="mb-6 flex items-center justify-center">
+            <img
+              src={visualizationImg}
+              alt="Visualization Studio"
+              className="w-28 h-28 sm:w-36 sm:h-36 object-contain select-none"
+            />
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-black dark:text-white tracking-tight">RefineX Data Visualization Studio</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-zinc-100 tracking-tight">
+            RefineX Data Visualization Studio
+          </h1>
           <p className="text-sm text-slate-500 dark:text-zinc-400 mt-2 max-w-md leading-relaxed">
-            Please load a dataset to configure custom variables, style settings, and generate Python code in real-time.
+            Please select or load a dataset to configure variables, customize
+            themes, and export production-ready charts.
           </p>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 w-full max-w-lg">
             <button
               onClick={() => setActiveTab("clean")}
-              className="p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#151516] hover:border-primary/50 hover:bg-primary/5 transition shadow-sm text-left flex flex-col items-start gap-2.5 cursor-pointer"
+              className="p-5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-[#151516] hover:border-blue-500/40 hover:bg-white dark:hover:bg-zinc-900 transition-colors shadow-sm text-left flex flex-col items-start gap-3 cursor-pointer group"
             >
-              <span className="p-2.5 rounded-xl bg-primary/10 text-primary text-base">📤</span>
-              <span className="text-xs font-black text-black dark:text-white">Upload New Dataset</span>
-              <span className="text-[10px] text-slate-400 font-semibold leading-normal">Upload a new CSV or Excel sheet in the cleaning module.</span>
+              <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <Upload className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 block">
+                  Upload New Dataset
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium leading-normal block mt-1">
+                  Upload a CSV or Excel document into the cleaning engine.
+                </span>
+              </div>
             </button>
+
             <button
               onClick={() => setActiveTab("history")}
-              className="p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#151516] hover:border-violet-500/50 hover:bg-violet-500/5 transition shadow-sm text-left flex flex-col items-start gap-2.5 cursor-pointer"
+              className="p-5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-[#151516] hover:border-violet-500/40 hover:bg-white dark:hover:bg-zinc-900 transition-colors shadow-sm text-left flex flex-col items-start gap-3 cursor-pointer group"
             >
-              <span className="p-2.5 rounded-xl bg-violet-500/10 text-violet-600 text-base">📂</span>
-              <span className="text-xs font-black text-black dark:text-white">Select from History</span>
-              <span className="text-[10px] text-slate-400 font-semibold leading-normal">Select a previously cleaned and registered audit log.</span>
+              <div className="p-2 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                <FolderOpen className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 block">
+                  Select from History
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium leading-normal block mt-1">
+                  Select a previously cleaned dataset from your repository.
+                </span>
+              </div>
             </button>
           </div>
         </div>
 
         {datasetsList.length > 0 && (
           <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
-            <h2 className="text-sm font-bold text-slate-700 dark:text-zinc-300 mb-4 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-primary" /> Load a Cleaned Dataset from History
+            <h2 className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />{" "}
+              Recent Datasets
             </h2>
-            <div className="space-y-3">
-              {datasetsList.map(ds => (
-                <div key={ds.id} className="flex justify-between items-center p-4 border border-slate-100 dark:border-zinc-800 rounded-xl hover:bg-slate-50 dark:hover:bg-zinc-900/30 transition">
+            <div className="space-y-2">
+              {datasetsList.map((ds) => (
+                <div
+                  key={ds.id}
+                  className="flex justify-between items-center p-3.5 border border-slate-200 dark:border-zinc-800/80 rounded-xl hover:bg-slate-50/80 dark:hover:bg-zinc-900/50 transition-colors"
+                >
                   <div>
-                    <h3 className="text-xs font-bold text-slate-800 dark:text-zinc-200">{ds.name}</h3>
-                    <span className="text-[10px] text-slate-400 block mt-1">Uploaded {new Date(ds.created_at).toLocaleDateString()}</span>
+                    <h3 className="text-xs font-bold text-slate-800 dark:text-zinc-200">
+                      {ds.name}
+                    </h3>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      Uploaded {new Date(ds.created_at).toLocaleDateString()}
+                    </span>
                   </div>
                   <button
                     onClick={() => handleSelectHistoryDataset(ds)}
                     disabled={loadingDatasetId !== null}
-                    className="px-4 py-2 text-2xs font-bold text-violet-600 border border-violet-500/30 hover:bg-violet-500/10 rounded-lg cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    className="px-3 py-1.5 text-2xs font-bold text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                   >
                     {loadingDatasetId === ds.id ? (
                       <>
-                        <RefreshCw className="w-3 h-3 animate-spin" /> Loading...
+                        <RefreshCw className="w-3 h-3 animate-spin" />{" "}
+                        Loading...
                       </>
                     ) : (
                       "Visualize"
@@ -680,16 +802,17 @@ export default function VisualizationView({
   }
 
   return (
-    <div className="space-y-6 text-slate-800 dark:text-zinc-100 animate-fade-in font-sans pb-10 max-w-7xl mx-auto">
-      
+    <div className="space-y-6 text-slate-800 dark:text-zinc-100 font-sans pb-10 max-w-7xl mx-auto">
       {/* Top Banner Dashboard Profile */}
       <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col lg:flex-row justify-between lg:items-center gap-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-black dark:text-white tracking-tight flex items-center gap-3">
-            <LineChart className="w-7 h-7 text-primary" /> RefineX Data Visualization Studio
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-zinc-100 tracking-tight flex items-center gap-2.5">
+            <BarChart3 className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}
+            RefineX Data Visualization Studio
           </h1>
-          <p className="text-sm text-slate-500 dark:text-zinc-400 mt-2">
-            Configure variables, layers, color styles, and typography in real-time. Code automatically generated below.
+          <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
+            Configure data parameters, aesthetics, and layout controls. View and
+            copy auto-generated Python code instantly.
           </p>
         </div>
         <button
@@ -701,75 +824,104 @@ export default function VisualizationView({
             setChartImage("");
             setPythonCode("");
           }}
-          className="px-4 py-2 text-xs font-bold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-250 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-250 rounded-xl cursor-pointer transition shadow-sm border border-slate-200 dark:border-zinc-700 flex items-center gap-1.5 self-start lg:self-center"
+          className="px-3.5 py-2 text-xs font-semibold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 rounded-xl cursor-pointer transition shadow-sm border border-slate-200 dark:border-zinc-700 flex items-center gap-2 self-start lg:self-center"
         >
-          🔄 Change Dataset
+          <RefreshCw className="w-3.5 h-3.5" /> Switch Dataset
         </button>
       </div>
 
-
       {/* Dataset Profile Auto-Analysis Info Summary */}
       {profile && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
-            <span className="text-[10px] uppercase font-bold text-slate-500 block">Total Rows</span>
-            <span className="text-sm font-black text-slate-900 dark:text-zinc-100 mt-1">{profile.total_rows?.toLocaleString()}</span>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+            <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+              Total Rows
+            </span>
+            <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
+              {profile.total_rows?.toLocaleString()}
+            </span>
           </div>
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
-            <span className="text-[10px] uppercase font-bold text-slate-500 block">Total Columns</span>
-            <span className="text-sm font-black text-slate-900 dark:text-zinc-100 mt-1">{profile.total_columns}</span>
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+            <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+              Total Columns
+            </span>
+            <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
+              {profile.total_columns}
+            </span>
           </div>
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
-            <span className="text-[10px] uppercase font-bold text-slate-500 block">File Size</span>
-            <span className="text-sm font-black text-slate-900 dark:text-zinc-100 mt-1">{(profile.file_size / 1024).toFixed(1)} KB</span>
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+            <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+              File Size
+            </span>
+            <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
+              {(profile.file_size / 1024).toFixed(1)} KB
+            </span>
           </div>
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
-            <span className="text-[10px] uppercase font-bold text-slate-500 block">Numeric Columns</span>
-            <span className="text-sm font-black text-violet-600 dark:text-violet-400 mt-1">{profile.numeric_columns?.length || 0}</span>
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+            <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+              Numeric Columns
+            </span>
+            <span className="text-sm font-bold text-blue-600 dark:text-blue-400 mt-1 block">
+              {profile.numeric_columns?.length || 0}
+            </span>
           </div>
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
-            <span className="text-[10px] uppercase font-bold text-slate-500 block">Categorical Columns</span>
-            <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 mt-1">{profile.categorical_columns?.length || 0}</span>
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+            <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+              Categorical Columns
+            </span>
+            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mt-1 block">
+              {profile.categorical_columns?.length || 0}
+            </span>
           </div>
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
-            <span className="text-[10px] uppercase font-bold text-slate-500 block">Duplicate Rows</span>
-            <span className="text-sm font-black text-rose-500 mt-1">{profile.duplicate_rows || 0}</span>
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+            <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+              Duplicate Rows
+            </span>
+            <span className="text-sm font-bold text-rose-500 mt-1 block">
+              {profile.duplicate_rows || 0}
+            </span>
           </div>
         </div>
       )}
 
       {/* Auto Graph Recommendation Carousel Row */}
       {recommendations.length > 0 && (
-        <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
-          <h2 className="text-xs font-bold text-slate-700 dark:text-zinc-300 mb-4 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-violet-500 animate-bounce" /> Smart Auto-Recommendations for your data
+        <div className="p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+          <h2 className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-3.5 flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />{" "}
+            Recommended Visualizations
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {recommendations.slice(0, 3).map((rec, idx) => (
-              <div 
-                key={idx} 
+              <div
+                key={idx}
                 onClick={() => handleApplyRecommendation(rec)}
-                className="group p-4 rounded-xl border border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-900/30 hover:border-violet-500/30 cursor-pointer shadow-sm flex flex-col justify-between transition-all duration-300"
+                className="p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/40 hover:border-blue-500/40 hover:bg-blue-50/20 dark:hover:bg-blue-950/10 cursor-pointer shadow-sm flex flex-col justify-between transition-colors"
               >
                 <div>
                   <div className="flex justify-between items-center">
-                    <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-400">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300">
                       {rec.graph_type}
                     </span>
-                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                       {Math.round(rec.confidence_score * 100)}% Match
                     </span>
                   </div>
-                  <p className="text-[11px] font-medium text-slate-700 dark:text-zinc-300 mt-2.5 leading-relaxed">
+                  <p className="text-xs font-medium text-slate-700 dark:text-zinc-300 mt-2.5 leading-relaxed">
                     {rec.reason}
                   </p>
-                  <p className="text-[10px] text-slate-400 dark:text-zinc-550 mt-1">
-                    <strong className="text-slate-500 dark:text-zinc-400">Case:</strong> {rec.business_use_case}
+                  <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1.5">
+                    <strong className="text-slate-600 dark:text-zinc-300">
+                      Use case:
+                    </strong>{" "}
+                    {rec.business_use_case}
                   </p>
                 </div>
-                <div className="flex justify-between items-center border-t border-slate-200/40 dark:border-zinc-800/40 pt-2.5 mt-3">
-                  <span className="text-[9px] font-bold text-slate-400">Difficulty: {rec.difficulty_level}</span>
-                  <span className="text-[9px] font-bold text-violet-500 group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                <div className="flex justify-between items-center border-t border-slate-200/60 dark:border-zinc-800 pt-2.5 mt-3">
+                  <span className="text-[10px] font-medium text-slate-400">
+                    Level: {rec.difficulty_level}
+                  </span>
+                  <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
                     Apply Plot <Plus className="w-3 h-3" />
                   </span>
                 </div>
@@ -781,45 +933,51 @@ export default function VisualizationView({
 
       {/* Main Studio layout: properties (left) + canvas (middle) + options (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-               {/* Left Sidebar: Data mappings, specific chart settings, and color customizations */}
+        {/* Left Sidebar: Data mappings, specific chart settings, and color customizations */}
         <div className="lg:col-span-1 p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col gap-4 max-w-full overflow-hidden">
-          
           <div className="space-y-4">
             {/* Side sub tab header */}
-            <div className="grid grid-cols-3 border-b border-slate-100 dark:border-zinc-800 pb-2 text-center text-[10px] font-black uppercase tracking-wider">
+            <div className="grid grid-cols-3 border-b border-slate-200 dark:border-zinc-800 pb-2 text-center text-[10px] font-bold uppercase tracking-wider">
               <button
                 onClick={() => setActiveSubTab("data")}
-                className={`pb-2 transition cursor-pointer ${
-                  activeSubTab === "data" ? "text-primary border-b-2 border-primary" : "text-slate-400 dark:text-zinc-500"
+                className={`pb-2 transition cursor-pointer flex items-center justify-center gap-1 ${
+                  activeSubTab === "data"
+                    ? "text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400"
+                    : "text-slate-400 dark:text-zinc-500"
                 }`}
               >
-                Data
+                <Layers className="w-3 h-3" /> Data
               </button>
               <button
                 onClick={() => setActiveSubTab("properties")}
-                className={`pb-2 transition cursor-pointer ${
-                  activeSubTab === "properties" ? "text-primary border-b-2 border-primary" : "text-slate-400 dark:text-zinc-500"
+                className={`pb-2 transition cursor-pointer flex items-center justify-center gap-1 ${
+                  activeSubTab === "properties"
+                    ? "text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400"
+                    : "text-slate-400 dark:text-zinc-500"
                 }`}
               >
-                Properties
+                <SlidersHorizontal className="w-3 h-3" /> Config
               </button>
               <button
                 onClick={() => setActiveSubTab("customization")}
-                className={`pb-2 transition cursor-pointer ${
-                  activeSubTab === "customization" ? "text-primary border-b-2 border-primary" : "text-slate-400 dark:text-zinc-500"
+                className={`pb-2 transition cursor-pointer flex items-center justify-center gap-1 ${
+                  activeSubTab === "customization"
+                    ? "text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400"
+                    : "text-slate-400 dark:text-zinc-500"
                 }`}
               >
-                Custom
+                <PaletteIcon className="w-3 h-3" /> Style
               </button>
             </div>
 
             {/* TAB 1: DATA SETTINGS */}
             {activeSubTab === "data" && profile && (
               <div className="space-y-4 text-xs font-semibold max-h-[500px] overflow-y-auto pr-1 scrollbar-thin">
-                
                 {/* Library Selection */}
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Visualization Library</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                    Engine Engine
+                  </label>
                   <select
                     value={config.library}
                     onChange={(e) => {
@@ -829,7 +987,7 @@ export default function VisualizationView({
                       else if (lib === "seaborn") defGraph = "Heatmap";
                       else if (lib === "matplotlib") defGraph = "Line Chart";
                       else if (lib === "network") defGraph = "Network Graph";
-                      
+
                       updateConfig({
                         ...config,
                         library: lib,
@@ -840,10 +998,10 @@ export default function VisualizationView({
                         color_column: "",
                         size_column: "",
                         source_column: "",
-                        target_column: ""
+                        target_column: "",
                       });
                     }}
-                    className="w-full mt-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-xs font-bold focus:ring-1 focus:ring-primary focus:outline-none"
+                    className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-blue-500 focus:outline-none"
                   >
                     <option value="plotly">Plotly</option>
                     <option value="seaborn">Seaborn</option>
@@ -854,7 +1012,9 @@ export default function VisualizationView({
 
                 {/* Filtered Graph Selection */}
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Visualization Type</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                    Visualization Type
+                  </label>
                   <select
                     value={config.graph_type}
                     onChange={(e) => {
@@ -867,10 +1027,10 @@ export default function VisualizationView({
                         color_column: "",
                         size_column: "",
                         source_column: "",
-                        target_column: ""
+                        target_column: "",
                       });
                     }}
-                    className="w-full mt-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-xs font-bold focus:ring-1 focus:ring-primary focus:outline-none"
+                    className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-blue-500 focus:outline-none"
                   >
                     {config.library === "plotly" && (
                       <>
@@ -912,28 +1072,48 @@ export default function VisualizationView({
                 {config.graph_type === "Network Graph" ? (
                   <>
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Source Node Column</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Source Node Column
+                      </label>
                       <select
                         value={config.source_column}
-                        onChange={(e) => handleColumnSelection("source_column", e.target.value)}
-                        className="w-full mt-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                        onChange={(e) =>
+                          handleColumnSelection("source_column", e.target.value)
+                        }
+                        className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-blue-500 focus:outline-none"
                       >
                         <option value="">-- None --</option>
-                        {[...profile.categorical_columns, ...profile.numeric_columns, ...profile.text_columns].map(c => (
-                          <option key={c} value={c}>{c}</option>
+                        {[
+                          ...profile.categorical_columns,
+                          ...profile.numeric_columns,
+                          ...profile.text_columns,
+                        ].map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
                         ))}
                       </select>
                     </div>
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Target Node Column</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Target Node Column
+                      </label>
                       <select
                         value={config.target_column}
-                        onChange={(e) => handleColumnSelection("target_column", e.target.value)}
-                        className="w-full mt-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                        onChange={(e) =>
+                          handleColumnSelection("target_column", e.target.value)
+                        }
+                        className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-blue-500 focus:outline-none"
                       >
                         <option value="">-- None --</option>
-                        {[...profile.categorical_columns, ...profile.numeric_columns, ...profile.text_columns].map(c => (
-                          <option key={c} value={c}>{c}</option>
+                        {[
+                          ...profile.categorical_columns,
+                          ...profile.numeric_columns,
+                          ...profile.text_columns,
+                        ].map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -943,36 +1123,56 @@ export default function VisualizationView({
                     {/* X axis */}
                     {config.graph_type !== "Scatter Matrix" && (
                       <div>
-                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                          {config.graph_type === "Pie Chart" ? "Labels Column" : "X Axis Column"}
+                        <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                          {config.graph_type === "Pie Chart"
+                            ? "Labels Column"
+                            : "X Axis Column"}
                         </label>
                         <select
                           value={config.x_column}
-                          onChange={(e) => handleColumnSelection("x_column", e.target.value)}
-                          className="w-full mt-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                          onChange={(e) =>
+                            handleColumnSelection("x_column", e.target.value)
+                          }
+                          className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-blue-500 focus:outline-none"
                         >
                           <option value="">-- None --</option>
-                          {getFilteredXColumns().map(c => (
-                            <option key={c} value={c}>{c}</option>
+                          {getFilteredXColumns().map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
                           ))}
                         </select>
                       </div>
                     )}
 
                     {/* Y axis */}
-                    {["Bar Chart", "Line Chart", "Scatter Plot", "Pie Chart", "Bubble Chart", "3D Scatter Plot", "Box Plot"].includes(config.graph_type) && (
+                    {[
+                      "Bar Chart",
+                      "Line Chart",
+                      "Scatter Plot",
+                      "Pie Chart",
+                      "Bubble Chart",
+                      "3D Scatter Plot",
+                      "Box Plot",
+                    ].includes(config.graph_type) && (
                       <div>
-                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                          {config.graph_type === "Pie Chart" ? "Values Column" : "Y Axis Column"}
+                        <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                          {config.graph_type === "Pie Chart"
+                            ? "Values Column"
+                            : "Y Axis Column"}
                         </label>
                         <select
                           value={config.y_column}
-                          onChange={(e) => handleColumnSelection("y_column", e.target.value)}
-                          className="w-full mt-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                          onChange={(e) =>
+                            handleColumnSelection("y_column", e.target.value)
+                          }
+                          className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-blue-500 focus:outline-none"
                         >
                           <option value="">-- None --</option>
-                          {getFilteredYColumns().map(c => (
-                            <option key={c} value={c}>{c}</option>
+                          {getFilteredYColumns().map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -981,15 +1181,24 @@ export default function VisualizationView({
                     {/* Z axis (3D Scatter only) */}
                     {config.graph_type === "3D Scatter Plot" && (
                       <div>
-                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Z Axis Column</label>
+                        <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                          Z Axis Column
+                        </label>
                         <select
                           value={config.z_column}
-                          onChange={(e) => updateConfig({ ...config, z_column: e.target.value })}
-                          className="w-full mt-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                          onChange={(e) =>
+                            updateConfig({
+                              ...config,
+                              z_column: e.target.value,
+                            })
+                          }
+                          className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-blue-500 focus:outline-none"
                         >
                           <option value="">-- None --</option>
-                          {profile.numeric_columns.map(c => (
-                            <option key={c} value={c}>{c}</option>
+                          {profile.numeric_columns.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -998,32 +1207,60 @@ export default function VisualizationView({
                     {/* Bubble size (Bubble only) */}
                     {config.graph_type === "Bubble Chart" && (
                       <div>
-                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Bubble Size Column</label>
+                        <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                          Bubble Size Column
+                        </label>
                         <select
                           value={config.size_column}
-                          onChange={(e) => updateConfig({ ...config, size_column: e.target.value })}
-                          className="w-full mt-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                          onChange={(e) =>
+                            updateConfig({
+                              ...config,
+                              size_column: e.target.value,
+                            })
+                          }
+                          className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-blue-500 focus:outline-none"
                         >
                           <option value="">-- None --</option>
-                          {profile.numeric_columns.map(c => (
-                            <option key={c} value={c}>{c}</option>
+                          {profile.numeric_columns.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
                           ))}
                         </select>
                       </div>
                     )}
 
                     {/* Color mapping column */}
-                    {["Bar Chart", "Line Chart", "Scatter Plot", "Bubble Chart", "3D Scatter Plot", "Scatter Matrix"].includes(config.graph_type) && (
+                    {[
+                      "Bar Chart",
+                      "Line Chart",
+                      "Scatter Plot",
+                      "Bubble Chart",
+                      "3D Scatter Plot",
+                      "Scatter Matrix",
+                    ].includes(config.graph_type) && (
                       <div>
-                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Color Group Column</label>
+                        <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                          Color Group Column
+                        </label>
                         <select
                           value={config.color_column}
-                          onChange={(e) => updateConfig({ ...config, color_column: e.target.value })}
-                          className="w-full mt-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                          onChange={(e) =>
+                            updateConfig({
+                              ...config,
+                              color_column: e.target.value,
+                            })
+                          }
+                          className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-blue-500 focus:outline-none"
                         >
                           <option value="">-- None --</option>
-                          {[...profile.categorical_columns, ...profile.numeric_columns].map(c => (
-                            <option key={c} value={c}>{c}</option>
+                          {[
+                            ...profile.categorical_columns,
+                            ...profile.numeric_columns,
+                          ].map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -1032,21 +1269,31 @@ export default function VisualizationView({
                     {/* Scatter Matrix dimension selector */}
                     {config.graph_type === "Scatter Matrix" && (
                       <div>
-                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Select Dimensions (Multiselect)</label>
-                        <div className="mt-1.5 max-h-36 overflow-y-auto border border-slate-200 dark:border-zinc-800 rounded-xl p-2 bg-slate-50 dark:bg-zinc-900/50 space-y-1.5">
-                          {profile.numeric_columns.map(col => {
+                        <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                          Select Dimensions
+                        </label>
+                        <div className="mt-1.5 max-h-36 overflow-y-auto border border-slate-200 dark:border-zinc-800 rounded-lg p-2 bg-slate-50 dark:bg-zinc-900 space-y-1.5">
+                          {profile.numeric_columns.map((col) => {
                             const dims = config.dimensions || [];
                             const checked = dims.includes(col);
                             return (
-                              <label key={col} className="flex items-center gap-2 text-2xs font-semibold cursor-pointer select-none">
+                              <label
+                                key={col}
+                                className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none"
+                              >
                                 <input
                                   type="checkbox"
                                   checked={checked}
                                   onChange={() => {
-                                    const updatedDims = checked ? dims.filter(d => d !== col) : [...dims, col];
-                                    updateConfig({ ...config, dimensions: updatedDims });
+                                    const updatedDims = checked
+                                      ? dims.filter((d) => d !== col)
+                                      : [...dims, col];
+                                    updateConfig({
+                                      ...config,
+                                      dimensions: updatedDims,
+                                    });
                                   }}
-                                  className="rounded text-primary focus:ring-primary cursor-pointer"
+                                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                 />
                                 {col}
                               </label>
@@ -1057,50 +1304,75 @@ export default function VisualizationView({
                     )}
                   </>
                 )}
-                
+
                 {/* RefineX Recommendation box */}
-                {getSuggestedGraph() && getSuggestedGraph().type !== config.graph_type && (
-                  <div className="p-3.5 rounded-xl border border-violet-500/10 bg-violet-500/5 text-2xs mt-3 flex flex-col gap-2 animate-fade-in font-bold">
-                    <div className="flex items-center gap-1.5 text-violet-650 dark:text-violet-400">
-                      <span>💡 RefineX Suggestion</span>
+                {getSuggestedGraph() &&
+                  getSuggestedGraph().type !== config.graph_type && (
+                    <div className="p-3.5 rounded-xl border border-blue-200 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 text-xs mt-3 flex flex-col gap-2 font-medium">
+                      <div className="flex items-center gap-1.5 text-blue-700 dark:text-blue-400 font-bold">
+                        <Info className="w-3.5 h-3.5" /> Suggestion
+                      </div>
+                      <p className="text-slate-600 dark:text-zinc-300 text-[11px] leading-relaxed">
+                        Based on column selections, consider using a{" "}
+                        <strong className="text-blue-600 dark:text-blue-400">
+                          {getSuggestedGraph().type}
+                        </strong>
+                        .
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateConfig({
+                            ...config,
+                            library: getSuggestedGraph().library,
+                            graph_type: getSuggestedGraph().type,
+                          })
+                        }
+                        className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider self-start cursor-pointer transition shadow-sm"
+                      >
+                        Apply Suggestion
+                      </button>
                     </div>
-                    <p className="text-slate-500 dark:text-zinc-450 leading-relaxed font-semibold normal-case">
-                      Based on the columns you selected, we suggest trying a <strong className="text-violet-600 dark:text-violet-400">{getSuggestedGraph().type}</strong>.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => updateConfig({ ...config, library: getSuggestedGraph().library, graph_type: getSuggestedGraph().type })}
-                      className="px-3 py-1.5 bg-violet-600 hover:bg-violet-755 text-white rounded-lg text-3xs font-extrabold uppercase tracking-wider self-start cursor-pointer transition shadow-sm animate-pulse"
-                    >
-                      Apply Suggestion
-                    </button>
-                  </div>
-                )}
+                  )}
               </div>
             )}
 
             {/* TAB 2: SPECIFIC PROPERTIES */}
             {activeSubTab === "properties" && (
               <div className="space-y-4 text-xs font-semibold max-h-[500px] overflow-y-auto pr-1 scrollbar-thin">
-                
                 {/* 1. Bar Chart Options */}
-                {["Bar Chart", "Bar Plot", "barplot"].includes(config.graph_type) && (
-                  <div className="space-y-4 animate-fade-in">
+                {["Bar Chart", "Bar Plot", "barplot"].includes(
+                  config.graph_type,
+                ) && (
+                  <div className="space-y-4">
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Direction</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Direction
+                      </label>
                       <div className="flex gap-2 mt-1.5">
                         <button
-                          onClick={() => updateConfig({ ...config, orientation: "vertical" })}
-                          className={`flex-1 py-1.5 rounded-lg border text-2xs font-bold cursor-pointer transition ${
-                            config.orientation === "vertical" ? "border-primary text-primary bg-primary/5" : "border-slate-200 dark:border-zinc-800 text-slate-500"
+                          onClick={() =>
+                            updateConfig({ ...config, orientation: "vertical" })
+                          }
+                          className={`flex-1 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition ${
+                            config.orientation === "vertical"
+                              ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30"
+                              : "border-slate-200 dark:border-zinc-800 text-slate-500"
                           }`}
                         >
                           Vertical
                         </button>
                         <button
-                          onClick={() => updateConfig({ ...config, orientation: "horizontal" })}
-                          className={`flex-1 py-1.5 rounded-lg border text-2xs font-bold cursor-pointer transition ${
-                            config.orientation === "horizontal" ? "border-primary text-primary bg-primary/5" : "border-slate-200 dark:border-zinc-800 text-slate-500"
+                          onClick={() =>
+                            updateConfig({
+                              ...config,
+                              orientation: "horizontal",
+                            })
+                          }
+                          className={`flex-1 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition ${
+                            config.orientation === "horizontal"
+                              ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30"
+                              : "border-slate-200 dark:border-zinc-800 text-slate-500"
                           }`}
                         >
                           Horizontal
@@ -1109,11 +1381,15 @@ export default function VisualizationView({
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Bar Layout Mode</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Bar Layout Mode
+                      </label>
                       <select
                         value={config.barmode}
-                        onChange={(e) => updateConfig({ ...config, barmode: e.target.value })}
-                        className="w-full mt-1.5 p-2 rounded border dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-xs focus:outline-none"
+                        onChange={(e) =>
+                          updateConfig({ ...config, barmode: e.target.value })
+                        }
+                        className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:outline-none"
                       >
                         <option value="group">Side-by-side (Group)</option>
                         <option value="stack">Stacked</option>
@@ -1122,25 +1398,41 @@ export default function VisualizationView({
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Bar Width</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Bar Width
+                      </label>
                       <input
                         type="range"
                         min="0.1"
                         max="1.0"
                         step="0.05"
                         value={config.bar_width}
-                        onChange={(e) => updateConfig({ ...config, bar_width: parseFloat(e.target.value) })}
-                        className="w-full mt-1.5 accent-primary"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            bar_width: parseFloat(e.target.value),
+                          })
+                        }
+                        className="w-full mt-1.5 accent-blue-600"
                       />
-                      <span className="text-[10px] text-slate-400 block text-right mt-1">{config.bar_width}</span>
+                      <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                        {config.bar_width}
+                      </span>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Duplicate Aggregation</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Duplicate Aggregation
+                      </label>
                       <select
                         value={config.aggregation}
-                        onChange={(e) => updateConfig({ ...config, aggregation: e.target.value })}
-                        className="w-full mt-1.5 p-2 rounded border dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-xs focus:outline-none"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            aggregation: e.target.value,
+                          })
+                        }
+                        className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:outline-none"
                       >
                         <option value="sum">Sum values</option>
                         <option value="mean">Mean (Average)</option>
@@ -1149,11 +1441,15 @@ export default function VisualizationView({
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Sorting Order</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Sorting Order
+                      </label>
                       <select
                         value={config.sorting}
-                        onChange={(e) => updateConfig({ ...config, sorting: e.target.value })}
-                        className="w-full mt-1.5 p-2 rounded border dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-xs focus:outline-none"
+                        onChange={(e) =>
+                          updateConfig({ ...config, sorting: e.target.value })
+                        }
+                        className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:outline-none"
                       >
                         <option value="none">Default Order</option>
                         <option value="ascending">Ascending Values</option>
@@ -1164,59 +1460,87 @@ export default function VisualizationView({
                 )}
 
                 {/* 2. Pie Chart Options */}
-                {["Pie Chart", "Pie Plot", "pieplot"].includes(config.graph_type) && (
-                  <div className="space-y-4 animate-fade-in">
-                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                {["Pie Chart", "Pie Plot", "pieplot"].includes(
+                  config.graph_type,
+                ) && (
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                       <input
                         type="checkbox"
                         checked={config.donut}
-                        onChange={(e) => updateConfig({ ...config, donut: e.target.checked })}
-                        className="rounded text-primary focus:ring-primary cursor-pointer"
+                        onChange={(e) =>
+                          updateConfig({ ...config, donut: e.target.checked })
+                        }
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                       Donut Hole Layout
                     </label>
 
                     {config.donut && (
                       <div>
-                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Hole Size</label>
+                        <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                          Hole Size
+                        </label>
                         <input
                           type="range"
                           min="0.1"
                           max="0.8"
                           step="0.05"
                           value={config.hole_size}
-                          onChange={(e) => updateConfig({ ...config, hole_size: parseFloat(e.target.value) })}
-                          className="w-full mt-1.5 accent-primary"
+                          onChange={(e) =>
+                            updateConfig({
+                              ...config,
+                              hole_size: parseFloat(e.target.value),
+                            })
+                          }
+                          className="w-full mt-1.5 accent-blue-600"
                         />
-                        <span className="text-[10px] text-slate-400 block text-right mt-1">{config.hole_size * 100}%</span>
+                        <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                          {Math.round(config.hole_size * 100)}%
+                        </span>
                       </div>
                     )}
                   </div>
                 )}
 
                 {/* 3. Histogram Options */}
-                {["Histogram", "dist", "distplot"].includes(config.graph_type) && (
-                  <div className="space-y-4 animate-fade-in">
+                {["Histogram", "dist", "distplot"].includes(
+                  config.graph_type,
+                ) && (
+                  <div className="space-y-4">
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Bins Count</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Bins Count
+                      </label>
                       <input
                         type="range"
                         min="5"
                         max="80"
                         step="1"
                         value={config.bins}
-                        onChange={(e) => updateConfig({ ...config, bins: parseInt(e.target.value) })}
-                        className="w-full mt-1.5 accent-primary"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            bins: parseInt(e.target.value),
+                          })
+                        }
+                        className="w-full mt-1.5 accent-blue-600"
                       />
-                      <span className="text-[10px] text-slate-400 block text-right mt-1">{config.bins} Bins</span>
+                      <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                        {config.bins} Bins
+                      </span>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Normalize Type</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Normalize Type
+                      </label>
                       <select
                         value={config.histnorm}
-                        onChange={(e) => updateConfig({ ...config, histnorm: e.target.value })}
-                        className="w-full mt-1.5 p-2 rounded border dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-xs focus:outline-none"
+                        onChange={(e) =>
+                          updateConfig({ ...config, histnorm: e.target.value })
+                        }
+                        className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:outline-none"
                       >
                         <option value="count">Count Frequency</option>
                         <option value="percent">Percentage %</option>
@@ -1226,20 +1550,33 @@ export default function VisualizationView({
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Bars Orientation</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Bars Orientation
+                      </label>
                       <div className="flex gap-2 mt-1.5">
                         <button
-                          onClick={() => updateConfig({ ...config, orientation: "vertical" })}
-                          className={`flex-1 py-1 rounded-lg border text-2xs font-bold cursor-pointer transition ${
-                            config.orientation === "vertical" ? "border-primary text-primary" : "border-slate-200 dark:border-zinc-800 text-slate-500"
+                          onClick={() =>
+                            updateConfig({ ...config, orientation: "vertical" })
+                          }
+                          className={`flex-1 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition ${
+                            config.orientation === "vertical"
+                              ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30"
+                              : "border-slate-200 dark:border-zinc-800 text-slate-500"
                           }`}
                         >
                           Vertical
                         </button>
                         <button
-                          onClick={() => updateConfig({ ...config, orientation: "horizontal" })}
-                          className={`flex-1 py-1 rounded-lg border text-2xs font-bold cursor-pointer transition ${
-                            config.orientation === "horizontal" ? "border-primary text-primary" : "border-slate-200 dark:border-zinc-800 text-slate-500"
+                          onClick={() =>
+                            updateConfig({
+                              ...config,
+                              orientation: "horizontal",
+                            })
+                          }
+                          className={`flex-1 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition ${
+                            config.orientation === "horizontal"
+                              ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30"
+                              : "border-slate-200 dark:border-zinc-800 text-slate-500"
                           }`}
                         >
                           Horizontal
@@ -1250,202 +1587,308 @@ export default function VisualizationView({
                 )}
 
                 {/* 4. Scatter Plot Options */}
-                {["Scatter Plot", "scatterplot", "scatter"].includes(config.graph_type) && (
-                  <div className="space-y-4 animate-fade-in">
-                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                {["Scatter Plot", "scatterplot", "scatter"].includes(
+                  config.graph_type,
+                ) && (
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                       <input
                         type="checkbox"
                         checked={config.trend_line}
-                        onChange={(e) => updateConfig({ ...config, trend_line: e.target.checked })}
-                        className="rounded text-primary focus:ring-primary cursor-pointer"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            trend_line: e.target.checked,
+                          })
+                        }
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                       Add OLS Trend Line
                     </label>
 
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Marker Point Size</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Marker Point Size
+                      </label>
                       <input
                         type="range"
                         min="5"
                         max="80"
                         step="5"
                         value={config.marker_size}
-                        onChange={(e) => updateConfig({ ...config, marker_size: parseInt(e.target.value) })}
-                        className="w-full mt-1.5 accent-primary"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            marker_size: parseInt(e.target.value),
+                          })
+                        }
+                        className="w-full mt-1.5 accent-blue-600"
                       />
-                      <span className="text-[10px] text-slate-400 block text-right mt-1">{config.marker_size}px</span>
+                      <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                        {config.marker_size}px
+                      </span>
                     </div>
                   </div>
                 )}
 
                 {/* 5. Bubble Chart Options */}
                 {config.graph_type === "Bubble Chart" && (
-                  <div className="space-y-4 animate-fade-in">
+                  <div className="space-y-4">
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Max Bubble Size</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Max Bubble Size
+                      </label>
                       <input
                         type="range"
                         min="10"
                         max="80"
                         step="5"
                         value={config.max_bubble_size}
-                        onChange={(e) => updateConfig({ ...config, max_bubble_size: parseInt(e.target.value) })}
-                        className="w-full mt-1.5 accent-primary"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            max_bubble_size: parseInt(e.target.value),
+                          })
+                        }
+                        className="w-full mt-1.5 accent-blue-600"
                       />
-                      <span className="text-[10px] text-slate-400 block text-right mt-1">{config.max_bubble_size}px</span>
+                      <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                        {config.max_bubble_size}px
+                      </span>
                     </div>
                   </div>
                 )}
 
                 {/* 6. Heatmap Options */}
-                {["Heatmap", "correlationchart"].includes(config.graph_type) && (
-                  <div className="space-y-4 animate-fade-in">
-                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                {["Heatmap", "correlationchart"].includes(
+                  config.graph_type,
+                ) && (
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                       <input
                         type="checkbox"
                         checked={config.annotations}
-                        onChange={(e) => updateConfig({ ...config, annotations: e.target.checked })}
-                        className="rounded text-primary focus:ring-primary cursor-pointer"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            annotations: e.target.checked,
+                          })
+                        }
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                       Show Cell Value Annotations
                     </label>
 
-                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                       <input
                         type="checkbox"
                         checked={config.square_cells}
-                        onChange={(e) => updateConfig({ ...config, square_cells: e.target.checked })}
-                        className="rounded text-primary focus:ring-primary cursor-pointer"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            square_cells: e.target.checked,
+                          })
+                        }
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                       Force Square Grid Cells
                     </label>
 
-                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                       <input
                         type="checkbox"
                         checked={config.color_bar}
-                        onChange={(e) => updateConfig({ ...config, color_bar: e.target.checked })}
-                        className="rounded text-primary focus:ring-primary cursor-pointer"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            color_bar: e.target.checked,
+                          })
+                        }
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                       Show Sidebar Colorbar
                     </label>
 
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Cell Border Width</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Cell Border Width
+                      </label>
                       <input
                         type="range"
                         min="0"
                         max="3"
                         step="0.1"
                         value={config.grid_width}
-                        onChange={(e) => updateConfig({ ...config, grid_width: parseFloat(e.target.value) })}
-                        className="w-full mt-1.5 accent-primary"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            grid_width: parseFloat(e.target.value),
+                          })
+                        }
+                        className="w-full mt-1.5 accent-blue-600"
                       />
-                      <span className="text-[10px] text-slate-400 block text-right mt-1">{config.grid_width}px</span>
+                      <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                        {config.grid_width}px
+                      </span>
                     </div>
                   </div>
                 )}
 
                 {/* 7. Box Plot Options */}
                 {["Box Plot", "boxplot", "box"].includes(config.graph_type) && (
-                  <div className="space-y-4 animate-fade-in">
-                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                       <input
                         type="checkbox"
                         checked={config.show_outliers}
-                        onChange={(e) => updateConfig({ ...config, show_outliers: e.target.checked })}
-                        className="rounded text-primary focus:ring-primary cursor-pointer"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            show_outliers: e.target.checked,
+                          })
+                        }
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                       Show Outlier Points
                     </label>
 
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Box Capsule Width</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Box Capsule Width
+                      </label>
                       <input
                         type="range"
                         min="0.1"
                         max="1.0"
                         step="0.05"
                         value={config.box_width}
-                        onChange={(e) => updateConfig({ ...config, box_width: parseFloat(e.target.value) })}
-                        className="w-full mt-1.5 accent-primary"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            box_width: parseFloat(e.target.value),
+                          })
+                        }
+                        className="w-full mt-1.5 accent-blue-600"
                       />
-                      <span className="text-[10px] text-slate-400 block text-right mt-1">{config.box_width}</span>
+                      <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                        {config.box_width}
+                      </span>
                     </div>
                   </div>
                 )}
 
                 {/* 8. Network Graph Options */}
                 {config.graph_type === "Network Graph" && (
-                  <div className="space-y-4 animate-fade-in">
-                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                       <input
                         type="checkbox"
                         checked={config.directed}
-                        onChange={(e) => updateConfig({ ...config, directed: e.target.checked })}
-                        className="rounded text-primary focus:ring-primary cursor-pointer"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            directed: e.target.checked,
+                          })
+                        }
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                       Directed Edges (Arrows)
                     </label>
 
-                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                       <input
                         type="checkbox"
                         checked={config.show_labels}
-                        onChange={(e) => updateConfig({ ...config, show_labels: e.target.checked })}
-                        className="rounded text-primary focus:ring-primary cursor-pointer"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            show_labels: e.target.checked,
+                          })
+                        }
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                       Show Node Labels
                     </label>
 
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Layout Topology</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Layout Topology
+                      </label>
                       <select
                         value={config.layout}
-                        onChange={(e) => updateConfig({ ...config, layout: e.target.value })}
-                        className="w-full mt-1.5 p-2 rounded border dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-xs focus:outline-none"
+                        onChange={(e) =>
+                          updateConfig({ ...config, layout: e.target.value })
+                        }
+                        className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:outline-none"
                       >
                         <option value="spring">Spring-Force layout</option>
-                        <option value="kamada-kawai">Kamada-Kawai layout</option>
+                        <option value="kamada-kawai">
+                          Kamada-Kawai layout
+                        </option>
                         <option value="circular">Circular layout</option>
                         <option value="random">Random layout</option>
                       </select>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Node Size</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Node Size
+                      </label>
                       <input
                         type="range"
                         min="100"
                         max="2500"
                         step="100"
                         value={config.node_size}
-                        onChange={(e) => updateConfig({ ...config, node_size: parseInt(e.target.value) })}
-                        className="w-full mt-1.5 accent-primary"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            node_size: parseInt(e.target.value),
+                          })
+                        }
+                        className="w-full mt-1.5 accent-blue-600"
                       />
-                      <span className="text-[10px] text-slate-400 block text-right mt-1">{config.node_size}</span>
+                      <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                        {config.node_size}
+                      </span>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Edge Width</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Edge Width
+                      </label>
                       <input
                         type="range"
                         min="0.5"
                         max="8"
                         step="0.5"
                         value={config.edge_width}
-                        onChange={(e) => updateConfig({ ...config, edge_width: parseFloat(e.target.value) })}
-                        className="w-full mt-1.5 accent-primary"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            edge_width: parseFloat(e.target.value),
+                          })
+                        }
+                        className="w-full mt-1.5 accent-blue-600"
                       />
-                      <span className="text-[10px] text-slate-400 block text-right mt-1">{config.edge_width}px</span>
+                      <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                        {config.edge_width}px
+                      </span>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Node Base Color</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Node Base Color
+                      </label>
                       <input
                         type="color"
                         value={config.node_color}
-                        onChange={(e) => updateConfig({ ...config, node_color: e.target.value })}
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            node_color: e.target.value,
+                          })
+                        }
                         className="w-full mt-1.5 h-8 border rounded-lg cursor-pointer bg-transparent"
                       />
                     </div>
@@ -1454,45 +1897,72 @@ export default function VisualizationView({
 
                 {/* 9. 3D Options */}
                 {config.graph_type === "3D Scatter Plot" && (
-                  <div className="space-y-4 animate-fade-in">
+                  <div className="space-y-4">
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Camera X Orbit</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Camera X Orbit
+                      </label>
                       <input
                         type="range"
                         min="-3.0"
                         max="3.0"
                         step="0.1"
                         value={config.camera_x}
-                        onChange={(e) => updateConfig({ ...config, camera_x: parseFloat(e.target.value) })}
-                        className="w-full mt-1.5 accent-primary"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            camera_x: parseFloat(e.target.value),
+                          })
+                        }
+                        className="w-full mt-1.5 accent-blue-600"
                       />
-                      <span className="text-[10px] text-slate-400 block text-right mt-1">{config.camera_x}</span>
+                      <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                        {config.camera_x}
+                      </span>
                     </div>
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Camera Y Orbit</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Camera Y Orbit
+                      </label>
                       <input
                         type="range"
                         min="-3.0"
                         max="3.0"
                         step="0.1"
                         value={config.camera_y}
-                        onChange={(e) => updateConfig({ ...config, camera_y: parseFloat(e.target.value) })}
-                        className="w-full mt-1.5 accent-primary"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            camera_y: parseFloat(e.target.value),
+                          })
+                        }
+                        className="w-full mt-1.5 accent-blue-600"
                       />
-                      <span className="text-[10px] text-slate-400 block text-right mt-1">{config.camera_y}</span>
+                      <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                        {config.camera_y}
+                      </span>
                     </div>
                     <div>
-                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Camera Z Orbit</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Camera Z Orbit
+                      </label>
                       <input
                         type="range"
                         min="-3.0"
                         max="3.0"
                         step="0.1"
                         value={config.camera_z}
-                        onChange={(e) => updateConfig({ ...config, camera_z: parseFloat(e.target.value) })}
-                        className="w-full mt-1.5 accent-primary"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            camera_z: parseFloat(e.target.value),
+                          })
+                        }
+                        className="w-full mt-1.5 accent-blue-600"
                       />
-                      <span className="text-[10px] text-slate-400 block text-right mt-1">{config.camera_z}</span>
+                      <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                        {config.camera_z}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -1501,59 +1971,81 @@ export default function VisualizationView({
 
             {/* TAB 3: CUSTOMIZATION SETTINGS */}
             {activeSubTab === "customization" && (
-              <div className="space-y-4 text-xs font-semibold max-h-[500px] overflow-y-auto pr-1 scrollbar-thin animate-fade-in">
-                
+              <div className="space-y-4 text-xs font-semibold max-h-[500px] overflow-y-auto pr-1 scrollbar-thin">
                 {/* Titles */}
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Chart Main Title</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                    Chart Main Title
+                  </label>
                   <input
                     type="text"
                     value={config.title}
-                    onChange={(e) => updateConfig({ ...config, title: e.target.value })}
+                    onChange={(e) =>
+                      updateConfig({ ...config, title: e.target.value })
+                    }
                     placeholder="Enter main title..."
-                    className="w-full mt-1.5 p-2 rounded border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 focus:outline-none"
+                    className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Subtitle</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                    Subtitle
+                  </label>
                   <input
                     type="text"
                     value={config.subtitle}
-                    onChange={(e) => updateConfig({ ...config, subtitle: e.target.value })}
+                    onChange={(e) =>
+                      updateConfig({ ...config, subtitle: e.target.value })
+                    }
                     placeholder="Enter subtitle..."
-                    className="w-full mt-1.5 p-2 rounded border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 focus:outline-none"
+                    className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Footnote Caption</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                    Footnote Caption
+                  </label>
                   <input
                     type="text"
                     value={config.caption}
-                    onChange={(e) => updateConfig({ ...config, caption: e.target.value })}
+                    onChange={(e) =>
+                      updateConfig({ ...config, caption: e.target.value })
+                    }
                     placeholder="Enter caption metadata..."
-                    className="w-full mt-1.5 p-2 rounded border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 focus:outline-none"
+                    className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 focus:outline-none"
                   />
                 </div>
 
                 {/* Colors */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Canvas BG</label>
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                      Canvas BG
+                    </label>
                     <input
                       type="color"
                       value={config.background_color}
-                      onChange={(e) => updateConfig({ ...config, background_color: e.target.value })}
+                      onChange={(e) =>
+                        updateConfig({
+                          ...config,
+                          background_color: e.target.value,
+                        })
+                      }
                       className="w-full mt-1.5 h-8 border rounded-lg cursor-pointer bg-transparent"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Text Color</label>
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                      Text Color
+                    </label>
                     <input
                       type="color"
                       value={config.text_color}
-                      onChange={(e) => updateConfig({ ...config, text_color: e.target.value })}
+                      onChange={(e) =>
+                        updateConfig({ ...config, text_color: e.target.value })
+                      }
                       className="w-full mt-1.5 h-8 border rounded-lg cursor-pointer bg-transparent"
                     />
                   </div>
@@ -1562,11 +2054,18 @@ export default function VisualizationView({
                 {/* Seaborn Palette */}
                 {config.library === "seaborn" && (
                   <div>
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Color Palette</label>
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                      Color Palette
+                    </label>
                     <select
                       value={config.color_palette}
-                      onChange={(e) => updateConfig({ ...config, color_palette: e.target.value })}
-                      className="w-full mt-1.5 p-2 rounded border dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 focus:outline-none"
+                      onChange={(e) =>
+                        updateConfig({
+                          ...config,
+                          color_palette: e.target.value,
+                        })
+                      }
+                      className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 focus:outline-none"
                     >
                       <option value="deep">Deep</option>
                       <option value="muted">Muted</option>
@@ -1582,11 +2081,15 @@ export default function VisualizationView({
 
                 {/* Typography */}
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Font Family</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                    Font Family
+                  </label>
                   <select
                     value={config.font_family}
-                    onChange={(e) => updateConfig({ ...config, font_family: e.target.value })}
-                    className="w-full mt-1.5 p-2 rounded border dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 focus:outline-none"
+                    onChange={(e) =>
+                      updateConfig({ ...config, font_family: e.target.value })
+                    }
+                    className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 focus:outline-none"
                   >
                     <option value="sans-serif">Modern Sans-Serif</option>
                     <option value="serif">Classic Serif</option>
@@ -1597,36 +2100,49 @@ export default function VisualizationView({
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Font Size</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                    Font Size
+                  </label>
                   <input
                     type="range"
                     min="6"
                     max="24"
                     value={config.font_size}
-                    onChange={(e) => updateConfig({ ...config, font_size: parseInt(e.target.value) })}
-                    className="w-full mt-1.5 accent-primary"
+                    onChange={(e) =>
+                      updateConfig({
+                        ...config,
+                        font_size: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full mt-1.5 accent-blue-600"
                   />
-                  <span className="text-[10px] text-slate-400 block text-right mt-1">{config.font_size}px</span>
+                  <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                    {config.font_size}px
+                  </span>
                 </div>
 
                 {/* Grid & Legend */}
                 <div className="flex flex-wrap gap-4 pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                     <input
                       type="checkbox"
                       checked={config.grid}
-                      onChange={(e) => updateConfig({ ...config, grid: e.target.checked })}
-                      className="rounded text-primary focus:ring-primary cursor-pointer"
+                      onChange={(e) =>
+                        updateConfig({ ...config, grid: e.target.checked })
+                      }
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                     />
                     Show Grid
                   </label>
 
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                     <input
                       type="checkbox"
                       checked={config.legend}
-                      onChange={(e) => updateConfig({ ...config, legend: e.target.checked })}
-                      className="rounded text-primary focus:ring-primary cursor-pointer"
+                      onChange={(e) =>
+                        updateConfig({ ...config, legend: e.target.checked })
+                      }
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                     />
                     Show Legend
                   </label>
@@ -1635,25 +2151,39 @@ export default function VisualizationView({
                 {/* Dimensions */}
                 <div className="grid grid-cols-2 gap-2 pt-2">
                   <div>
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Width</label>
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                      Width
+                    </label>
                     <input
                       type="number"
                       min="300"
                       max="2000"
                       value={config.width}
-                      onChange={(e) => updateConfig({ ...config, width: parseInt(e.target.value) })}
-                      className="w-full mt-1.5 p-1 rounded border dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 focus:outline-none"
+                      onChange={(e) =>
+                        updateConfig({
+                          ...config,
+                          width: parseInt(e.target.value),
+                        })
+                      }
+                      className="w-full mt-1.5 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Height</label>
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                      Height
+                    </label>
                     <input
                       type="number"
                       min="200"
                       max="1500"
                       value={config.height}
-                      onChange={(e) => updateConfig({ ...config, height: parseInt(e.target.value) })}
-                      className="w-full mt-1.5 p-1 rounded border dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 focus:outline-none"
+                      onChange={(e) =>
+                        updateConfig({
+                          ...config,
+                          height: parseInt(e.target.value),
+                        })
+                      }
+                      className="w-full mt-1.5 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1661,34 +2191,56 @@ export default function VisualizationView({
                 {/* Margins */}
                 {config.library === "plotly" && (
                   <div>
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Margins (L / R / T / B)</label>
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                      Margins (L / R / T / B)
+                    </label>
                     <div className="grid grid-cols-4 gap-1 mt-1.5">
                       <input
                         type="number"
                         value={config.margin_left}
-                        onChange={(e) => updateConfig({ ...config, margin_left: parseInt(e.target.value) })}
-                        className="p-1 rounded border dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-center focus:outline-none"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            margin_left: parseInt(e.target.value),
+                          })
+                        }
+                        className="p-1 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-center focus:outline-none text-xs"
                         title="Left margin"
                       />
                       <input
                         type="number"
                         value={config.margin_right}
-                        onChange={(e) => updateConfig({ ...config, margin_right: parseInt(e.target.value) })}
-                        className="p-1 rounded border dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-center focus:outline-none"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            margin_right: parseInt(e.target.value),
+                          })
+                        }
+                        className="p-1 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-center focus:outline-none text-xs"
                         title="Right margin"
                       />
                       <input
                         type="number"
                         value={config.margin_top}
-                        onChange={(e) => updateConfig({ ...config, margin_top: parseInt(e.target.value) })}
-                        className="p-1 rounded border dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-center focus:outline-none"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            margin_top: parseInt(e.target.value),
+                          })
+                        }
+                        className="p-1 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-center focus:outline-none text-xs"
                         title="Top margin"
                       />
                       <input
                         type="number"
                         value={config.margin_bottom}
-                        onChange={(e) => updateConfig({ ...config, margin_bottom: parseInt(e.target.value) })}
-                        className="p-1 rounded border dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-center focus:outline-none"
+                        onChange={(e) =>
+                          updateConfig({
+                            ...config,
+                            margin_bottom: parseInt(e.target.value),
+                          })
+                        }
+                        className="p-1 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-center focus:outline-none text-xs"
                         title="Bottom margin"
                       />
                     </div>
@@ -1697,52 +2249,66 @@ export default function VisualizationView({
 
                 {/* Label Rotation */}
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Axis Label Rotation</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                    Axis Label Rotation
+                  </label>
                   <input
                     type="range"
                     min="0"
                     max="90"
                     value={config.axis_rotation}
-                    onChange={(e) => updateConfig({ ...config, axis_rotation: parseInt(e.target.value) })}
-                    className="w-full mt-1.5 accent-primary"
+                    onChange={(e) =>
+                      updateConfig({
+                        ...config,
+                        axis_rotation: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full mt-1.5 accent-blue-600"
                   />
-                  <span className="text-[10px] text-slate-400 block text-right mt-1">{config.axis_rotation}°</span>
+                  <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                    {config.axis_rotation}°
+                  </span>
                 </div>
 
                 {/* Opacity */}
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Drawing Opacity</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                    Drawing Opacity
+                  </label>
                   <input
                     type="range"
                     min="0.1"
                     max="1.0"
                     step="0.05"
                     value={config.opacity}
-                    onChange={(e) => updateConfig({ ...config, opacity: parseFloat(e.target.value) })}
-                    className="w-full mt-1.5 accent-primary"
+                    onChange={(e) =>
+                      updateConfig({
+                        ...config,
+                        opacity: parseFloat(e.target.value),
+                      })
+                    }
+                    className="w-full mt-1.5 accent-blue-600"
                   />
-                  <span className="text-[10px] text-slate-400 block text-right mt-1">{config.opacity * 100}%</span>
+                  <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                    {Math.round(config.opacity * 100)}%
+                  </span>
                 </div>
-
               </div>
             )}
           </div>
+        </div>
 
-
-
-        </div>        {/* Center Canvas Area: Toolbar + canvas display + smart notes list */}
+        {/* Center Canvas Area: Toolbar + canvas display + smart notes list */}
         <div className="lg:col-span-3 space-y-6">
           <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-            
             {/* Horizontal Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-250/50 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30">
-              
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30">
               {/* Undo / Redo */}
               <div className="flex items-center gap-1">
                 <button
                   onClick={handleUndo}
                   disabled={undoStack.length === 0}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400 disabled:opacity-30 cursor-pointer transition"
+                  className="p-1.5 rounded-lg hover:bg-slate-200/60 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400 disabled:opacity-30 cursor-pointer transition"
                   title="Undo"
                 >
                   <Undo2 className="w-4 h-4" />
@@ -1750,64 +2316,99 @@ export default function VisualizationView({
                 <button
                   onClick={handleRedo}
                   disabled={redoStack.length === 0}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400 disabled:opacity-30 cursor-pointer transition"
+                  className="p-1.5 rounded-lg hover:bg-slate-200/60 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400 disabled:opacity-30 cursor-pointer transition"
                   title="Redo"
                 >
                   <Redo2 className="w-4 h-4" />
                 </button>
                 <button
                   onClick={handleReset}
-                  className="px-2.5 py-1 text-3xs uppercase font-extrabold tracking-wider border border-slate-250 dark:border-zinc-700 rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-500 dark:text-zinc-400 cursor-pointer transition ml-1"
+                  className="px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider border border-slate-200 dark:border-zinc-700 rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400 cursor-pointer transition ml-1"
                 >
                   Reset
                 </button>
               </div>
 
               {/* Save & Export & View Code */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowCodeDialog(true)}
                   disabled={!pythonCode}
-                  className="px-3.5 py-1.5 text-2xs font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg cursor-pointer flex items-center gap-1.5 shadow-sm transition"
+                  className="px-3 py-1.5 text-xs font-semibold bg-slate-900 dark:bg-zinc-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 disabled:opacity-50 rounded-lg cursor-pointer flex items-center gap-1.5 transition shadow-sm"
                 >
                   <Code className="w-3.5 h-3.5" /> View Code
                 </button>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setSaveName(`${config.graph_type} for ${metadata.name}`);
-                      setShowSaveDialog(true);
-                    }}
-                    className="px-3.5 py-1.5 text-2xs font-bold bg-violet-600 hover:bg-violet-755 text-white rounded-lg cursor-pointer flex items-center gap-1.5 shadow-sm transition"
-                  >
-                    <Save className="w-3.5 h-3.5" /> Save
-                  </button>
+                <button
+                  onClick={() => {
+                    setSaveName(`${config.graph_type} for ${metadata.name}`);
+                    setShowSaveDialog(true);
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer flex items-center gap-1.5 transition shadow-sm"
+                >
+                  <Save className="w-3.5 h-3.5" /> Save
+                </button>
 
-                  <div className="relative" ref={exportDropdownRef}>
-                    <button
-                      onClick={() => setShowExportDropdown(!showExportDropdown)}
-                      disabled={exportLoading}
-                      className="px-3.5 py-1.5 text-2xs font-bold bg-slate-900 dark:bg-zinc-800 hover:bg-black hover:dark:bg-zinc-750 text-white rounded-lg cursor-pointer flex items-center gap-1.5 shadow-sm transition"
-                    >
-                      <Download className="w-3.5 h-3.5" /> {exportLoading ? "Exporting..." : "Export"} <ChevronDown className="w-3 h-3" />
-                    </button>
-                    {showExportDropdown && (
-                      <div className="absolute right-0 mt-1.5 w-36 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-lg z-30 py-1.5 animate-fade-in font-bold text-2xs">
-                        <button onClick={() => handleExport("png")} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300">PNG Image</button>
-                        <button onClick={() => handleExport("svg")} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300">SVG Vector</button>
-                        <button onClick={() => handleExport("jpeg")} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300">JPEG Image</button>
-                        <button onClick={() => handleExport("pdf")} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300">PDF Document</button>
-                        <button onClick={() => handleExport("html")} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300">HTML File</button>
-                        <button onClick={() => handleExport("json")} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300">JSON Config</button>
-                        <button onClick={() => handleExport("csv")} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-750 dark:text-zinc-300">CSV Clean Data</button>
-                      </div>
-                    )}
-                  </div>
+                <div className="relative" ref={exportDropdownRef}>
+                  <button
+                    onClick={() => setShowExportDropdown(!showExportDropdown)}
+                    disabled={exportLoading}
+                    className="px-3 py-1.5 text-xs font-semibold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 rounded-lg cursor-pointer flex items-center gap-1.5 border border-slate-200 dark:border-zinc-700 transition shadow-sm"
+                  >
+                    <Download className="w-3.5 h-3.5" />{" "}
+                    {exportLoading ? "Exporting..." : "Export"}{" "}
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                  {showExportDropdown && (
+                    <div className="absolute right-0 mt-1.5 w-36 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-lg z-30 py-1.5 font-medium text-xs">
+                      <button
+                        onClick={() => handleExport("png")}
+                        className="w-full text-left px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300"
+                      >
+                        PNG Image
+                      </button>
+                      <button
+                        onClick={() => handleExport("svg")}
+                        className="w-full text-left px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300"
+                      >
+                        SVG Vector
+                      </button>
+                      <button
+                        onClick={() => handleExport("jpeg")}
+                        className="w-full text-left px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300"
+                      >
+                        JPEG Image
+                      </button>
+                      <button
+                        onClick={() => handleExport("pdf")}
+                        className="w-full text-left px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300"
+                      >
+                        PDF Document
+                      </button>
+                      <button
+                        onClick={() => handleExport("html")}
+                        className="w-full text-left px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300"
+                      >
+                        HTML File
+                      </button>
+                      <button
+                        onClick={() => handleExport("json")}
+                        className="w-full text-left px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300"
+                      >
+                        JSON Config
+                      </button>
+                      <button
+                        onClick={() => handleExport("csv")}
+                        className="w-full text-left px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300"
+                      >
+                        CSV Clean Data
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
- 
+
             {/* Editor Canvas Canvas */}
             <div className="p-5 flex justify-center bg-slate-50/50 dark:bg-zinc-900/10 min-h-[400px]">
               <GraphCanvas
@@ -1823,81 +2424,105 @@ export default function VisualizationView({
                 recommendation={genRec}
               />
             </div>
-             
           </div>
- 
+
           {/* Smart Engine Statistics & Insights under the graph */}
           {profile && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
               {/* Smart decisions applied */}
-              <div className="p-4 rounded-2xl border border-blue-500/10 bg-blue-500/5 dark:bg-blue-950/10 text-xs font-semibold text-blue-605 dark:text-blue-400 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Smart Engine Decisions applied:</span>
+              <div className="p-4 rounded-2xl border border-blue-200 dark:border-blue-900/30 bg-blue-50/40 dark:bg-blue-950/10 text-xs text-blue-900 dark:text-blue-300 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
+                  Engine Decisions Applied
+                </span>
                 {genNotes.length > 0 ? (
                   genNotes.map((note, idx) => (
-                    <div key={idx} className="flex items-start gap-1.5 normal-case font-bold">
-                      <span className="text-slate-400">›</span>
+                    <div
+                      key={idx}
+                      className="flex items-start gap-1.5 font-medium"
+                    >
+                      <span className="text-slate-400">•</span>
                       <span>{note}</span>
                     </div>
                   ))
                 ) : (
-                  <div className="text-slate-400 italic font-medium normal-case">No override decisions active. Render matching default canvas settings.</div>
+                  <div className="text-slate-500 font-medium text-xs">
+                    No override decisions active. Rendering default canvas
+                    layout.
+                  </div>
                 )}
               </div>
-              
+
               {/* Stats Panel */}
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm text-xs font-semibold space-y-2">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block pb-1 border-b border-slate-100 dark:border-zinc-850">Smart Engine Statistics</span>
-                <div className="grid grid-cols-2 gap-4 pt-1 normal-case text-slate-600 dark:text-zinc-300">
+              <div className="p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm text-xs space-y-2">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block pb-1 border-b border-slate-100 dark:border-zinc-800">
+                  Dataset Diagnostics
+                </span>
+                <div className="grid grid-cols-2 gap-4 pt-1 text-slate-600 dark:text-zinc-300">
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Total Cells</span>
-                    <span className="text-sm font-black text-slate-900 dark:text-zinc-100">{(profile.total_rows * profile.total_columns)?.toLocaleString()}</span>
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">
+                      Total Cells
+                    </span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                      {(
+                        profile.total_rows * profile.total_columns
+                      )?.toLocaleString()}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Null Proportion</span>
-                    <span className="text-sm font-black text-slate-900 dark:text-zinc-100">
-                      {profile.total_nulls?.toLocaleString()} ({((profile.total_nulls / (profile.total_rows * profile.total_columns || 1)) * 100).toFixed(1)}%)
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">
+                      Null Ratio
+                    </span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                      {profile.total_nulls?.toLocaleString()} (
+                      {(
+                        (profile.total_nulls /
+                          (profile.total_rows * profile.total_columns || 1)) *
+                        100
+                      ).toFixed(1)}
+                      %)
                     </span>
                   </div>
                 </div>
               </div>
             </div>
           )}
- 
         </div>
-
       </div>
 
       {/* Save Chart Dialog */}
       {showSaveDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 p-6 shadow-xl space-y-4">
-            <h3 className="text-base font-black text-black dark:text-white">Save Current Visualization</h3>
-            <p className="text-2xs text-slate-400 leading-normal">
-              Enter a descriptive name to store this visualization in your execution and audit log history.
+            <h3 className="text-base font-bold text-slate-900 dark:text-zinc-100">
+              Save Visualization
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+              Enter a descriptive name to archive this visualization in your
+              history workspace.
             </p>
             <input
               type="text"
               value={saveName}
               onChange={(e) => setSaveName(e.target.value)}
-              placeholder="E.g. Monthly Marketing Spending vs conversions"
-              className="w-full p-2.5 rounded-xl border border-slate-250 dark:border-zinc-800 text-xs bg-slate-50 dark:bg-zinc-950"
+              placeholder="e.g., Q3 Marketing Revenue vs Expenditure"
+              className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-zinc-800 text-xs bg-slate-50 dark:bg-zinc-950 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             {savedSuccess && (
-              <div className="p-2.5 rounded-xl border border-emerald-500/10 bg-emerald-500/5 text-xs text-emerald-600 font-bold text-center">
-                ✓ Visualization saved to history successfully!
+              <div className="p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/20 text-xs text-emerald-700 dark:text-emerald-400 font-medium text-center">
+                Visualization saved successfully.
               </div>
             )}
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-zinc-800">
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-zinc-800">
               <button
                 onClick={() => setShowSaveDialog(false)}
-                className="px-4 py-2 text-xs font-bold rounded-lg border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer"
+                className="px-3.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveToHistory}
                 disabled={saveLoading}
-                className="px-4 py-2 text-xs font-bold rounded-lg bg-violet-600 hover:bg-violet-750 text-white cursor-pointer"
+                className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
               >
                 {saveLoading ? "Saving..." : "Save Chart"}
               </button>
@@ -1908,46 +2533,51 @@ export default function VisualizationView({
 
       {/* View Python Code Dialog */}
       {showCodeDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4">
-          <div className="w-full max-w-3xl bg-white dark:bg-[#0d1117] text-slate-850 dark:text-zinc-100 rounded-2xl border border-slate-200 dark:border-zinc-800 p-6 shadow-xl space-y-4 relative overflow-hidden">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-150 dark:border-zinc-800">
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">Copy Reusable Python Code</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-3xl bg-white dark:bg-[#0d1117] text-slate-800 dark:text-zinc-100 rounded-2xl border border-slate-200 dark:border-zinc-800 p-6 shadow-xl space-y-4 relative overflow-hidden">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-zinc-800">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                Generated Python Execution Script
+              </h3>
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleCopyCode}
-                  className="px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-850 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-900 dark:hover:text-white transition text-3xs font-extrabold tracking-wider flex items-center gap-1.5 cursor-pointer text-slate-600 dark:text-zinc-300"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 transition text-xs font-semibold flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-zinc-200"
                 >
-                  {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedCode ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
                   {copiedCode ? "Copied" : "Copy Code"}
                 </button>
                 <button
                   onClick={() => setShowCodeDialog(false)}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-500 dark:text-zinc-400 cursor-pointer"
+                  className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 dark:text-zinc-400 cursor-pointer"
                   title="Close"
                 >
-                  ✕
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
-            
-            <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950/50 p-4 max-h-[400px] overflow-auto scrollbar-thin">
-              <pre className="text-2xs font-mono select-all leading-normal text-slate-700 dark:text-zinc-300 whitespace-pre">
+
+            <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950/70 p-4 max-h-[400px] overflow-auto scrollbar-thin">
+              <pre className="text-xs font-mono select-all leading-relaxed text-slate-800 dark:text-zinc-200 whitespace-pre">
                 {highlightPythonCode(pythonCode)}
               </pre>
             </div>
 
-            <div className="flex justify-end pt-3 border-t border-slate-150 dark:border-zinc-800">
+            <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-zinc-800">
               <button
                 onClick={() => setShowCodeDialog(false)}
-                className="px-4 py-2 text-xs font-bold rounded-lg border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-300 cursor-pointer"
+                className="px-4 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300 cursor-pointer"
               >
-                Close Preview
+                Close
               </button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }

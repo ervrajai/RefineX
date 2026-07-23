@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import api from "../../services/api";
+import FileUpload from "./FileUpload";
 import {
   BrainCircuit,
   UploadCloud,
@@ -64,6 +65,10 @@ export default function ModelTrainingView({
 
   // Loading states
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [loadedBytes, setLoadedBytes] = useState(0);
+  const [totalBytes, setTotalBytes] = useState(0);
+  const [uploadSpeed, setUploadSpeed] = useState(0);
   const [training, setTraining] = useState(false);
   const [activeJobId, setActiveJobId] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
@@ -247,19 +252,60 @@ export default function ModelTrainingView({
     }
   };
 
+  const abortControllerRef = useRef(null);
+
+  const cancelUpload = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setUploading(false);
+    setUploadProgress(0);
+    setLoadedBytes(0);
+    setUploadSpeed(0);
+  };
+
   const uploadFile = async (file) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setUploading(true);
+    setUploadProgress(0);
+    setLoadedBytes(0);
+    setTotalBytes(file?.size || 0);
+    setUploadSpeed(0);
     setErrorMsg("");
     setSuccessMsg("");
     setTrainingJobDetail(null);
 
     const formData = new FormData();
     formData.append("file", file);
+    const startTime = Date.now();
 
     try {
       const res = await api.post("model-training/upload/", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
+        signal: controller.signal,
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progressEvent) => {
+          const { loaded, total } = progressEvent;
+          setLoadedBytes(loaded);
+          if (total) {
+            setTotalBytes(total);
+            const percent = Math.round((loaded * 100) / total);
+            setUploadProgress(percent);
+          } else {
+            setUploadProgress(50);
+          }
+          const elapsed = (Date.now() - startTime) / 1000;
+          if (elapsed > 0) {
+            setUploadSpeed(Math.round(loaded / elapsed));
+          }
+        }
       });
+      setUploadProgress(100);
       const data = res.data;
       setDatasetId(data.dataset_id);
       setMetadata(data.metadata);
@@ -277,9 +323,14 @@ export default function ModelTrainingView({
 
       setSuccessMsg("✓ Dataset uploaded and inspected successfully!");
     } catch (err) {
-      setErrorMsg(err.response?.data?.error || "Upload failed. Verify CSV integrity.");
+      if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || (err.message && err.message.includes("canceled"))) {
+        setErrorMsg("Upload canceled.");
+      } else {
+        setErrorMsg(err.response?.data?.error || "Upload failed. Verify CSV integrity.");
+      }
     } finally {
       setUploading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -433,37 +484,26 @@ export default function ModelTrainingView({
           {/* UPLOADER STATE */}
           {!datasetId ? (
             <div className="space-y-6">
-              <div 
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                className={`p-10 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center text-center transition duration-300 min-h-[300px] bg-white dark:bg-[#121212]/30 ${
-                  uploading ? "border-primary bg-primary/5" : "border-slate-300 dark:border-zinc-800 hover:border-primary dark:hover:border-zinc-700"
-                }`}
-              >
-                <UploadCloud className="w-10 h-10 text-primary animate-bounce mb-4" />
-                <h2 className="text-base font-bold text-black dark:text-white">
-                  {uploading ? "Uploading dataset and verifying..." : "Drag & Drop dataset file"}
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-sm mt-2 leading-relaxed">
-                  CSV or Excel files only. Immediately validated for duplicate column indexes, rows sizes, and encoding errors.
-                </p>
-                
-                {!uploading && (
-                  <button
-                    onClick={() => fileInputRef.current.click()}
-                    className="mt-5 px-6 py-2.5 bg-primary hover:bg-primary-dark text-white text-xs font-bold rounded-full transition duration-150 shadow-md active:scale-95 cursor-pointer"
-                  >
-                    Browse Files
-                  </button>
-                )}
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept=".csv, .xlsx, .xls"
-                  className="hidden"
-                />
-              </div>
+              <FileUpload
+                onFileUpload={uploadFile}
+                uploading={uploading}
+                progress={uploadProgress}
+                loadedBytes={loadedBytes}
+                totalBytes={totalBytes}
+                uploadSpeed={uploadSpeed}
+                errorMsg={errorMsg}
+                successMsg={successMsg}
+                acceptedFormats={[".csv", ".xlsx", ".xls", ".json"]}
+                maxSizeMB={100}
+                onCancel={cancelUpload}
+                onReset={() => {
+                  setDatasetId(null);
+                  setMetadata(null);
+                  setPreview(null);
+                  setErrorMsg("");
+                  setSuccessMsg("");
+                }}
+              />
 
               {!uploading && cleanHistoryList.length > 0 && (
                 <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm space-y-4">

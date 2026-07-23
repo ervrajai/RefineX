@@ -251,9 +251,20 @@ class LoginView(APIView):
     def post(self, request):
         serializer = LoginSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        login(request, serializer.validated_data["user"])
+        user = serializer.validated_data["user"]
+        login(request, user)
         request.session.set_expiry(60 * 60 * 24 * 30 if serializer.validated_data["remember_me"] else 0)
-        return Response(UserSerializer(serializer.validated_data["user"]).data)
+
+        ActivityService.log_activity(
+            user=user,
+            action_type="login",
+            title="User Signed In",
+            description=f"Logged in via {user.auth_provider}.",
+            request=request
+        )
+
+        return Response(UserSerializer(user).data)
+
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -358,3 +369,125 @@ class ResetPasswordView(APIView):
             user.save(update_fields=["password"])
         _clear_otp(request, "password_reset")
         return Response({"detail": "Password updated successfully."})
+
+
+from .services import UserService, AccountSecurityService, OtpService
+from .serializers import (
+    UpdateProfileSerializer,
+    ChangePasswordSerializer,
+    EmailUpdateOtpRequestSerializer,
+    EmailUpdateVerifySerializer,
+)
+
+
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        profile = getattr(user, "profile", None)
+        avatar = profile.avatar if profile else (user.profile_picture or "")
+        return Response({
+            "id": user.id,
+            "uuid": str(user.uuid),
+            "email": user.email,
+            "username": user.username or (user.email.split("@")[0] if user.email else ""),
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "profile_picture": user.profile_picture,
+            "avatar": avatar,
+            "bio": profile.bio if profile else "",
+            "phone": profile.phone if profile else "",
+            "organization": profile.organization if profile else "",
+            "job_title": profile.job_title if profile else "",
+            "auth_provider": user.auth_provider,
+            "is_email_verified": user.is_email_verified,
+            "date_joined": user.date_joined,
+        })
+
+    def patch(self, request):
+        serializer = UpdateProfileSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        try:
+            user = UserService.update_profile(request.user, serializer.validated_data, request=request)
+            return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+        except ValueError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        try:
+            AccountSecurityService.change_password(
+                user=request.user,
+                old_password=data["old_password"],
+                new_password=data["new_password"],
+                request=request
+            )
+            return Response({"detail": "Password updated successfully."}, status=status.HTTP_200_OK)
+        except ValueError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EmailUpdateOtpRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = EmailUpdateOtpRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        new_email = serializer.validated_data["new_email"].lower()
+
+        if new_email == request.user.email.lower():
+            return Response({"detail": "New email cannot be the same as your current email."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if UserModel.objects.filter(email__iexact=new_email).exists():
+            return Response({"detail": "An account with this email address already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+        cooldown_response = _resend_cooldown_response(request, "email_update", new_email)
+        if cooldown_response:
+            return cooldown_response
+
+        otp = OtpService.generate_otp()
+        try:
+            OtpService.send_otp_email(new_email, otp, "Verify your new Refinex email address")
+        except (BadHeaderError, SMTPException, OSError):
+            return _otp_email_error_response()
+
+        OtpService.store_otp(request, "email_update", email=new_email, otp=otp)
+        return Response({"detail": f"OTP verification code sent to {new_email}."})
+
+
+class EmailUpdateVerifyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = EmailUpdateVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        new_email = serializer.validated_data["new_email"].lower()
+
+        record, error = OtpService.get_otp_record(request, "email_update")
+        if error:
+            return Response({"detail": error}, status=status.HTTP_400_BAD_REQUEST)
+
+        if record["email"] != new_email:
+            return Response({"detail": "OTP does not match this email address."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not secrets.compare_digest(record["otp"], serializer.validated_data["otp"]):
+            record["attempts"] = record.get("attempts", 0) + 1
+            request.session[_otp_session_key("email_update")] = record
+            request.session.modified = True
+            return Response({"detail": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        user.email = new_email
+        user.is_email_verified = True
+        user.save(update_fields=["email", "is_email_verified"])
+
+        OtpService.clear_otp(request, "email_update")
+        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+

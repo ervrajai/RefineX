@@ -13,8 +13,10 @@ from apps.accounts.views import CsrfExemptSessionAuthentication
 
 from apps.cleaning.models import Dataset
 from apps.cleaning.utils import read_dataframe, make_json_safe
+from apps.core.services import ActivityService
 from .models import SavedGraph
 from .serializers import SavedGraphSerializer
+
 from .services import (
     get_dataset_analysis,
     recommend_graphs,
@@ -336,9 +338,17 @@ class HistoryViewSet(ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        # Automatically assign logged in user
-        serializer.save(user=self.request.user)
-        
+        graph = serializer.save(user=self.request.user)
+        ActivityService.log_activity(
+            user=self.request.user,
+            action_type="create_vis",
+            title=f"Saved Visualization: {graph.name}",
+            description=f"Created and saved {graph.graph_type} visualization ({graph.library}) for dataset {graph.dataset_name}.",
+            metadata={"graph_id": graph.id, "graph_type": graph.graph_type, "library": graph.library},
+            request=self.request
+        )
+
     @method_decorator(csrf_exempt)
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
+

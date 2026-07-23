@@ -5,11 +5,13 @@ import api from "../../services/api";
 
 // Subcomponents
 import Sidebar from "../../components/Dashboard/Sidebar";
+import OverviewView from "../../components/Dashboard/OverviewView";
 import SettingsView from "../../components/Dashboard/SettingsView";
 import CleanView from "../../components/Dashboard/CleanView";
 import HistoryView from "../../components/Dashboard/HistoryView";
 import ModelTrainingView from "../../components/Dashboard/ModelTrainingView";
 import VisualizationView from "../../components/Dashboard/VisualizationView";
+
 
 import { 
   Sparkles,
@@ -102,6 +104,27 @@ function Dashboard() {
     }
   };
 
+  const handleQuickResume = (ds) => {
+    setDatasetId(ds.id);
+    setMetadata({
+      name: ds.name,
+      file_type: ds.file_type,
+      file_size: ds.file_size,
+      rows: ds.rows_count,
+      columns: ds.cols_count,
+      status: ds.status
+    });
+    if (ds.before_report || ds.after_report) {
+      setBeforeReport(ds.before_report || null);
+      setAfterReport(ds.after_report || null);
+      setReport(ds.after_report || ds.before_report || null);
+    }
+    if (ds.clean_logs) {
+      setCleanLogs(ds.clean_logs);
+    }
+    setActiveTab("clean");
+  };
+
   const handleScroll = (e) => {
     setIsScrolled(e.currentTarget.scrollTop > 10);
   };
@@ -144,8 +167,15 @@ function Dashboard() {
             </div>
           )}
 
-          {/* TAB 1: OVERVIEW - Blank placeholder as requested */}
-          {activeTab === "overview" && null}
+          {/* TAB 1: OVERVIEW */}
+          {activeTab === "overview" && (
+            <OverviewView
+              user={user}
+              setActiveTab={setActiveTab}
+              onQuickResume={handleQuickResume}
+            />
+          )}
+
 
           {/* TAB 2: CLEAN */}
           <div className={activeTab === "clean" ? "" : "hidden"}>
@@ -274,8 +304,10 @@ function Dashboard() {
               user={user}
               loading={loading}
               error={error}
+              handleLogout={handleLogout}
             />
           )}
+
 
         </main>
 

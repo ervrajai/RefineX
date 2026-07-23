@@ -1,5 +1,8 @@
+import uuid
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -40,7 +43,8 @@ class User(AbstractUser):
         GOOGLE = "google", _("Google")
         GITHUB = "github", _("GitHub")
 
-    username = None
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    username = models.CharField(max_length=150, unique=True, null=True, blank=True, db_index=True)
     email = models.EmailField(_("email address"), unique=True)
     
     # OAuth and Profile Integration
@@ -54,10 +58,50 @@ class User(AbstractUser):
     is_email_verified = models.BooleanField(default=False)
     password_last_updated = models.DateTimeField(default=timezone.now)
 
+    # Soft Deletion & Timestamps
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
     objects = UserManager()
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["email", "is_deleted"]),
+            models.Index(fields=["uuid"]),
+        ]
+
     def __str__(self):
         return self.email
+
+
+class UserProfile(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    bio = models.TextField(blank=True, default="")
+    phone = models.CharField(max_length=30, blank=True, default="")
+    organization = models.CharField(max_length=255, blank=True, default="")
+    job_title = models.CharField(max_length=255, blank=True, default="")
+    avatar = models.CharField(max_length=500, blank=True, default="")
+    preferences = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Profile of {self.user.email}"
+
+
+@receiver(post_save, sender=User)
+def create_or_update_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+    else:
+        if hasattr(instance, "profile"):
+            instance.profile.save()
+        else:
+            UserProfile.objects.create(user=instance)
+

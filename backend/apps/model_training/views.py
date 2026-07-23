@@ -18,8 +18,10 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from apps.accounts.views import CsrfExemptSessionAuthentication
 from apps.cleaning.models import Dataset
 from apps.cleaning.utils import make_json_safe, read_dataframe
+from apps.core.services import ActivityService
 from .models import ModelTrainingJob
 from .services import DatasetValidationService, DatasetInspectionService, ModelTrainingService
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class DatasetMLUploadView(APIView):
@@ -150,11 +152,21 @@ class DatasetMLTrainView(APIView):
         )
         thread.start()
 
+        ActivityService.log_activity(
+            user=request.user,
+            action_type="train_model",
+            title=f"Trained ML model for {job.dataset_name}",
+            description=f"Initiated ML training job targeting '{target}' column with mode '{mode}'.",
+            metadata={"job_id": job.id, "target": target, "mode": mode},
+            request=request
+        )
+
         return Response({
             "message": "Model training initiated in the background.",
             "job_id": job.id,
             "status": job.status
         }, status=status.HTTP_201_CREATED)
+
 
 
 class DatasetMLJobStatusView(APIView):
@@ -305,6 +317,18 @@ class DatasetMLDownloadView(APIView):
     def get(self, request, pk, *args, **kwargs):
         job = get_object_or_404(ModelTrainingJob, pk=pk)
         download_type = request.query_params.get("type", "model")
+
+        job.download_count += 1
+        job.save(update_fields=["download_count"])
+
+        ActivityService.log_activity(
+            user=request.user,
+            action_type="download_model",
+            title=f"Downloaded ML export for {job.dataset_name}",
+            description=f"Downloaded {download_type} for job #{job.id}.",
+            metadata={"job_id": job.id, "download_type": download_type},
+            request=request
+        )
 
         if download_type == "model":
             if not job.trained_model_file or not os.path.exists(job.trained_model_file.path):

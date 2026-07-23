@@ -15,6 +15,7 @@ from apps.accounts.views import CsrfExemptSessionAuthentication
 
 from .models import Dataset, CleaningJob
 from .utils import profile_dataset, clean_dataset, make_json_safe, read_dataframe
+from apps.core.services import ActivityService
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -70,6 +71,7 @@ class DatasetUploadView(APIView):
             dataset = Dataset.objects.create(
                 user=request.user if request.user.is_authenticated else None,
                 name=file_obj.name,
+                original_filename=file_obj.name,
                 original_file=file_obj,
                 file_type=file_type,
                 file_size=len(temp_content),
@@ -77,6 +79,15 @@ class DatasetUploadView(APIView):
                 cols_count=cols_count,
                 encoding=detected_encoding,
                 status="uploaded"
+            )
+
+            ActivityService.log_activity(
+                user=request.user,
+                action_type="upload_csv",
+                title=f"Uploaded {dataset.name}",
+                description=f"Uploaded CSV dataset with {rows_count} rows and {cols_count} columns.",
+                metadata={"dataset_id": dataset.id, "rows": rows_count, "cols": cols_count},
+                request=request
             )
 
             # Profile report
@@ -169,15 +180,32 @@ def perform_cleaning_operation(dataset, config, user=None):
     dataset.cols_count = len(cleaned_df.columns)
     dataset.save()
     
+    rows_removed = max(0, len(df) - len(cleaned_df))
+    cols_removed = max(0, len(df.columns) - len(cleaned_df.columns))
+    missing_before = before_report.get("overview", {}).get("total_missing", 0)
+    missing_after = after_report.get("overview", {}).get("total_missing", 0)
+    missing_filled = max(0, missing_before - missing_after)
+
     job = CleaningJob.objects.create(
         user=user if user and user.is_authenticated else None,
         dataset=dataset,
         cleaning_config=config,
         before_stats=before_report,
         after_stats=after_report,
-        logs=logs
+        logs=logs,
+        rows_removed=rows_removed,
+        cols_removed=cols_removed,
+        missing_filled=missing_filled
     )
     
+    ActivityService.log_activity(
+        user=user,
+        action_type="clean_csv",
+        title=f"Cleaned {dataset.name}",
+        description=f"Cleaned dataset: removed {rows_removed} rows, {cols_removed} columns, filled {missing_filled} missing values.",
+        metadata={"dataset_id": dataset.id, "job_id": job.id, "rows_removed": rows_removed, "cols_removed": cols_removed}
+    )
+
     preview_df = cleaned_df.head(100).replace({np.nan: None})
     preview_data = {
         "columns": list(cleaned_df.columns),
@@ -202,6 +230,7 @@ def perform_cleaning_operation(dataset, config, user=None):
         "logs": logs,
         "preview": preview_data
     }
+
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -324,6 +353,19 @@ class DatasetDownloadView(APIView):
         dataset = get_object_or_404(Dataset, pk=pk)
         download_type = request.query_params.get("type", "csv")  # csv, excel, report, log
         
+        # Increment download counter and log user activity
+        dataset.download_count += 1
+        dataset.save(update_fields=["download_count"])
+
+        ActivityService.log_activity(
+            user=request.user,
+            action_type="download_csv",
+            title=f"Downloaded {dataset.name}",
+            description=f"Downloaded {download_type.upper()} export for dataset {dataset.name}.",
+            metadata={"dataset_id": dataset.id, "download_type": download_type},
+            request=request
+        )
+
         # Determine path
         file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
         if not os.path.exists(file_path):

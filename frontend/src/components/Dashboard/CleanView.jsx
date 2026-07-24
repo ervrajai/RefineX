@@ -20,7 +20,8 @@ import {
   Table,
   FileText,
   BrainCircuit,
-  LineChart
+  LineChart,
+  History
 } from "lucide-react";
 
 export default function CleanView({
@@ -49,6 +50,58 @@ export default function CleanView({
   const [processing, setProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
+  // Clean history states
+  const [cleanHistoryList, setCleanHistoryList] = useState([]);
+  const [loadingCleanHistory, setLoadingCleanHistory] = useState(false);
+
+  useEffect(() => {
+    if (!datasetId) {
+      fetchCleanHistory();
+    }
+  }, [datasetId]);
+
+  const fetchCleanHistory = async () => {
+    setLoadingCleanHistory(true);
+    try {
+      const res = await api.get("history/");
+      const seen = new Set();
+      const cleaningJobs = res.data.filter(job => job.type === "cleaning" && job.dataset_id).filter(job => {
+        if (seen.has(job.dataset_id)) return false;
+        seen.add(job.dataset_id);
+        return true;
+      });
+      setCleanHistoryList(cleaningJobs);
+    } catch (err) {
+      console.error("Failed to load cleaning history:", err);
+    } finally {
+      setLoadingCleanHistory(false);
+    }
+  };
+
+  const handleUseFromHistory = async (job) => {
+    setProcessing(true);
+    setErrorMsg("");
+    setSuccessMsg("");
+    try {
+      const res = await api.get(`cleaning/${job.dataset_id}/preview/?offset=0&limit=100`);
+      const data = res.data;
+      
+      setDatasetId(job.dataset_id);
+      setMetadata(data.metadata);
+      setPreview(data);
+      if (job.before_stats) setBeforeReport(job.before_stats);
+      if (job.after_stats) setAfterReport(job.after_stats);
+      setReport(data.metadata || job.after_stats);
+      if (job.logs) setCleanLogs(job.logs);
+
+      setSuccessMsg(`Loaded cleaned dataset "${job.dataset_name}" from history!`);
+    } catch (err) {
+      setErrorMsg("Failed to load historical dataset details. The file might have been deleted.");
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   // Table pagination, search, sort
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -651,27 +704,81 @@ export default function CleanView({
 
       {/* NO DATASET / UPLOADER STATE */}
       {!datasetId ? (
-        <FileUpload
-          onFileUpload={uploadFile}
-          uploading={uploading}
-          progress={uploadProgress}
-          loadedBytes={loadedBytes}
-          totalBytes={totalBytes}
-          uploadSpeed={uploadSpeed}
-          errorMsg={errorMsg}
-          successMsg={successMsg}
-          acceptedFormats={[".csv", ".xlsx", ".xls", ".json"]}
-          maxSizeMB={100}
-          onCancel={cancelUpload}
-          onReset={() => {
-            setDatasetId(null);
-            setMetadata(null);
-            setReport(null);
-            setPreview(null);
-            setErrorMsg("");
-            setSuccessMsg("");
-          }}
-        />
+        <div className="space-y-6">
+          <FileUpload
+            onFileUpload={uploadFile}
+            uploading={uploading}
+            progress={uploadProgress}
+            loadedBytes={loadedBytes}
+            totalBytes={totalBytes}
+            uploadSpeed={uploadSpeed}
+            errorMsg={errorMsg}
+            successMsg={successMsg}
+            acceptedFormats={[".csv", ".xlsx", ".xls", ".json"]}
+            maxSizeMB={100}
+            onCancel={cancelUpload}
+            onReset={() => {
+              setDatasetId(null);
+              setMetadata(null);
+              setReport(null);
+              setPreview(null);
+              setErrorMsg("");
+              setSuccessMsg("");
+            }}
+          />
+
+          {!uploading && cleanHistoryList.length > 0 && (
+            <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-800/80 pb-3.5">
+                <div className="flex items-center gap-2.5">
+                  <History className="w-4.5 h-4.5 text-purple-500" />
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Or Select From Clean History</h3>
+                </div>
+                <button
+                  onClick={() => setActiveTab("history")}
+                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  All History Logs →
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                Skip uploading by choosing a dataset you've previously cleaned on RefineX.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
+                {cleanHistoryList.map(job => (
+                  <div 
+                    key={job.id}
+                    onClick={() => handleUseFromHistory(job)}
+                    className="p-3.5 rounded-xl border border-slate-200/70 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30 hover:border-purple-500 dark:hover:border-purple-500/60 hover:bg-slate-50 dark:hover:bg-zinc-900/60 cursor-pointer transition duration-150 flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-2 rounded-lg bg-slate-200/60 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 group-hover:bg-purple-500/10 group-hover:text-purple-500 transition shrink-0">
+                        <FileSpreadsheet className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-xs font-semibold text-slate-800 dark:text-zinc-200 block truncate">{job.dataset_name}</span>
+                        <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider mt-0.5">
+                          Cleaned: {(() => {
+                            const dt = job.created_at || job.cleaned_at || job.updated_at;
+                            if (!dt) return "Recently";
+                            try {
+                              const d = new Date(dt);
+                              return isNaN(d.getTime()) ? "Recently" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                            } catch {
+                              return "Recently";
+                            }
+                          })()}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-500 group-hover:translate-x-0.5 transition shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
         /* WORKSPACE LAYOUT */
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
@@ -875,22 +982,29 @@ export default function CleanView({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
                       <div className="flex flex-col items-center justify-center p-4 rounded-xl border border-slate-100 dark:border-zinc-800/80 bg-slate-50/20 dark:bg-zinc-900/10">
                         <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-3">Data Quality Score</span>
-                        <div className="relative w-28 h-28 flex items-center justify-center">
-                          <svg className="absolute w-full h-full transform -rotate-90">
-                            <circle cx="56" cy="56" r="48" strokeWidth="6" stroke="var(--border)" fill="transparent" className="text-slate-100 dark:text-zinc-800" />
-                            <circle cx="56" cy="56" r="48" strokeWidth="6.5" stroke="#673ab7" fill="transparent" strokeDasharray={2 * Math.PI * 48} strokeDashoffset={2 * Math.PI * 48 * (1 - report.quality_score / 100)} className="transition-all duration-1000 ease-out" />
-                          </svg>
-                          <div className="text-center">
-                            <span className="text-2xl font-black text-black dark:text-white">{report.quality_score}</span>
-                            <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 block">/ 100</span>
-                          </div>
-                        </div>
+                        {(() => {
+                          const qualityScore = typeof report?.quality_score === "number" && !isNaN(report.quality_score) ? report.quality_score : 100;
+                          const dashArray = 2 * Math.PI * 48;
+                          const dashOffset = dashArray * (1 - qualityScore / 100);
+                          return (
+                            <div className="relative w-28 h-28 flex items-center justify-center">
+                              <svg className="absolute w-full h-full transform -rotate-90">
+                                <circle cx="56" cy="56" r="48" strokeWidth="6" stroke="var(--border)" fill="transparent" className="text-slate-100 dark:text-zinc-800" />
+                                <circle cx="56" cy="56" r="48" strokeWidth="6.5" stroke="#673ab7" fill="transparent" strokeDasharray={dashArray} strokeDashoffset={dashOffset} className="transition-all duration-1000 ease-out" />
+                              </svg>
+                              <div className="text-center">
+                                <span className="text-2xl font-black text-black dark:text-white">{qualityScore}</span>
+                                <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 block">/ 100</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
                         <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full mt-3 uppercase tracking-wide ${
-                          report.quality_score >= 90 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400" :
-                          report.quality_score >= 70 ? "bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400" :
+                          (report?.quality_score ?? 100) >= 90 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400" :
+                          (report?.quality_score ?? 100) >= 70 ? "bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400" :
                           "bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400"
                         }`}>
-                          {report.quality_score >= 90 ? "Premium" : report.quality_score >= 70 ? "Good" : "Needs Cleaning"}
+                          {(report?.quality_score ?? 100) >= 90 ? "Premium" : (report?.quality_score ?? 100) >= 70 ? "Good" : "Needs Cleaning"}
                         </span>
                       </div>
 

@@ -12,7 +12,9 @@ import {
   AlertCircle,
   Sparkles,
   BrainCircuit,
-  LineChart
+  LineChart,
+  Trash2,
+  AlertTriangle
 } from "lucide-react";
 
 export default function HistoryView({ 
@@ -27,6 +29,10 @@ export default function HistoryView({
   const [restoreLoading, setRestoreLoading] = useState(false);
   const [error, setError] = useState("");
   const [expandedJobId, setExpandedJobId] = useState(null);
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [deletingItem, setDeletingItem] = useState(false);
 
   useEffect(() => {
     fetchHistory();
@@ -42,6 +48,39 @@ export default function HistoryView({
       setError("Failed to retrieve execution records. Please refresh.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClearHistory = async () => {
+    setClearing(true);
+    setError("");
+    try {
+      await api.delete("history/");
+      setHistory([]);
+      setShowClearModal(false);
+    } catch (err) {
+      console.error("Clear history error:", err);
+      setShowClearModal(false); // Close pop-up modal so user can see error banner!
+      setError(err.response?.data?.detail || "Failed to clear history records and local media files. Please try again.");
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const handleDeleteSingleItem = async () => {
+    if (!itemToDelete) return;
+    setDeletingItem(true);
+    setError("");
+    try {
+      await api.delete(`history/${itemToDelete.id}/?type=${itemToDelete.type}`);
+      setHistory(prev => prev.filter(item => !(item.id === itemToDelete.id && item.type === itemToDelete.type)));
+      setItemToDelete(null);
+    } catch (err) {
+      console.error("Delete single history item error:", err);
+      setItemToDelete(null); // Close pop-up modal so user can see error banner!
+      setError(err.response?.data?.detail || "Failed to delete history record and media files. Please try again.");
+    } finally {
+      setDeletingItem(false);
     }
   };
 
@@ -105,7 +144,7 @@ export default function HistoryView({
         onRestoreRedirect();
       }
     } catch (err) {
-      setError("Failed to load dataset preview for restoration. The file might have been deleted.");
+      setError("Failed to load dataset details for restoration. The file might have been deleted.");
     } finally {
       setRestoreLoading(false);
     }
@@ -141,12 +180,12 @@ export default function HistoryView({
     setRestoreLoading(true);
     setError("");
     try {
-      let previewData = null;
+      let previewData = job.preview_data;
       let metaData = null;
       if (job.dataset_id) {
         const res = await api.get(`cleaning/${job.dataset_id}/preview/?offset=0&limit=100`);
         previewData = res.data;
-        metaData = previewData.metadata;
+        metaData = res.data.metadata;
       }
       
       if (onLoadWorkspace) {
@@ -171,18 +210,22 @@ export default function HistoryView({
   };
 
   const formatDate = (isoString) => {
+    if (!isoString) return "Just now";
     try {
       const date = new Date(isoString);
-      return date.toLocaleDateString(undefined, { 
+      if (isNaN(date.getTime())) {
+        return "Recently";
+      }
+      return date.toLocaleDateString("en-US", { 
         year: 'numeric', 
         month: 'short', 
         day: 'numeric' 
-      }) + " " + date.toLocaleTimeString(undefined, { 
+      }) + " • " + date.toLocaleTimeString("en-US", { 
         hour: '2-digit', 
         minute: '2-digit' 
       });
     } catch {
-      return isoString;
+      return "Recently";
     }
   };
 
@@ -214,13 +257,110 @@ export default function HistoryView({
             Browse and download previously cleaned datasets, quality score records, and cleaning logs.
           </p>
         </div>
-        <button 
-          onClick={fetchHistory}
-          className="px-5 py-2.5 text-sm font-bold rounded-xl border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800/80 transition duration-150 cursor-pointer self-stretch sm:self-center text-center shadow-sm"
-        >
-          Refresh Log
-        </button>
+
+        <div className="flex items-center gap-2.5 self-stretch sm:self-center shrink-0">
+          <button 
+            onClick={fetchHistory}
+            className="px-4 py-2.5 text-sm font-bold rounded-xl border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800/80 transition duration-150 cursor-pointer text-center shadow-sm"
+          >
+            Refresh Log
+          </button>
+
+          <button 
+            onClick={() => setShowClearModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-extrabold rounded-xl bg-rose-500/10 hover:bg-rose-600 text-rose-600 hover:text-white dark:bg-rose-500/20 dark:hover:bg-rose-600 dark:text-rose-300 dark:hover:text-white border border-rose-500/30 dark:border-rose-500/40 transition duration-150 cursor-pointer text-center shadow-sm whitespace-nowrap"
+          >
+            <Trash2 className="w-4 h-4" />
+            Clear History
+          </button>
+        </div>
       </div>
+
+      {/* Clear History Confirmation Modal (No glow effect) */}
+      {showClearModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 shadow-lg flex flex-col gap-5">
+            <div className="flex items-center gap-3 text-rose-500">
+              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                <AlertTriangle className="w-6 h-6 text-rose-500" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">Clear All History?</h3>
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-300 leading-relaxed font-medium">
+              Are you sure you want to clear your history? <strong className="text-rose-500 font-bold">This action cannot be restored.</strong> All execution logs, dataset records, cleaned CSV files, and media files will be permanently deleted from your local PC storage and database.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                disabled={clearing}
+                onClick={() => setShowClearModal(false)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                disabled={clearing}
+                onClick={handleClearHistory}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black transition cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                {clearing ? (
+                  <span className="animate-pulse">Clearing Files...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Yes, Clear All History
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Single History Item Deletion Modal */}
+      {itemToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 shadow-lg flex flex-col gap-5">
+            <div className="flex items-center gap-3 text-rose-500">
+              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                <AlertTriangle className="w-6 h-6 text-rose-500" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">Delete History Record?</h3>
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-300 leading-relaxed font-medium">
+              Are you sure you want to delete <strong className="text-slate-900 dark:text-white">{itemToDelete.name}</strong>? <strong className="text-rose-500 font-bold">This action cannot be restored.</strong> The associated dataset, cleaned CSV files, and media will be permanently deleted from your local storage and database.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                disabled={deletingItem}
+                onClick={() => setItemToDelete(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                disabled={deletingItem}
+                onClick={handleDeleteSingleItem}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black transition cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                {deletingItem ? (
+                  <span className="animate-pulse">Deleting File...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete Record
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-sm font-semibold text-rose-600 flex items-center gap-3">
@@ -262,11 +402,6 @@ export default function HistoryView({
                           <span className="px-2.5 py-1 rounded-md bg-violet-500/15 border border-violet-500/20 text-violet-600 dark:text-violet-400 text-[10px] font-black uppercase tracking-wider">
                             {job.graph_type} ({job.library})
                           </span>
-                          {job.is_favorite && (
-                            <span className="px-2.5 py-1 rounded-md bg-rose-500/15 border border-rose-500/20 text-rose-600 dark:text-rose-450 text-[10px] font-black uppercase tracking-wider">
-                              ❤️ Favorite
-                            </span>
-                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-xs font-semibold text-slate-500 dark:text-zinc-400">
                           <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatDate(job.created_at)}</span>
@@ -275,7 +410,18 @@ export default function HistoryView({
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-zinc-800">
+                    <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-zinc-800">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setItemToDelete({ id: job.id, type: job.type, name: job.name || job.dataset_name || "Visualization Chart" });
+                        }}
+                        className="p-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-600 hover:bg-rose-600 hover:text-white dark:bg-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-600 dark:hover:text-white cursor-pointer transition flex items-center gap-1.5 text-xs font-bold px-2.5"
+                        title="Delete this history record"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span className="hidden sm:inline">Delete</span>
+                      </button>
                       <button className="text-slate-500 dark:text-zinc-400 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700 transition">
                         {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                       </button>
@@ -346,7 +492,7 @@ export default function HistoryView({
                     </div>
 
                     {/* Score & Expand */}
-                    <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-zinc-800">
+                    <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-zinc-800">
                       <div className="flex items-center gap-3">
                         <div className="text-right">
                           <span className="text-[10px] uppercase font-bold text-slate-400 block">Best Model ({job.best_model_name?.replace('_', ' ') || "N/A"})</span>
@@ -356,6 +502,17 @@ export default function HistoryView({
                           <TrendingUp className="w-4 h-4" />
                         </span>
                       </div>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setItemToDelete({ id: job.id, type: job.type, name: job.dataset_name || "ML Training Job" });
+                        }}
+                        className="p-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-600 hover:bg-rose-600 hover:text-white dark:bg-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-600 dark:hover:text-white cursor-pointer transition flex items-center gap-1.5 text-xs font-bold px-2.5"
+                        title="Delete this history record"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span className="hidden sm:inline">Delete</span>
+                      </button>
                       <button className="text-slate-500 dark:text-zinc-400 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700 transition">
                         {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                       </button>
@@ -376,33 +533,33 @@ export default function HistoryView({
                           </span>
                         </div>
                         <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
-                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Best Performance</span>
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Evaluation Score</span>
                           <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 block">
-                            {(bestScore * 100).toFixed(2)}% ({metricKey})
+                            {(bestScore * 100).toFixed(2)}%
                           </span>
                         </div>
                         <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
-                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Target Column</span>
-                          <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block truncate">
-                            {job.target_column}
-                          </span>
-                        </div>
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
-                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Train Duration</span>
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Training Duration</span>
                           <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                            {job.training_duration?.toFixed(3)}s
+                            {job.training_duration ? `${job.training_duration.toFixed(2)}s` : "N/A"}
+                          </span>
+                        </div>
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Pipeline Status</span>
+                          <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 mt-2 block uppercase">
+                            ✓ {job.status || "Completed"}
                           </span>
                         </div>
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800 items-center justify-between">
+                      {/* Actions and Downloads */}
+                      <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-4 border-t border-slate-200 dark:border-zinc-800 items-center justify-between">
                         <div className="flex flex-wrap gap-3 w-full sm:w-auto">
                           <button 
                             onClick={() => handleDownloadML(job.id, "model")}
-                            className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg bg-primary text-white hover:bg-primary-dark transition duration-150 flex justify-center items-center gap-2 cursor-pointer shadow-sm"
+                            className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
                           >
-                            <Download className="w-4 h-4" /> Download Model
+                            <Download className="w-4 h-4 text-amber-500" /> PKL Model File
                           </button>
                           <button 
                             onClick={() => handleDownloadML(job.id, "predictions")}
@@ -456,14 +613,14 @@ export default function HistoryView({
                     <div>
                       <h3 className="text-base font-black text-black dark:text-white tracking-tight">{job.dataset_name}</h3>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-xs font-semibold text-slate-500 dark:text-zinc-400">
-                        <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatDate(job.cleaned_at)}</span>
+                        <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatDate(job.created_at || job.cleaned_at)}</span>
                         <span>• Job ID: #{job.id}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Quality Score & Expand */}
-                  <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-zinc-800">
+                  <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-zinc-800">
                     <div className="flex items-center gap-3">
                       <div className="text-right">
                         <span className="text-[10px] uppercase font-bold text-slate-400 block">Quality Score</span>
@@ -476,6 +633,18 @@ export default function HistoryView({
                         <TrendingUp className="w-4 h-4" />
                       </span>
                     </div>
+
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setItemToDelete({ id: job.id, type: job.type, name: job.dataset_name || "Cleaning Record" });
+                      }}
+                      className="p-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-600 hover:bg-rose-600 hover:text-white dark:bg-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-600 dark:hover:text-white cursor-pointer transition flex items-center gap-1.5 text-xs font-bold px-2.5"
+                      title="Delete this history record"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span className="hidden sm:inline">Delete</span>
+                    </button>
 
                     <button className="text-slate-500 dark:text-zinc-400 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700 transition">
                       {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
@@ -526,6 +695,12 @@ export default function HistoryView({
                           <Download className="w-4 h-4" /> CSV
                         </button>
                         <button 
+                          onClick={() => handleDownload(job.dataset_id, "json")}
+                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
+                        >
+                          <Download className="w-4 h-4" /> JSON
+                        </button>
+                        <button 
                           onClick={() => handleDownload(job.dataset_id, "excel")}
                           className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
                         >
@@ -535,13 +710,7 @@ export default function HistoryView({
                           onClick={() => handleDownload(job.dataset_id, "report")}
                           className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
                         >
-                          <Download className="w-4 h-4" /> Audit Report
-                        </button>
-                        <button 
-                          onClick={() => handleDownload(job.dataset_id, "log")}
-                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
-                        >
-                          <Download className="w-4 h-4" /> Logs
+                          <Download className="w-4 h-4" /> PDF Report
                         </button>
                       </div>
 

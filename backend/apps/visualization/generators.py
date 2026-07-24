@@ -50,15 +50,22 @@ def generate_graph(df, config):
     elif graph_type in ["histogram", "dist", "distplot"]:
         if not x_col or x_col not in df.columns:
             return {"success": False, "error": "Histogram requires a valid X Axis Column."}
+    elif graph_type in ["piechart", "pie"]:
+        if not x_col or x_col not in df.columns:
+            return {"success": False, "error": "Pie Chart requires a valid Category / Label Column."}
+    elif graph_type in ["boxplot", "box"]:
+        if not x_col or x_col not in df.columns:
+            return {"success": False, "error": "Box Plot requires a valid Numeric Column on X Axis."}
     elif graph_type in ["scattermatrix", "splom"]:
         dims = config.get("dimensions", [])
         if not dims:
-            return {"success": False, "error": "Scatter Matrix requires at least one Dimension Column."}
-        for d in dims:
-            if d not in df.columns:
-                return {"success": False, "error": f"Dimension '{d}' is not in the dataset."}
+            # Fallback to all numeric columns if dimensions is empty
+            num_cols = list(df.select_dtypes(include=[np.number]).columns)
+            if not num_cols:
+                return {"success": False, "error": "Scatter Matrix requires numeric columns."}
+            config["dimensions"] = num_cols[:4]
     else:
-        # Standard plot check
+        # Standard plot check (Bar Chart, Line Chart, Scatter Plot, Bubble Chart, etc.)
         if not x_col or x_col not in df.columns:
             return {"success": False, "error": "Please select a valid X Axis Column."}
         if not y_col or y_col not in df.columns:
@@ -210,29 +217,51 @@ def draw_plotly(df, config, template):
         fig = None
         
         # 1. Bar Chart
-        if graph_type in ["bar", "barchart"]:
+        if graph_type in ["bar", "barchart", "barplot"]:
             orientation = "h" if config.get("orientation", "vertical") == "horizontal" else "v"
             barmode = config.get("barmode", "group")  # group, stack, relative
-            fig = px.bar(
-                df, x=y_col if orientation == "h" else x_col,
-                y=x_col if orientation == "h" else y_col,
-                color=color_col,
-                orientation=orientation,
-                barmode=barmode,
-                template=template,
-                title=config.get("title", ""),
-                opacity=float(config.get("opacity", 1.0))
-            )
+            
+            if not y_col and x_col and x_col in df.columns:
+                plot_df = df[x_col].value_counts().reset_index()
+                plot_df.columns = [x_col, "Count"]
+                fig = px.bar(
+                    plot_df, x=x_col, y="Count",
+                    orientation=orientation,
+                    template=template,
+                    title=config.get("title", ""),
+                    opacity=float(config.get("opacity", 1.0))
+                )
+            else:
+                fig = px.bar(
+                    df, x=y_col if orientation == "h" else x_col,
+                    y=x_col if orientation == "h" else y_col,
+                    color=color_col,
+                    orientation=orientation,
+                    barmode=barmode,
+                    template=template,
+                    title=config.get("title", ""),
+                    opacity=float(config.get("opacity", 1.0))
+                )
             
         # 2. Line Chart
-        elif graph_type in ["line", "linechart"]:
-            fig = px.line(
-                df, x=x_col, y=y_col,
-                color=color_col,
-                template=template,
-                title=config.get("title", ""),
-                opacity=float(config.get("opacity", 1.0))
-            )
+        elif graph_type in ["line", "linechart", "lineplot"]:
+            if not y_col and x_col and x_col in df.columns:
+                plot_df = df[x_col].value_counts().sort_index().reset_index()
+                plot_df.columns = [x_col, "Count"]
+                fig = px.line(
+                    plot_df, x=x_col, y="Count",
+                    template=template,
+                    title=config.get("title", ""),
+                    opacity=float(config.get("opacity", 1.0))
+                )
+            else:
+                fig = px.line(
+                    df, x=x_col, y=y_col,
+                    color=color_col,
+                    template=template,
+                    title=config.get("title", ""),
+                    opacity=float(config.get("opacity", 1.0))
+                )
             
         # 3. Scatter Plot
         elif graph_type in ["scatter", "scatterplot", "scatter2d"]:
@@ -259,7 +288,7 @@ def draw_plotly(df, config, template):
             )
             
         # 5. Histogram
-        elif graph_type in ["histogram", "dist"]:
+        elif graph_type in ["histogram", "dist", "distplot", "distributionchart"]:
             histnorm = config.get("histnorm", "")  # percent, probability, density
             if histnorm == "count": histnorm = ""
             orientation = "h" if config.get("orientation", "vertical") == "horizontal" else "v"
@@ -283,12 +312,57 @@ def draw_plotly(df, config, template):
                 title=config.get("title", ""),
                 opacity=float(config.get("opacity", 1.0))
             )
-            
-        # 7. Scatter Matrix
+
+        # 7. Box Plot
+        elif graph_type in ["box", "boxplot"]:
+            fig = px.box(
+                df, x=x_col, y=y_col,
+                color=color_col,
+                template=template,
+                title=config.get("title", ""),
+                opacity=float(config.get("opacity", 1.0))
+            )
+
+        # 8. Heatmap / Correlation Chart
+        elif graph_type in ["heatmap", "correlationchart"]:
+            numeric_df = df.select_dtypes(include=[np.number])
+            if numeric_df.shape[1] >= 2:
+                corr_matrix = numeric_df.corr().round(2)
+                fig = px.imshow(
+                    corr_matrix,
+                    text_auto=True,
+                    template=template,
+                    title=config.get("title", "Correlation Matrix Heatmap")
+                )
+            else:
+                return {"success": False, "error": "Heatmap requires at least two numeric columns."}
+
+        # 9. Area Chart
+        elif graph_type in ["area", "areachart"]:
+            fig = px.area(
+                df, x=x_col, y=y_col,
+                color=color_col,
+                template=template,
+                title=config.get("title", ""),
+                opacity=float(config.get("opacity", 1.0))
+            )
+
+        # 10. Violin Plot
+        elif graph_type in ["violin", "violinplot"]:
+            fig = px.violin(
+                df, x=x_col, y=y_col,
+                color=color_col,
+                box=True,
+                points="all",
+                template=template,
+                title=config.get("title", ""),
+                opacity=float(config.get("opacity", 1.0))
+            )
+
+        # 11. Scatter Matrix
         elif graph_type in ["scattermatrix", "splom"]:
             dims = config.get("dimensions", [])
             if not dims:
-                # Fallback to numeric columns
                 dims = list(df.select_dtypes(include=[np.number]).columns[:4])
             fig = px.scatter_matrix(
                 df, dimensions=dims,
@@ -298,7 +372,7 @@ def draw_plotly(df, config, template):
                 opacity=float(config.get("opacity", 0.8))
             )
             
-        # 8. 3D Scatter Plot
+        # 12. 3D Scatter Plot
         elif graph_type in ["3dscatter", "3dscatterplot"]:
             fig = px.scatter_3d(
                 df, x=x_col, y=y_col, z=z_col,

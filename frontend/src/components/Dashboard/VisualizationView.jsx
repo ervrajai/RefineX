@@ -14,7 +14,6 @@ import {
   Download,
   Copy,
   Trash2,
-  Heart,
   RefreshCw,
   Undo2,
   Redo2,
@@ -197,6 +196,103 @@ export default function VisualizationView({
   const [exportLoading, setExportLoading] = useState(false);
   const [showCodeDialog, setShowCodeDialog] = useState(false);
   const exportDropdownRef = useRef(null);
+
+  // Saved Graphs & History Gallery states
+  const [savedGraphs, setSavedGraphs] = useState([]);
+  const [loadingSavedGraphs, setLoadingSavedGraphs] = useState(false);
+  const [graphToDelete, setGraphToDelete] = useState(null);
+  const [deletingGraph, setDeletingGraph] = useState(false);
+
+  const formatDate = (isoStr) => {
+    if (!isoStr) return "Just now";
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return "Recently";
+      return d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch {
+      return "Recently";
+    }
+  };
+
+  useEffect(() => {
+    fetchSavedGraphs();
+  }, []);
+
+  const fetchSavedGraphs = async () => {
+    setLoadingSavedGraphs(true);
+    try {
+      const res = await api.get("visualization/history/");
+      let list = [];
+      if (Array.isArray(res.data)) {
+        list = res.data;
+      } else if (res.data && Array.isArray(res.data.results)) {
+        list = res.data.results;
+      }
+      setSavedGraphs(list);
+    } catch (err) {
+      console.error("Failed to load saved graphs:", err);
+      setSavedGraphs([]);
+    } finally {
+      setLoadingSavedGraphs(false);
+    }
+  };
+
+  const handleToggleFavorite = async (graph) => {
+    try {
+      const res = await api.patch(`visualization/history/${graph.id}/`, {
+        is_favorite: !graph.is_favorite
+      });
+      setSavedGraphs(prev => prev.map(g => g.id === graph.id ? { ...g, is_favorite: res.data.is_favorite } : g));
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err);
+    }
+  };
+
+  const handleDeleteSavedGraph = async () => {
+    if (!graphToDelete) return;
+    setDeletingGraph(true);
+    try {
+      await api.delete(`visualization/history/${graphToDelete.id}/`);
+      setSavedGraphs(prev => prev.filter(g => g.id !== graphToDelete.id));
+      setGraphToDelete(null);
+    } catch (err) {
+      console.error("Failed to delete saved graph:", err);
+    } finally {
+      setDeletingGraph(false);
+    }
+  };
+
+  const handleLoadSavedGraphIntoStudio = async (graph) => {
+    if (graph.config) {
+      setConfig({
+        ...initialConfig,
+        ...graph.config,
+      });
+    }
+    const dsId = graph.dataset || graph.dataset_id;
+    if (dsId) {
+      setLoadingDatasetId(dsId);
+      try {
+        const previewRes = await api.get(`cleaning/${dsId}/preview/?offset=0&limit=100`);
+        const previewData = previewRes.data;
+        const analyzeRes = await api.get(`visualization/analyze/${dsId}/`);
+        setDatasetId(dsId);
+        setMetadata(previewData.metadata);
+        setPreview(previewData);
+        setProfile(analyzeRes.data);
+        setReport(analyzeRes.data);
+      } catch (err) {
+        console.error("Failed to load dataset details for saved graph:", err);
+      } finally {
+        setLoadingDatasetId(null);
+      }
+    }
+    setSuccessMsg(`Loaded "${graph.name}" into Visualization Studio!`);
+  };
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -500,10 +596,21 @@ export default function VisualizationView({
           config: currentConfig,
         })
         .then((res) => {
-          setChartHtml(res.data.html);
-          setChartImage(res.data.image);
-          setPythonCode(res.data.python_code);
-          setGenNotes(res.data.notes || []);
+          if (res.data.success === false) {
+            setGenError(res.data.error || "Failed to generate graph.");
+            setGenReason(res.data.reason || "Invalid column configurations.");
+            setGenRec(res.data.recommended || "");
+            setChartHtml("");
+            setChartImage("");
+          } else {
+            setChartHtml(res.data.html || "");
+            setChartImage(res.data.image || "");
+            setPythonCode(res.data.python_code || "");
+            setGenNotes(res.data.notes || []);
+            setGenError("");
+            setGenReason("");
+            setGenRec("");
+          }
         })
         .catch((err) => {
           const data = err.response?.data || {};
@@ -628,7 +735,7 @@ export default function VisualizationView({
     try {
       await api.post("visualization/history/", {
         dataset: datasetId,
-        dataset_name: metadata.name,
+        dataset_name: metadata?.name || "Dataset",
         name: saveName.trim(),
         graph_type: config.graph_type,
         library: config.library,
@@ -637,12 +744,13 @@ export default function VisualizationView({
         python_code: pythonCode,
       });
       setSavedSuccess(true);
+      fetchSavedGraphs();
       setTimeout(() => {
         setShowSaveDialog(false);
         setSavedSuccess(false);
       }, 1500);
-    } catch {
-      // Error
+    } catch (err) {
+      console.error("Failed to save visualization graph:", err);
     } finally {
       setSaveLoading(false);
     }
@@ -775,7 +883,7 @@ export default function VisualizationView({
                       {ds.name}
                     </h3>
                     <span className="text-[10px] text-slate-400 block mt-0.5">
-                      Uploaded {new Date(ds.created_at).toLocaleDateString()}
+                      Uploaded {formatDate(ds.created_at)}
                     </span>
                   </div>
                   <button
@@ -794,6 +902,119 @@ export default function VisualizationView({
                   </button>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Saved Graphs Gallery Card (When no dataset loaded - Outside View) */}
+        {savedGraphs.length > 0 && (
+          <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-800 pb-3">
+              <div className="flex items-center gap-2">
+                <LineChart className="w-5 h-5 text-violet-500" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Saved Graphs Gallery</h3>
+              </div>
+              <span className="text-xs font-semibold text-slate-400">
+                {savedGraphs.length} {savedGraphs.length === 1 ? "Graph" : "Graphs"} Saved
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {savedGraphs.map((graph) => (
+                <div 
+                  key={graph.id}
+                  className="p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/40 hover:border-violet-500/40 transition duration-200 flex flex-col justify-between gap-3 group"
+                >
+                  <div className="space-y-2">
+                    {graph.preview_data && (
+                      <div className="w-full h-32 bg-slate-100 dark:bg-zinc-800 rounded-lg overflow-hidden flex items-center justify-center p-1 border border-slate-200 dark:border-zinc-700">
+                        <img src={graph.preview_data} alt={graph.name} className="max-h-full max-w-full object-contain rounded" />
+                      </div>
+                    )}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[180px]">
+                          {graph.name}
+                        </h4>
+                        <span className="text-[10px] text-slate-400 block mt-0.5">
+                          Dataset: {graph.dataset_name || "Dataset"} • {formatDate(graph.created_at)}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-violet-500/10 text-violet-600 dark:text-violet-400 uppercase tracking-wider">
+                      {graph.graph_type} ({graph.library})
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-zinc-800">
+                    <button
+                      onClick={() => handleLoadSavedGraphIntoStudio(graph)}
+                      disabled={loadingDatasetId === (graph.dataset || graph.dataset_id)}
+                      className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                    >
+                      {loadingDatasetId === (graph.dataset || graph.dataset_id) ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Loading...
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-3.5 h-3.5" /> Load in Studio
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setGraphToDelete(graph)}
+                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition cursor-pointer"
+                      title="Delete Saved Graph"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal (Outside View) */}
+        {graphToDelete && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+            <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 shadow-2xl flex flex-col gap-5">
+              <div className="flex items-center gap-3 text-rose-500">
+                <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                  <AlertCircle className="w-6 h-6 text-rose-500" />
+                </div>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">Delete Saved Graph?</h3>
+              </div>
+
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-300 leading-relaxed font-medium">
+                Are you sure you want to delete <strong className="text-slate-900 dark:text-white">{graphToDelete.name}</strong>? <strong className="text-rose-500 font-bold">This action cannot be restored.</strong>
+              </p>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  disabled={deletingGraph}
+                  onClick={() => setGraphToDelete(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  disabled={deletingGraph}
+                  onClick={handleDeleteSavedGraph}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black transition cursor-pointer active:scale-95 disabled:opacity-50"
+                >
+                  {deletingGraph ? (
+                    <span className="animate-pulse">Deleting Graph...</span>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Delete Graph
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -883,6 +1104,8 @@ export default function VisualizationView({
           </div>
         </div>
       )}
+
+
 
       {/* Auto Graph Recommendation Carousel Row */}
       {recommendations.length > 0 && (

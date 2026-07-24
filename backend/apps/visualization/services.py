@@ -92,7 +92,10 @@ def run_comprehensive_analysis(df, dataset):
             try:
                 sample = series.dropna().head(20)
                 if len(sample) > 0:
-                    parsed = pd.to_datetime(sample, errors='coerce')
+                    import warnings
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", UserWarning)
+                        parsed = pd.to_datetime(sample, format='mixed', errors='coerce')
                     if parsed.notna().sum() > 0.8 * len(sample):
                         is_date = True
             except:

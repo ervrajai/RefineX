@@ -259,7 +259,10 @@ def profile_dataset(df):
         if curr_type == 'object':
             # Check if it could be datetime
             try:
-                parsed = pd.to_datetime(df[col].dropna().head(20), errors='coerce')
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    parsed = pd.to_datetime(df[col].dropna().head(20), format='mixed', errors='coerce')
                 if parsed.notna().sum() > 10 or (parsed.notna().sum() == len(df[col].dropna().head(20)) and len(df[col].dropna().head(20)) > 0):
                     sug_type = 'datetime64[ns]'
             except:
@@ -599,7 +602,10 @@ def clean_dataset(df, config):
                     
                     # Check if it should be datetime
                     try:
-                        date_series = pd.to_datetime(cleaned_df[col], errors='coerce')
+                        import warnings
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore", UserWarning)
+                            date_series = pd.to_datetime(cleaned_df[col], format='mixed', errors='coerce')
                         if date_series.notna().sum() > 0.8 * len(cleaned_df[col].dropna()):
                             cleaned_df[col] = date_series
                             converted_types_count += 1
@@ -623,7 +629,10 @@ def clean_dataset(df, config):
                         elif target_type == "boolean":
                             cleaned_df[col] = cleaned_df[col].astype(bool)
                         elif target_type == "datetime":
-                            cleaned_df[col] = pd.to_datetime(cleaned_df[col], errors='coerce')
+                            import warnings
+                            with warnings.catch_warnings():
+                                warnings.simplefilter("ignore", UserWarning)
+                                cleaned_df[col] = pd.to_datetime(cleaned_df[col], format='mixed', errors='coerce')
                         converted_types_count += 1
                     except Exception as e:
                         logs.append(f"⚠️ Failed manual conversion for '{col}' to {target_type}: {str(e)}")
@@ -769,10 +778,13 @@ def clean_dataset(df, config):
                 sample = cleaned_df[col].dropna().head(10)
                 if len(sample) > 0:
                     try:
-                        parsed = pd.to_datetime(sample, errors='coerce')
-                        if parsed.notna().sum() > 0.7 * len(sample):
-                            cleaned_df[col] = pd.to_datetime(cleaned_df[col], errors='coerce')
-                            is_datetime = True
+                        import warnings
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore", UserWarning)
+                            parsed = pd.to_datetime(sample, format='mixed', errors='coerce')
+                            if parsed.notna().sum() > 0.7 * len(sample):
+                                cleaned_df[col] = pd.to_datetime(cleaned_df[col], format='mixed', errors='coerce')
+                                is_datetime = True
                     except:
                         pass
                         

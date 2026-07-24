@@ -535,7 +535,18 @@ export default function ModelTrainingView({
                           </div>
                           <div className="min-w-0">
                             <span className="text-xs font-semibold text-slate-800 dark:text-zinc-200 block truncate">{job.dataset_name}</span>
-                            <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider mt-0.5">Cleaned: {new Date(job.cleaned_at).toLocaleDateString()}</span>
+                            <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider mt-0.5">
+                              Cleaned: {(() => {
+                                const dt = job.created_at || job.cleaned_at || job.updated_at;
+                                if (!dt) return "Recently";
+                                try {
+                                  const d = new Date(dt);
+                                  return isNaN(d.getTime()) ? "Recently" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                                } catch {
+                                  return "Recently";
+                                }
+                              })()}
+                            </span>
                           </div>
                         </div>
                         <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-primary group-hover:translate-x-0.5 transition shrink-0" />

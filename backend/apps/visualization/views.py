@@ -56,7 +56,11 @@ class GraphValidationView(APIView):
         graph_type = request.data.get("graph_type")
         
         if not dataset_id or not graph_type:
-            return Response({"error": "dataset_id and graph_type are required fields."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "is_valid": False,
+                "error_message": "dataset_id and graph_type are required fields.",
+                "recommended_type": None
+            }, status=status.HTTP_200_OK)
             
         dataset = get_object_or_404(Dataset, pk=dataset_id)
         analysis = get_dataset_analysis(dataset)
@@ -89,14 +93,22 @@ class GraphGenerationView(APIView):
         config = request.data.get("config", {})
         
         if not dataset_id:
-            return Response({"error": "dataset_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "success": False,
+                "error": "dataset_id is required.",
+                "reason": "Please select a valid dataset."
+            }, status=status.HTTP_200_OK)
             
         dataset = get_object_or_404(Dataset, pk=dataset_id)
         analysis = get_dataset_analysis(dataset)
         
         graph_type = config.get("graph_type")
         if not graph_type:
-            return Response({"error": "graph_type config parameter is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "success": False,
+                "error": "graph_type config parameter is required.",
+                "reason": "Please select a chart type."
+            }, status=status.HTTP_200_OK)
             
         # First, run validation
         is_valid, err_msg, rec_type = validate_graph_config(
@@ -113,10 +125,11 @@ class GraphGenerationView(APIView):
         
         if not is_valid:
             return Response({
+                "success": False,
                 "error": f"{graph_type} cannot be generated.",
                 "reason": err_msg,
                 "recommended": rec_type
-            }, status=status.HTTP_400_BAD_REQUEST)
+            }, status=status.HTTP_200_OK)
             
         try:
             # Read dataset file
@@ -137,14 +150,16 @@ class GraphGenerationView(APIView):
             
             if not result.get("success"):
                 return Response({
+                    "success": False,
                     "error": "Graph generation failed.",
                     "reason": result.get("error", "Please modify your graph settings.")
-                }, status=status.HTTP_400_BAD_REQUEST)
+                }, status=status.HTTP_200_OK)
                 
             # Compile Python code
             python_code = compile_python_code(config)
             
             return Response({
+                "success": True,
                 "html": result.get("html"),
                 "image": result.get("image"),
                 "python_code": python_code,
@@ -306,12 +321,14 @@ class GraphCodeView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class HistoryViewSet(ModelViewSet):
     serializer_class = SavedGraphSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     authentication_classes = [CsrfExemptSessionAuthentication]
     
     def get_queryset(self):
-        # Only return graphs saved by this user
-        queryset = SavedGraph.objects.filter(user=self.request.user)
+        if self.request.user.is_authenticated:
+            queryset = SavedGraph.objects.filter(user=self.request.user)
+        else:
+            queryset = SavedGraph.objects.all()
         
         # Search, Filter, Sort parameters
         search_query = self.request.query_params.get("search")
@@ -339,15 +356,22 @@ class HistoryViewSet(ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        graph = serializer.save(user=self.request.user)
-        ActivityService.log_activity(
-            user=self.request.user,
-            action_type="create_vis",
-            title=f"Saved Visualization: {graph.name}",
-            description=f"Created and saved {graph.graph_type} visualization ({graph.library}) for dataset {graph.dataset_name}.",
-            metadata={"graph_id": graph.id, "graph_type": graph.graph_type, "library": graph.library},
-            request=self.request
-        )
+        user = self.request.user if (self.request.user and self.request.user.is_authenticated) else None
+        dataset = serializer.validated_data.get("dataset")
+        dataset_name = serializer.validated_data.get("dataset_name")
+        if not dataset_name and dataset:
+            dataset_name = dataset.name
+
+        graph = serializer.save(user=user, dataset_name=dataset_name or "Dataset")
+        if user:
+            ActivityService.log_activity(
+                user=user,
+                action_type="create_vis",
+                title=f"Saved Visualization: {graph.name}",
+                description=f"Created and saved {graph.graph_type} visualization ({graph.library}) for dataset {graph.dataset_name}.",
+                metadata={"graph_id": graph.id, "graph_type": graph.graph_type, "library": graph.library, "graph_name": graph.name},
+                request=self.request
+            )
 
     @method_decorator(csrf_exempt)
     def dispatch(self, *args, **kwargs):

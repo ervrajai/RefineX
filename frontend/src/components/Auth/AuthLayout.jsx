@@ -176,7 +176,7 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
 
           {/* --- RIGHT COLUMN (Centered Form Card) --- */}
           <div className="lg:col-span-5 flex justify-center items-center w-full">
-            <div className="w-full max-w-md animate-fade-in delay-200 relative overflow-hidden rounded-2xl border border-lightBorder/55 dark:border-gray-800/80 bg-[#F2F2F2]/80 dark:bg-[#212121]/80 p-6 backdrop-blur-xl shadow-2xl flex flex-col transition-colors duration-300">
+            <div className="w-full max-w-md animate-fade-in delay-200 relative overflow-hidden rounded-2xl border border-lightBorder/55 dark:border-gray-800/80 bg-[#FFFFFF]/80 dark:bg-[#212121]/80 p-6 backdrop-blur-xl shadow-2xl flex flex-col transition-colors duration-300">
               
               {/* Card Glow Effect */}
               <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-primary/5 dark:bg-primary/10 blur-3xl pointer-events-none" />
@@ -186,7 +186,7 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
                 {/* --- OPPO COLOROS STYLE TAB SWITCHER --- */}
                 {(isLogin || isSignup) && (
                   <div className="relative mb-6 flex items-center justify-center">
-                    <div className="relative inline-flex items-center rounded-full bg-[#E5E5E5]/80 dark:bg-[#272727] p-1 shadow-inner">
+                    <div className="relative inline-flex items-center rounded-full bg-[#F1F5F9]/80 dark:bg-[#272727] p-1 shadow-inner">
                       
                       {/* Sliding Capsule Indicator */}
                       <motion.div

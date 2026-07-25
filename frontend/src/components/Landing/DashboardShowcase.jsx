@@ -533,7 +533,7 @@ export default function DashboardShowcase() {
   // Helper renderer for the complete workspace UI inside the window
   const renderDashboardLayout = () => {
     return (
-      <div className="flex w-full h-full bg-[#FFFFFF] dark:bg-[#0F0F0F] text-slate-900 dark:text-white overflow-hidden font-sans select-none relative">
+      <div className="flex w-full h-full bg-[#F8FAFC] dark:bg-[#0F0F0F] text-slate-900 dark:text-white overflow-hidden font-sans select-none relative">
         {/* Real Sidebar Component */}
         <Sidebar
           activeTab={activeTab}
@@ -551,7 +551,7 @@ export default function DashboardShowcase() {
           
           {/* Floating Top Notification Bell */}
           <div className="absolute top-4 right-6 z-40">
-            <button className="relative p-2 rounded-xl text-slate-500 dark:text-zinc-400 bg-[#F2F2F2]/80 dark:bg-[#212121]/80 border border-slate-200/50 dark:border-zinc-800 backdrop-blur shadow-sm hover:bg-[#E5E5E5] dark:hover:bg-[#272727] hover:text-slate-900 dark:hover:text-white transition duration-200 cursor-pointer">
+            <button className="relative p-2 rounded-xl text-slate-500 dark:text-zinc-400 bg-[#FFFFFF]/80 dark:bg-[#212121]/80 border border-slate-200/50 dark:border-zinc-800 backdrop-blur shadow-sm hover:bg-[#F1F5F9] dark:hover:bg-[#272727] hover:text-slate-900 dark:hover:text-white transition duration-200 cursor-pointer">
               <Bell className="w-4 h-4" />
               <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-primary ring-1 ring-white dark:ring-zinc-900" />
             </button>

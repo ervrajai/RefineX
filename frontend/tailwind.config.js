@@ -27,10 +27,10 @@ export default {
         hover: '#272727',
         panelHover: '#272727',
 
-        // RefineX Light Theme Backgrounds (Reduced Eye Strain)
-        lightBg: '#FFFFFF',
-        lightElevated: '#F2F2F2',
-        lightHover: '#E5E5E5',
+        // RefineX Light Theme Backgrounds (Updated Eye Strain Reduction)
+        lightBg: '#F8FAFC',
+        lightElevated: '#FFFFFF',
+        lightHover: '#F1F5F9',
       },
       fontFamily: {
         // Base font for paragraphs and UI text

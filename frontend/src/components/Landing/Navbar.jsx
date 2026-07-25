@@ -135,7 +135,7 @@ function Navbar() {
           {/* Desktop Links (Animated Outline Container) */}
           <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <ul 
-              className="flex items-center p-1.5 rounded-[40px] bg-[#F2F2F2]/80 dark:bg-[#212121]/80 border border-lightBorder/50 dark:border-gray-800/80 relative"
+              className="flex items-center p-1.5 rounded-[40px] bg-[#FFFFFF]/80 dark:bg-[#212121]/80 border border-lightBorder/50 dark:border-gray-800/80 relative"
               onMouseLeave={() => setHoveredLink(null)}
             >
               {NAV_LINKS.map((link) => (
@@ -232,7 +232,7 @@ function Navbar() {
 
       {/* Panel */}
       <div
-        className={`fixed top-0 right-0 h-full w-[60%] max-w-xs z-50 bg-[#F2F2F2] dark:bg-[#212121] border-l border-lightBorder/50 dark:border-gray-800 shadow-2xl flex flex-col lg:hidden transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-full w-[60%] max-w-xs z-50 bg-[#FFFFFF] dark:bg-[#212121] border-l border-lightBorder/50 dark:border-gray-800 shadow-2xl flex flex-col lg:hidden transition-transform duration-300 ease-in-out ${
           isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >

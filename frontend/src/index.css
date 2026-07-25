@@ -17,12 +17,12 @@
   --color-panel-hover: #272727;
 
   /* Custom light mode color palette for reduced eye strain */
-  --color-light-bg: #FFFFFF;
-  --color-lightBg: #FFFFFF;
-  --color-light-elevated: #F2F2F2;
-  --color-lightElevated: #F2F2F2;
-  --color-light-hover: #E5E5E5;
-  --color-lightHover: #E5E5E5;
+  --color-light-bg: #F8FAFC;
+  --color-lightBg: #F8FAFC;
+  --color-light-elevated: #FFFFFF;
+  --color-lightElevated: #FFFFFF;
+  --color-light-hover: #F1F5F9;
+  --color-lightHover: #F1F5F9;
 
   /* Global Tailwind zinc palette overrides for dark mode surfaces */
   --color-zinc-950: #0F0F0F;
@@ -30,16 +30,16 @@
   --color-zinc-800: #272727;
 
   /* Global Tailwind slate/gray palette overrides for light mode elevated & hover surfaces */
-  --color-slate-50: #F2F2F2;
-  --color-gray-50: #F2F2F2;
-  --color-slate-100: #E5E5E5;
-  --color-gray-100: #E5E5E5;
+  --color-slate-50: #FFFFFF;
+  --color-gray-50: #FFFFFF;
+  --color-slate-100: #F1F5F9;
+  --color-gray-100: #F1F5F9;
 }
 
 @layer base {
   body {
     /* Low eye-strain background */
-    @apply bg-[#FFFFFF] text-black dark:bg-[#0F0F0F] dark:text-[#f8f8f8] font-sans antialiased transition-colors duration-300;
+    @apply bg-[#F8FAFC] text-black dark:bg-[#0F0F0F] dark:text-[#f8f8f8] font-sans antialiased transition-colors duration-300;
   }
 }
 
@@ -84,4 +84,4 @@
 .animate-progress-shimmer {
   background-size: 200% 100%;
   animation: progressShimmer 2s linear infinite;
-}
+}

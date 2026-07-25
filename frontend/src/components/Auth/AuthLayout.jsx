@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Star } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Particles } from "./Particles";
+import logoImg from "../../assets/logo/refinex_logo.png";
 
 function AuthLayout({ title, subtitle, children, footerText, footerLink, footerLabel }) {
   const location = useLocation();
@@ -19,7 +20,7 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
     navigate(targetPath);
   };
 
-  // Sync theme with landing page / prefers-color-scheme on mount
+  // Sync theme with system or stored settings
   useEffect(() => {
     const root = document.documentElement;
     const storedTheme = localStorage.getItem("theme") || "auto";
@@ -42,9 +43,7 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
 
     if (storedTheme === "auto") {
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      const handleSystemChange = () => {
-        applyTheme("auto");
-      };
+      const handleSystemChange = () => applyTheme("auto");
       mediaQuery.addEventListener("change", handleSystemChange);
       return () => mediaQuery.removeEventListener("change", handleSystemChange);
     }
@@ -54,48 +53,36 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
     switch (location.pathname) {
       case "/signup":
         return {
-          badge: "RefineX Workspace",
           heading: (
             <>
-              Join The<br />
-              <span className="bg-gradient-to-br from-slate-900 via-slate-900 to-primary dark:from-white dark:via-white dark:to-primary bg-clip-text text-transparent pr-2 pb-1 inline-block">
-                RefineX
-              </span><br />
-              Workspace
+              Join The <br />
+              <span className="text-[#673AB7] dark:text-[#8b5cf6]">RefineX</span> Workspace
             </>
           ),
-          description: "Start designing, developing, and optimizing databases. Sign up for a free developer account today.",
+          description: "Start designing, developing, and optimizing databases with developer-grade efficiency.",
           homeButtonText: "Back to Home",
         };
       case "/forgot-password":
         return {
-          badge: "Account Security",
           heading: (
             <>
-              Secure Your<br />
-              <span className="bg-gradient-to-br from-slate-900 via-slate-900 to-primary dark:from-white dark:via-white dark:to-primary bg-clip-text text-transparent pr-2 pb-1 inline-block">
-                RefineX
-              </span><br />
-              Account
+              Secure Your <br />
+              <span className="text-[#673AB7] dark:text-[#8b5cf6]">RefineX</span> Account
             </>
           ),
-          description: "Follow the simple multi-step recovery process to verify your email and restore account access safely.",
+          description: "Follow the simple step-by-step process to verify your email and restore access.",
           homeButtonText: "Back to Home",
         };
       case "/login":
       default:
         return {
-          badge: "RefineX Platform",
           heading: (
             <>
-              Welcome Back<br />
-              To{" "}
-              <span className="bg-gradient-to-br from-slate-900 via-slate-900 to-primary dark:from-white dark:via-white dark:to-primary bg-clip-text text-transparent pr-2 pb-1 inline-block">
-                RefineX
-              </span>
+              Welcome Back To <br />
+              <span className="text-[#673AB7] dark:text-[#8b5cf6]">RefineX</span>
             </>
           ),
-          description: "Access your workspace, manage database records, run queries, and monitor performance in real-time.",
+          description: "Access your workspace, manage database records, and run real-time queries smoothly.",
           homeButtonText: "Back to Home",
         };
     }
@@ -103,10 +90,9 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
 
   const dynamicContent = getDynamicContent();
 
-  // Motion variants for sliding form card content
   const cardSlideVariants = {
     enter: (dir) => ({
-      x: dir > 0 ? 40 : -40,
+      x: dir > 0 ? 15 : -15,
       opacity: 0,
     }),
     center: {
@@ -114,112 +100,115 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
       opacity: 1,
     },
     exit: (dir) => ({
-      x: dir > 0 ? -40 : 40,
+      x: dir > 0 ? -15 : 15,
       opacity: 0,
     }),
   };
 
   return (
-    <div className="relative h-screen w-screen bg-white dark:bg-[#0F0F0F] text-slate-900 dark:text-white overflow-hidden font-sans flex flex-col justify-center items-center transition-colors duration-300 select-none">
-      {/* SCOPED ANIMATIONS */}
+    <div className="relative min-h-screen w-full bg-slate-50 dark:bg-[#000000] text-slate-900 dark:text-white font-sans flex items-center justify-center py-8 px-4 transition-colors duration-300 select-none overflow-hidden">
+      
+      {/* Background Smooth Keyframe Animations */}
       <style>{`
-        @keyframes fadeSlideIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes pulseGlow {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(1.08); }
         }
-        .animate-fade-in {
-          animation: fadeSlideIn 0.2s ease-out forwards;
-          opacity: 0;
+        .animate-glow-1 {
+          animation: pulseGlow 10s ease-in-out infinite;
         }
-        .delay-100 { animation-delay: 0.02s; }
-        .delay-200 { animation-delay: 0.04s; }
-        .delay-300 { animation-delay: 0.06s; }
-        .delay-400 { animation-delay: 0.08s; }
       `}</style>
 
-      {/* Interactive Background Particles */}
-      <Particles className="absolute inset-0 z-0" color="#673ab7" quantity={120} staticity={40} />
+      {/* --- AMBIENT BACKDROP (Bottom Right Gradient Removed) --- */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="animate-glow-1 absolute -top-24 -left-20 w-[450px] h-[450px] rounded-full bg-[#673AB7]/20 dark:bg-[#673AB7]/25 blur-[120px]" />
+      </div>
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full flex items-center justify-center">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 items-center w-full max-h-[90vh]">
+      {/* Interactive Particles Layer */}
+      <Particles className="absolute inset-0 z-0 opacity-40 dark:opacity-30 pointer-events-none" color="#673AB7" quantity={60} staticity={50} />
+
+      <div className="relative z-10 mx-auto max-w-5xl w-full flex items-center justify-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center w-full">
           
-          {/* --- LEFT COLUMN (Hidden on Mobile) --- */}
-          <div className="lg:col-span-7 hidden lg:flex flex-col justify-center space-y-5">
-            {/* Badge */}
-            <div className="animate-fade-in delay-100">
-              <div className="inline-flex items-center gap-2 rounded-full border border-lightBorder/55 dark:border-white/10 bg-gray-100/50 dark:bg-white/5 px-3 py-1 backdrop-blur-md">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-zinc-300 flex items-center gap-2">
-                  {dynamicContent.badge}
-                  <Star className="w-3 h-3 text-primary fill-primary" />
-                </span>
-              </div>
+          {/* --- LEFT COLUMN --- */}
+          <div className="lg:col-span-7 hidden lg:flex flex-col justify-center space-y-5 pr-4">
+            
+            {/* BRAND LOGO DISPLAY */}
+            <div className="flex items-center gap-3">
+              <img
+                src={logoImg}
+                alt="RefineX Logo"
+                className="w-10 h-10 object-contain rounded-xl"
+              />
+              <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                RefineX
+              </span>
             </div>
 
             {/* Heading */}
-            <h1 className="animate-fade-in delay-200 text-5xl sm:text-6xl lg:text-7xl font-medium tracking-tighter leading-[0.9] text-slate-900 dark:text-white">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight text-slate-900 dark:text-white">
               {dynamicContent.heading}
             </h1>
 
             {/* Description */}
-            <p className="animate-fade-in delay-300 max-w-md text-sm text-slate-600 dark:text-zinc-400 leading-relaxed">
+            <p className="max-w-md text-sm text-slate-600 dark:text-zinc-400 leading-relaxed">
               {dynamicContent.description}
             </p>
 
-            {/* CTA Buttons */}
-            <div className="animate-fade-in delay-400 flex flex-col sm:flex-row gap-4">
-              <Link to="/" className="group inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 dark:bg-white px-5 py-2.5 text-xs font-semibold text-white dark:text-zinc-950 transition-all hover:scale-[1.02] hover:bg-slate-800 dark:hover:bg-zinc-200 active:scale-[0.98]">
+            {/* CTA Button */}
+            <div className="pt-1">
+              <Link
+                to="/"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500 bg-slate-900 dark:bg-white px-5 py-2.5 text-xs font-semibold text-white dark:text-slate-900 shadow-sm transition-all duration-200 hover:bg-slate-800 dark:hover:bg-slate-100 focus:ring-4 focus:ring-[#673AB7]/15 active:scale-[0.98]"
+              >
                 {dynamicContent.homeButtonText}
-                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>
 
-          {/* --- RIGHT COLUMN (Centered Form Card) --- */}
+          {/* --- RIGHT COLUMN (Form Card) --- */}
           <div className="lg:col-span-5 flex justify-center items-center w-full">
-            <div className="w-full max-w-md animate-fade-in delay-200 relative overflow-hidden rounded-2xl border border-lightBorder/55 dark:border-gray-800/80 bg-[#FFFFFF]/80 dark:bg-[#212121]/80 p-6 backdrop-blur-xl shadow-2xl flex flex-col transition-colors duration-300">
+            <div className="w-full max-w-sm relative overflow-hidden rounded-3xl border border-zinc-300 dark:border-zinc-700 bg-white/90 dark:bg-zinc-900/90 p-6 shadow-xl backdrop-blur-xl">
               
-              {/* Card Glow Effect */}
-              <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-primary/5 dark:bg-primary/10 blur-3xl pointer-events-none" />
-
               <div className="relative z-10 w-full">
                 
-                {/* --- OPPO COLOROS STYLE TAB SWITCHER --- */}
+                {/* --- PILL SWITCHER --- */}
                 {(isLogin || isSignup) && (
-                  <div className="relative mb-6 flex items-center justify-center">
-                    <div className="relative inline-flex items-center rounded-full bg-[#F1F5F9]/80 dark:bg-[#272727] p-1 shadow-inner">
-                      
-                      {/* Sliding Capsule Indicator */}
+                  <div className="mb-5 flex justify-center">
+                    <div className="relative flex w-full items-center rounded-full border border-zinc-300 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 p-1">
+                      {/* Animated Capsule Indicator */}
                       <motion.div
-                        className="absolute inset-y-1 rounded-full bg-white dark:bg-[#424242] shadow-sm"
+                        className="absolute inset-y-1 rounded-full bg-white dark:bg-zinc-900 shadow-sm"
                         initial={false}
                         animate={{
                           left: isLogin ? "4px" : "50%",
                           width: "calc(50% - 4px)",
                         }}
-                        transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
                       />
 
-                      {/* Log In Tab */}
+                      {/* Log In Button */}
                       <button
                         type="button"
                         onClick={() => handleTabSwitch("/login")}
-                        className={`relative z-10 min-w-[100px] px-5 py-1.5 text-center text-xs font-medium transition-colors duration-200 ${
+                        className={`relative z-10 w-1/2 py-1.5 text-center text-xs font-semibold transition-colors duration-200 ${
                           isLogin
-                            ? "text-gray-900 dark:text-white"
-                            : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200"
+                            ? "text-slate-900 dark:text-white"
+                            : "text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200"
                         }`}
                       >
                         Log In
                       </button>
 
-                      {/* Sign Up Tab */}
+                      {/* Sign Up Button */}
                       <button
                         type="button"
                         onClick={() => handleTabSwitch("/signup")}
-                        className={`relative z-10 min-w-[100px] px-5 py-1.5 text-center text-xs font-medium transition-colors duration-200 ${
+                        className={`relative z-10 w-1/2 py-1.5 text-center text-xs font-semibold transition-colors duration-200 ${
                           isSignup
-                            ? "text-gray-900 dark:text-white"
-                            : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200"
+                            ? "text-slate-900 dark:text-white"
+                            : "text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200"
                         }`}
                       >
                         Sign Up
@@ -238,34 +227,35 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
                     animate="center"
                     exit="exit"
                     transition={{
-                      x: { type: "spring", stiffness: 380, damping: 30 },
+                      x: { type: "spring", stiffness: 350, damping: 30 },
                       opacity: { duration: 0.15 },
                     }}
                   >
                     {/* Form Header */}
-                    <div className="mb-4">
-                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h2>
-                      <p className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">{subtitle}</p>
+                    <div className="mb-4 text-left">
+                      <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">{title}</h2>
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400 leading-normal">{subtitle}</p>
                     </div>
 
-                    {/* Children forms */}
-                    {children}
+                    {/* Dynamic Children (Inputs / Forms) */}
+                    <div className="space-y-3.5">
+                      {children}
+                    </div>
 
-                    {/* Footer link for forgot password */}
+                    {/* Footer Options */}
                     {footerText && !isLogin && !isSignup && (
                       <p className="mt-4 text-center text-xs text-slate-500 dark:text-zinc-400">
                         {footerText}{" "}
-                        <Link to={footerLink} className="font-semibold text-primary hover:text-primary-dark hover:underline transition-all">
+                        <Link to={footerLink} className="font-semibold text-[#673AB7] dark:text-[#8b5cf6] hover:underline">
                           {footerLabel}
                         </Link>
                       </p>
                     )}
                     
-                    {/* Fallback reset link for Login page */}
                     {isLogin && (
                       <p className="mt-4 text-center text-xs text-slate-500 dark:text-zinc-400">
-                        Having trouble logging in?{" "}
-                        <Link to="/forgot-password" className="font-semibold text-primary hover:text-primary-dark hover:underline transition-all">
+                        Forgot your password?{" "}
+                        <Link to="/forgot-password" className="font-semibold text-[#673AB7] dark:text-[#8b5cf6] hover:underline">
                           Reset Password
                         </Link>
                       </p>

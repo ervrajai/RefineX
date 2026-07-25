@@ -318,7 +318,7 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: idx * 0.05 }}
               onClick={card.onClick}
-              className="relative flex flex-col justify-between p-5 rounded-2xl bg-white/70 dark:bg-[#121212]/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 hover:border-primary/50 dark:hover:border-primary/50 transition-all duration-300 cursor-pointer group shadow-sm hover:shadow-md overflow-hidden min-w-0"
+              className="relative flex flex-col justify-between p-5 rounded-2xl bg-white/70 dark:bg-[#212121]/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 hover:border-primary/50 dark:hover:border-primary/50 transition-all duration-300 cursor-pointer group shadow-sm hover:shadow-md overflow-hidden min-w-0"
             >
               <div className="flex items-center justify-between mb-3 min-w-0">
                 <span className="text-xs font-extrabold uppercase tracking-widest text-slate-500 dark:text-zinc-400 truncate">
@@ -371,7 +371,7 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
       </div>
 
       {/* QUICK ACTIONS SECTION (4 EVENLY SPACED BUTTONS) */}
-      <div className="p-6 rounded-2xl bg-white/70 dark:bg-[#121212]/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col gap-4 overflow-hidden min-w-0">
+      <div className="p-6 rounded-2xl bg-white/70 dark:bg-[#212121]/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col gap-4 overflow-hidden min-w-0">
         <h3 className="text-base font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-zinc-800 pb-3">
           Quick Actions
         </h3>
@@ -421,7 +421,7 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
 
       {/* SMART EMPTY STATE (NEW USERS) vs FULL DASHBOARD */}
       {isNewUser ? (
-        <div className="p-10 sm:p-14 rounded-3xl bg-white/70 dark:bg-[#121212]/80 backdrop-blur-xl border border-dashed border-slate-300 dark:border-zinc-800 shadow-sm flex flex-col items-center justify-center text-center gap-6 my-4 overflow-hidden">
+        <div className="p-10 sm:p-14 rounded-3xl bg-white/70 dark:bg-[#212121]/80 backdrop-blur-xl border border-dashed border-slate-300 dark:border-zinc-800 shadow-sm flex flex-col items-center justify-center text-center gap-6 my-4 overflow-hidden">
           <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-tr from-primary/20 to-purple-500/20 border border-primary/30 flex items-center justify-center text-primary shadow-inner">
             <Sparkles className="w-10 h-10 animate-bounce" />
           </div>
@@ -449,7 +449,7 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
             
             {/* PIPELINE & WORKSPACE HISTORY (2 COLS) */}
-            <div className="lg:col-span-2 p-6 rounded-2xl bg-white/70 dark:bg-[#121212]/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col gap-4 overflow-hidden min-w-0">
+            <div className="lg:col-span-2 p-6 rounded-2xl bg-white/70 dark:bg-[#212121]/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col gap-4 overflow-hidden min-w-0">
               
               {/* Header with Sleek Tab Toggle */}
               <div className="flex items-center justify-between min-w-0 flex-wrap gap-3">
@@ -582,7 +582,7 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
             </div>
 
             {/* TOP MODELS LEADERBOARD (1 COL) */}
-            <div className="p-6 rounded-2xl bg-white/70 dark:bg-[#121212]/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col gap-5 overflow-hidden min-w-0">
+            <div className="p-6 rounded-2xl bg-white/70 dark:bg-[#212121]/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col gap-5 overflow-hidden min-w-0">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-800 pb-3 min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
                   <Award className="w-5 h-5 text-amber-500 shrink-0" />

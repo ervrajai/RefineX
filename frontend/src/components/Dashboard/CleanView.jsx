@@ -587,7 +587,7 @@ export default function CleanView({
       )}
 
       {/* HEADER SECTION */}
-      <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col lg:flex-row justify-between lg:items-center gap-6 mb-6 animate-fade-in">
+      <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex flex-col lg:flex-row justify-between lg:items-center gap-6 mb-6 animate-fade-in">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-black dark:text-white tracking-tight flex items-center gap-3">
             <BrushCleaning className="w-7 h-7 text-primary" /> RefineX Dataset Cleaning Console
@@ -603,7 +603,7 @@ export default function CleanView({
             <div className="relative" ref={downloadRef}>
               <button 
                 onClick={() => setDownloadOpen(!downloadOpen)}
-                className="px-3.5 py-1.5 text-2xs font-bold rounded-lg border border-slate-200 dark:border-zinc-700 text-slate-650 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm bg-white dark:bg-[#121212]"
+                className="px-3.5 py-1.5 text-2xs font-bold rounded-lg border border-slate-200 dark:border-zinc-700 text-slate-650 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm bg-white dark:bg-[#212121]"
               >
                 <FileDown className="w-3.5 h-3.5" /> Download
               </button>
@@ -621,7 +621,7 @@ export default function CleanView({
             <button 
               onClick={handleReset} 
               disabled={processing} 
-              className="px-3.5 py-1.5 text-2xs font-bold rounded-lg border border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 bg-white dark:bg-[#121212] transition duration-200 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3.5 py-1.5 text-2xs font-bold rounded-lg border border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 bg-white dark:bg-[#212121] transition duration-200 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             > 
               Reset Dataset 
             </button>
@@ -658,7 +658,7 @@ export default function CleanView({
 
         {/* DATASET INFO CARD (Main Section) */}
         {datasetId && metadata && (
-          <article className="w-full bg-white dark:bg-[#121212] border border-slate-200 dark:border-zinc-800 shadow-sm p-5 md:p-6 rounded-2xl flex flex-col gap-5">
+          <article className="w-full bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 shadow-sm p-5 md:p-6 rounded-2xl flex flex-col gap-5">
             
             {/* Top: Icon + Name */}
             <div className="flex items-center gap-4">
@@ -728,7 +728,7 @@ export default function CleanView({
           />
 
           {!uploading && cleanHistoryList.length > 0 && (
-            <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm space-y-4">
+            <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-800/80 pb-3.5">
                 <div className="flex items-center gap-2.5">
                   <History className="w-4.5 h-4.5 text-purple-500" />
@@ -787,7 +787,7 @@ export default function CleanView({
           <div className="lg:col-span-3 space-y-6">
             
             {/* DATASET VIEWER */}
-            <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm overflow-hidden flex flex-col">
+            <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm overflow-hidden flex flex-col">
               
               <div className="p-4 border-b border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50 dark:bg-zinc-950/20">
                 <div className="flex items-center gap-2">
@@ -908,7 +908,7 @@ export default function CleanView({
             </div>
 
             {/* TABED REPORTS PANEL */}
-            <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm overflow-hidden">
+            <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm overflow-hidden">
               <div className="flex flex-wrap border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-950/20 px-2 pt-2">
                 <button
                   onClick={() => setActiveReportTab("profile")}
@@ -1322,7 +1322,7 @@ export default function CleanView({
 
           {/* RIGHT 25% STICKY SIDEBAR */}
           <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-4 z-10 max-h-[calc(100vh-60px)] overflow-y-auto pr-1">
-            <div className="p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+            <div className="p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
               <h2 className="text-xs font-black text-black dark:text-white uppercase tracking-wider flex items-center gap-1.5 pb-3 border-b border-slate-150 dark:border-zinc-850 mb-3">
                 <Settings className="w-4 h-4 text-primary" /> Cleaning Configuration
               </h2>

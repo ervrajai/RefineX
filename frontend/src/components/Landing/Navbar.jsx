@@ -113,9 +113,8 @@ function Navbar() {
       <nav
         className={`fixed top-0 z-50 w-full transition-all duration-300 border-b ${
           isScrolled
-            ? "bg-white/80 dark:bg-black/80 backdrop-blur-md border-lightBorder/50 dark:border-gray-800"
-            // SOLID at the top, hiding the background underneath
-            : "bg-white dark:bg-black border-transparent" 
+            ? "bg-white/80 dark:bg-[#0F0F0F]/80 backdrop-blur-md border-lightBorder/50 dark:border-gray-800"
+            : "bg-white dark:bg-[#0F0F0F] border-transparent" 
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex justify-between items-center relative">
@@ -136,7 +135,7 @@ function Navbar() {
           {/* Desktop Links (Animated Outline Container) */}
           <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <ul 
-              className="flex items-center p-1.5 rounded-[40px] bg-gray-50/80 dark:bg-[#121212]/80 border border-lightBorder/50 dark:border-gray-800/80 relative"
+              className="flex items-center p-1.5 rounded-[40px] bg-[#F2F2F2]/80 dark:bg-[#212121]/80 border border-lightBorder/50 dark:border-gray-800/80 relative"
               onMouseLeave={() => setHoveredLink(null)}
             >
               {NAV_LINKS.map((link) => (
@@ -197,7 +196,7 @@ function Navbar() {
               </button>
 
               {isThemeDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-36 bg-white dark:bg-[#121212] border border-lightBorder/80 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-50">
+                <div className="absolute right-0 top-full mt-2 w-36 bg-white dark:bg-[#212121] border border-lightBorder/80 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-50">
                   <button onClick={() => changeTheme("light")} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-black dark:hover:text-white transition-colors">
                     <FiSun className="w-4 h-4 shrink-0" /> Light
                   </button>
@@ -233,7 +232,7 @@ function Navbar() {
 
       {/* Panel */}
       <div
-        className={`fixed top-0 right-0 h-full w-[60%] max-w-xs z-50 bg-white dark:bg-[#0d0d0d] border-l border-lightBorder/50 dark:border-gray-800 shadow-2xl flex flex-col lg:hidden transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-full w-[60%] max-w-xs z-50 bg-[#F2F2F2] dark:bg-[#212121] border-l border-lightBorder/50 dark:border-gray-800 shadow-2xl flex flex-col lg:hidden transition-transform duration-300 ease-in-out ${
           isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >

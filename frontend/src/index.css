@@ -7,12 +7,39 @@
   --color-primary: #673ab7;
   --color-primary-dark: #522e93;
   --color-border-gray: #cdcdcd;
+
+  /* Custom dark mode color palette for reduced eye strain */
+  --color-dark-bg: #0F0F0F;
+  --color-darkBg: #0F0F0F;
+  --color-panel: #212121;
+  --color-elevated: #212121;
+  --color-hover: #272727;
+  --color-panel-hover: #272727;
+
+  /* Custom light mode color palette for reduced eye strain */
+  --color-light-bg: #FFFFFF;
+  --color-lightBg: #FFFFFF;
+  --color-light-elevated: #F2F2F2;
+  --color-lightElevated: #F2F2F2;
+  --color-light-hover: #E5E5E5;
+  --color-lightHover: #E5E5E5;
+
+  /* Global Tailwind zinc palette overrides for dark mode surfaces */
+  --color-zinc-950: #0F0F0F;
+  --color-zinc-900: #212121;
+  --color-zinc-800: #272727;
+
+  /* Global Tailwind slate/gray palette overrides for light mode elevated & hover surfaces */
+  --color-slate-50: #F2F2F2;
+  --color-gray-50: #F2F2F2;
+  --color-slate-100: #E5E5E5;
+  --color-gray-100: #E5E5E5;
 }
 
 @layer base {
   body {
-    /* Vite uses slightly off-black for dark mode for better contrast */
-    @apply bg-white text-black dark:bg-[#111111] dark:text-[#f8f8f8] font-sans antialiased transition-colors duration-300;
+    /* Low eye-strain background */
+    @apply bg-[#FFFFFF] text-black dark:bg-[#0F0F0F] dark:text-[#f8f8f8] font-sans antialiased transition-colors duration-300;
   }
 }
 

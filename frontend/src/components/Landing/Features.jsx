@@ -8,7 +8,7 @@ function FeatureCard({ title, steps }) {
       
       {/* Background Layer 1: Solid Brand color peering through the cut corners */}
       <div className="w-full h-full p-1 absolute bg-[#673ab7]">
-        <div className="w-full h-full rounded-xl rounded-tr-[100px] rounded-br-[40px] bg-white dark:bg-[#111111]"></div>
+        <div className="w-full h-full rounded-xl rounded-tr-[100px] rounded-br-[40px] bg-white dark:bg-[#212121]"></div>
       </div>
 
       {/* Background Layer 2: Spinning Ambient Orb */}
@@ -129,7 +129,7 @@ export default function Features() {
   ];
 
   return (
-    <section id="features" className="py-20 md:py-28 bg-white dark:bg-black w-full">
+    <section id="features" className="py-20 md:py-28 bg-white dark:bg-[#0F0F0F] w-full">
       <div className="max-w-7xl mx-auto px-4 md:px-8">
         
         {/* Section Header */}

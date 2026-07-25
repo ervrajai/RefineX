@@ -265,7 +265,7 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
         ref={sidebarRef}
         style={{ width: `${width}px` }}
         className={cn(
-          "hidden md:flex shrink-0 flex-col justify-between h-screen border-r bg-[#fafafa]/80 dark:bg-[#0c0c0e]/80 backdrop-blur-2xl border-slate-200/60 dark:border-zinc-800/60 font-sans select-none relative z-40 overflow-visible",
+          "hidden md:flex shrink-0 flex-col justify-between h-screen border-r bg-[#F2F2F2]/80 dark:bg-[#212121]/80 backdrop-blur-2xl border-slate-200/60 dark:border-zinc-800/60 font-sans select-none relative z-40 overflow-visible",
           isResizing ? "" : "transition-all duration-300 ease-out"
         )}
       >
@@ -297,7 +297,7 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
             <button
               onClick={handleDoubleClick}
               className={cn(
-                "p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-200/60 dark:hover:bg-zinc-900/80 transition-all duration-150 ease-out cursor-pointer w-9 h-9 flex items-center justify-center shrink-0",
+                "p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-[#E5E5E5]/60 dark:hover:bg-zinc-900/80 transition-all duration-150 ease-out cursor-pointer w-9 h-9 flex items-center justify-center shrink-0",
                 isCollapsed ? "mx-auto" : ""
               )}
               title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -413,7 +413,7 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
         {/* Dark/White Spread (Glow) behind the bar */}
         <div className="absolute -inset-[3px] rounded-full bg-black/20 dark:bg-white/10 blur-xl opacity-80 -z-10 pointer-events-none" />
 
-        <div className="relative flex items-center p-1.5 h-[64px] rounded-full bg-white/70 dark:bg-[#0c0c0e]/70 backdrop-blur-3xl border border-black/30 dark:border-white/30 shadow-[0_8px_30px_rgba(0,0,0,0.2)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.8)] touch-none select-none">
+        <div className="relative flex items-center p-1.5 h-[64px] rounded-full bg-[#F2F2F2]/80 dark:bg-[#212121]/70 backdrop-blur-3xl border border-black/30 dark:border-white/30 shadow-[0_8px_30px_rgba(0,0,0,0.2)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.8)] touch-none select-none">
           <div 
             ref={mobileNavRef}
             className="relative flex w-full h-full items-center"
@@ -424,7 +424,7 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
           >
             {/* Draggable Active Pill Background */}
             <div 
-              className="absolute top-0 bottom-0 rounded-full border border-black/30 dark:border-white/30 bg-white/95 dark:bg-zinc-700/90 shadow-sm z-0 cursor-grab active:cursor-grabbing"
+              className="absolute top-0 bottom-0 rounded-full border border-black/30 dark:border-white/30 bg-[#E5E5E5]/95 dark:bg-[#272727]/90 shadow-sm z-0 cursor-grab active:cursor-grabbing"
               style={getPillStyle()}
             />
 

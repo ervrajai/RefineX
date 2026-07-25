@@ -133,7 +133,7 @@ const NavSection = ({ title, links, index }) => (
 // --- MAIN FOOTER ---
 export default function Footer() {
   return (
-    <footer className="w-full px-4 pt-20 pb-12 overflow-hidden bg-white dark:bg-black">
+    <footer className="w-full px-4 pt-20 pb-12 overflow-hidden bg-white dark:bg-[#0F0F0F]">
       
       <motion.div
         initial="hidden"
@@ -143,7 +143,7 @@ export default function Footer() {
         className="relative max-w-6xl mx-auto w-full"
       >
         {/* Clean, Flat Floating Glassmorphism Container Card */}
-        <div className="relative z-10 bg-white dark:bg-zinc-900/90 backdrop-blur-2xl border border-slate-200 dark:border-zinc-800 rounded-[32px] p-8 md:p-12 flex flex-col shadow-xl shadow-slate-200/50 dark:shadow-black/50 overflow-hidden">
+        <div className="relative z-10 bg-white dark:bg-[#212121]/90 backdrop-blur-2xl border border-slate-200 dark:border-zinc-800 rounded-[32px] p-8 md:p-12 flex flex-col shadow-xl shadow-slate-200/50 dark:shadow-black/50 overflow-hidden">
           
           <div className="absolute inset-x-0 bottom-0 pointer-events-none select-none z-0 flex justify-center items-end overflow-hidden h-full">
             <span className="text-[12rem] sm:text-[16rem] md:text-[20rem] font-black tracking-tighter text-slate-100/70 dark:text-zinc-800/30 uppercase leading-none transform translate-y-[20%]">

@@ -8,7 +8,7 @@ import vrajImg from "../../assets/images/vraj_img.png";
 // Reusable Team Card Component
 const TeamCard = ({ name, role, imgPath, githubLink, linkedinLink }) => {
   return (
-    <div className="group relative w-[240px] h-[320px] mx-auto bg-white dark:bg-[#111111] border-2 border-black dark:border-white shadow-[5px_5px_#673ab7] dark:shadow-[5px_5px_#673ab7] rounded-xl flex flex-col items-center justify-center transition-all duration-300 hover:-translate-y-1 hover:shadow-[8px_8px_#673ab7]">
+    <div className="group relative w-[240px] h-[320px] mx-auto bg-white dark:bg-[#212121] border-2 border-black dark:border-white shadow-[5px_5px_#673ab7] dark:shadow-[5px_5px_#673ab7] rounded-xl flex flex-col items-center justify-center transition-all duration-300 hover:-translate-y-1 hover:shadow-[8px_8px_#673ab7]">
       
       {/* Card Photo */}
       <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-black dark:border-white transition-transform duration-300 group-hover:scale-110 mb-4 bg-gray-200 dark:bg-gray-800">
@@ -62,7 +62,7 @@ const TeamCard = ({ name, role, imgPath, githubLink, linkedinLink }) => {
 
 export default function About() {
   return (
-    <section id="about" className="py-20 md:py-28 bg-white dark:bg-black w-full">
+    <section id="about" className="py-20 md:py-28 bg-white dark:bg-[#0F0F0F] w-full">
       <div className="max-w-4xl mx-auto px-6">
         
         {/* Section Header */}

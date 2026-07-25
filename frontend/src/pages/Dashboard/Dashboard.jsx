@@ -130,7 +130,7 @@ function Dashboard() {
   };
 
   return (
-    <div className="flex w-screen h-screen bg-[#fcfcfc] dark:bg-[#070708] text-slate-900 dark:text-white transition-colors duration-300 overflow-hidden font-sans">
+    <div className="flex w-screen h-screen bg-[#F8FAFC] dark:bg-[#0F0F0F] text-slate-900 dark:text-white transition-colors duration-300 overflow-hidden font-sans">
       
       {/* Dynamic Collapsible Navigation Sidebar */}
       <Sidebar
@@ -151,7 +151,7 @@ function Dashboard() {
         <div className={`absolute top-4 right-6 z-40 transition-all duration-300 ${
           isScrolled ? "opacity-0 pointer-events-none -translate-y-2" : "opacity-100 translate-y-0"
         }`}>
-          <button className="relative p-2.5 rounded-xl text-slate-500 dark:text-zinc-400 bg-[#fafafa]/80 dark:bg-[#121212]/80 border border-slate-200/50 dark:border-zinc-800 backdrop-blur shadow-sm hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-900 dark:hover:text-white transition duration-200 cursor-pointer">
+          <button className="relative p-2.5 rounded-xl text-slate-500 dark:text-zinc-400 bg-[#FFFFFF]/80 dark:bg-[#212121]/80 border border-slate-200/50 dark:border-zinc-800 backdrop-blur shadow-sm hover:bg-[#F1F5F9] dark:hover:bg-[#272727] hover:text-slate-900 dark:hover:text-white transition duration-200 cursor-pointer">
             <Bell className="w-4.5 h-4.5" />
             <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-primary ring-1 ring-white dark:ring-zinc-900" />
           </button>

@@ -232,7 +232,7 @@ export default function HistoryView({
   if (loading) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
-        <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+        <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
           <div className="h-7 w-56 bg-slate-200 dark:bg-zinc-800 rounded animate-pulse mb-6" />
           <div className="space-y-4">
             <div className="h-16 bg-slate-100 dark:bg-zinc-800/50 rounded animate-pulse" />
@@ -248,7 +248,7 @@ export default function HistoryView({
     <div className="space-y-6 text-slate-800 dark:text-zinc-100 max-w-4xl mx-auto animate-fade-in font-sans pb-10">
       
       {/* Header */}
-      <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+      <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-black dark:text-white tracking-tight flex items-center gap-3">
             <MdHistory className="w-7 h-7 text-primary" /> Execution & Audit History
@@ -279,7 +279,7 @@ export default function HistoryView({
       {/* Clear History Confirmation Modal (No glow effect) */}
       {showClearModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 shadow-lg flex flex-col gap-5">
+          <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 shadow-lg flex flex-col gap-5">
             <div className="flex items-center gap-3 text-rose-500">
               <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
                 <AlertTriangle className="w-6 h-6 text-rose-500" />
@@ -322,7 +322,7 @@ export default function HistoryView({
       {/* Single History Item Deletion Modal */}
       {itemToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 shadow-lg flex flex-col gap-5">
+          <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 shadow-lg flex flex-col gap-5">
             <div className="flex items-center gap-3 text-rose-500">
               <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
                 <AlertTriangle className="w-6 h-6 text-rose-500" />
@@ -369,7 +369,7 @@ export default function HistoryView({
       )}
 
       {history.length === 0 ? (
-        <div className="p-12 text-center border-2 border-dashed border-slate-200 dark:border-zinc-800 rounded-3xl bg-slate-50/50 dark:bg-[#121212]/20">
+        <div className="p-12 text-center border-2 border-dashed border-slate-200 dark:border-zinc-800 rounded-3xl bg-slate-50/50 dark:bg-[#212121]/20">
           <Info className="w-12 h-12 text-slate-400 mx-auto mb-4" />
           <h3 className="text-base font-bold text-black dark:text-white">No execution records found</h3>
           <p className="text-sm text-slate-500 dark:text-zinc-400 max-w-sm mx-auto mt-2 leading-relaxed">
@@ -386,7 +386,7 @@ export default function HistoryView({
               return (
                 <div 
                   key={`vis-${job.id}`} 
-                  className="rounded-2xl border border-violet-500/20 dark:border-violet-500/25 bg-white dark:bg-[#121212] shadow-sm overflow-hidden transition-all duration-300"
+                  className="rounded-2xl border border-violet-500/20 dark:border-violet-500/25 bg-white dark:bg-[#212121] shadow-sm overflow-hidden transition-all duration-300"
                 >
                   <div 
                     onClick={() => toggleExpand(job.id)}
@@ -464,7 +464,7 @@ export default function HistoryView({
               return (
                 <div 
                   key={`ml-${job.id}`} 
-                  className="rounded-2xl border border-primary/20 dark:border-primary/25 bg-white dark:bg-[#121212] shadow-sm overflow-hidden transition-all duration-300"
+                  className="rounded-2xl border border-primary/20 dark:border-primary/25 bg-white dark:bg-[#212121] shadow-sm overflow-hidden transition-all duration-300"
                 >
                   
                   {/* ML Job Summary Row */}
@@ -526,25 +526,25 @@ export default function HistoryView({
                       
                       {/* Stats Grid - Highlighted */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
                           <span className="text-[10px] uppercase font-bold text-slate-500 block">Champion Model</span>
                           <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block capitalize truncate">
                             {job.best_model_name?.replace('_', ' ') || "N/A"}
                           </span>
                         </div>
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
                           <span className="text-[10px] uppercase font-bold text-slate-500 block">Evaluation Score</span>
                           <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 block">
                             {(bestScore * 100).toFixed(2)}%
                           </span>
                         </div>
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
                           <span className="text-[10px] uppercase font-bold text-slate-500 block">Training Duration</span>
                           <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
                             {job.training_duration ? `${job.training_duration.toFixed(2)}s` : "N/A"}
                           </span>
                         </div>
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
                           <span className="text-[10px] uppercase font-bold text-slate-500 block">Pipeline Status</span>
                           <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 mt-2 block uppercase">
                             ✓ {job.status || "Completed"}
@@ -557,19 +557,19 @@ export default function HistoryView({
                         <div className="flex flex-wrap gap-3 w-full sm:w-auto">
                           <button 
                             onClick={() => handleDownloadML(job.id, "model")}
-                            className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
+                            className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121]"
                           >
                             <Download className="w-4 h-4 text-amber-500" /> PKL Model File
                           </button>
                           <button 
                             onClick={() => handleDownloadML(job.id, "predictions")}
-                            className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
+                            className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121]"
                           >
                             <Download className="w-4 h-4" /> Predictions CSV
                           </button>
                           <button 
                             onClick={() => handleDownloadML(job.id, "report")}
-                            className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
+                            className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121]"
                           >
                             <Download className="w-4 h-4" /> PDF Report
                           </button>
@@ -598,7 +598,7 @@ export default function HistoryView({
             return (
               <div 
                 key={`clean-${job.id}`} 
-                className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm overflow-hidden transition-all duration-300"
+                className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm overflow-hidden transition-all duration-300"
               >
                 
                 {/* Data Cleaning Summary Row */}
@@ -659,25 +659,25 @@ export default function HistoryView({
                     
                     {/* Stats comparison grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
                         <span className="text-[10px] uppercase font-bold text-slate-500 block">Rows Change</span>
                         <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
                           {job.before_stats?.rows} <span className="text-slate-400">→</span> {job.after_stats?.rows}
                         </span>
                       </div>
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
                         <span className="text-[10px] uppercase font-bold text-slate-500 block">Columns Change</span>
                         <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
                           {job.before_stats?.columns} <span className="text-slate-400">→</span> {job.after_stats?.columns}
                         </span>
                       </div>
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
                         <span className="text-[10px] uppercase font-bold text-slate-500 block">Missing Cells</span>
                         <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
                           {job.before_stats?.missing_summary?.total_missing} <span className="text-slate-400">→</span> {job.after_stats?.missing_summary?.total_missing}
                         </span>
                       </div>
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] shadow-sm">
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
                         <span className="text-[10px] uppercase font-bold text-slate-500 block">Duplicate Rows</span>
                         <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
                           {job.before_stats?.duplicate_summary?.duplicate_rows_count} <span className="text-slate-400">→</span> {job.after_stats?.duplicate_summary?.duplicate_rows_count}
@@ -696,19 +696,19 @@ export default function HistoryView({
                         </button>
                         <button 
                           onClick={() => handleDownload(job.dataset_id, "json")}
-                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
+                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121]"
                         >
                           <Download className="w-4 h-4" /> JSON
                         </button>
                         <button 
                           onClick={() => handleDownload(job.dataset_id, "excel")}
-                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
+                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121]"
                         >
                           <Download className="w-4 h-4" /> Excel
                         </button>
                         <button 
                           onClick={() => handleDownload(job.dataset_id, "report")}
-                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#121212]"
+                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121]"
                         >
                           <Download className="w-4 h-4" /> PDF Report
                         </button>
@@ -738,7 +738,7 @@ export default function HistoryView({
                     {job.logs && job.logs.length > 0 && (
                       <div className="space-y-2 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800">
                         <span className="text-[11px] uppercase font-bold text-slate-500 block">Actions Logs</span>
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#121212] font-mono text-xs text-slate-700 dark:text-zinc-300 space-y-1.5 max-h-48 overflow-y-auto shadow-inner">
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] font-mono text-xs text-slate-700 dark:text-zinc-300 space-y-1.5 max-h-48 overflow-y-auto shadow-inner">
                           {job.logs.map((log, lidx) => (
                             <div key={lidx} className="flex items-start gap-2 border-b border-slate-100 dark:border-zinc-800/50 pb-1 last:border-0 last:pb-0">
                               <span className="text-slate-400">›</span> 

@@ -13,7 +13,7 @@ const duplicatedTechs = [...techs, ...techs, ...techs, ...techs, ...techs, ...te
 
 export default function Technologies() {
   return (
-    <section id="library" className="py-20 md:py-28 bg-white dark:bg-black w-full overflow-hidden">
+    <section id="library" className="py-20 md:py-28 bg-white dark:bg-[#0F0F0F] w-full overflow-hidden">
       
       {/* Required Keyframes for the Marquee */}
       <style>{`
@@ -48,7 +48,7 @@ export default function Technologies() {
           {duplicatedTechs.map((tech, index) => (
             <div
               key={`${tech.name}-${index}`}
-              className="flex items-center gap-4 px-6 py-4 mx-3 bg-white dark:bg-[#111111] border border-lightBorder/50 dark:border-white/10 rounded-2xl cursor-pointer transition-transform duration-300 hover:scale-105 hover:border-[#673ab7] hover:shadow-[0_0_20px_rgba(103,58,183,0.15)] shrink-0"
+              className="flex items-center gap-4 px-6 py-4 mx-3 bg-white dark:bg-[#212121] border border-lightBorder/50 dark:border-white/10 rounded-2xl cursor-pointer transition-transform duration-300 hover:scale-105 hover:border-[#673ab7] hover:shadow-[0_0_20px_rgba(103,58,183,0.15)] shrink-0"
             >
               <img 
                 src={tech.url} 

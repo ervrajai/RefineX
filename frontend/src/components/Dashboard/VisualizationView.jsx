@@ -813,7 +813,7 @@ export default function VisualizationView({
   if (!datasetId) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto font-sans pb-10">
-        <div className="p-8 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col items-center justify-center text-center py-14">
+        <div className="p-8 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex flex-col items-center justify-center text-center py-14">
           <div className="mb-6 flex items-center justify-center">
             <img
               src={visualizationImg}
@@ -867,7 +867,7 @@ export default function VisualizationView({
         </div>
 
         {datasetsList.length > 0 && (
-          <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+          <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
             <h2 className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
               <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />{" "}
               Recent Datasets
@@ -908,7 +908,7 @@ export default function VisualizationView({
 
         {/* Saved Graphs Gallery Card (When no dataset loaded - Outside View) */}
         {savedGraphs.length > 0 && (
-          <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm space-y-4">
+          <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-800 pb-3">
               <div className="flex items-center gap-2">
                 <LineChart className="w-5 h-5 text-violet-500" />
@@ -979,7 +979,7 @@ export default function VisualizationView({
         {/* Delete Confirmation Modal (Outside View) */}
         {graphToDelete && (
           <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-            <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 shadow-2xl flex flex-col gap-5">
+            <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 shadow-2xl flex flex-col gap-5">
               <div className="flex items-center gap-3 text-rose-500">
                 <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
                   <AlertCircle className="w-6 h-6 text-rose-500" />
@@ -1025,7 +1025,7 @@ export default function VisualizationView({
   return (
     <div className="space-y-6 text-slate-800 dark:text-zinc-100 font-sans pb-10 max-w-7xl mx-auto">
       {/* Top Banner Dashboard Profile */}
-      <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col lg:flex-row justify-between lg:items-center gap-6">
+      <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex flex-col lg:flex-row justify-between lg:items-center gap-6">
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-zinc-100 tracking-tight flex items-center gap-2.5">
             <BarChart3 className="w-6 h-6 text-blue-600 dark:text-blue-400" />{" "}

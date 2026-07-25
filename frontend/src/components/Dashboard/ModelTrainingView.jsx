@@ -471,7 +471,7 @@ export default function ModelTrainingView({
       )}
 
       {/* TABS HEADER */}
-      <div className="p-5 md:p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="p-5 md:p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-primary/10 text-primary">
@@ -513,7 +513,7 @@ export default function ModelTrainingView({
               />
 
               {!uploading && cleanHistoryList.length > 0 && (
-                <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm space-y-4">
+                <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-4">
                   <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-zinc-800/80 pb-3.5">
                     <History className="w-4.5 h-4.5 text-primary" />
                     <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Or Select From Clean History</h3>
@@ -561,7 +561,7 @@ export default function ModelTrainingView({
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
               
               {/* CONFIGURATION SIDEBAR (LEFT 25%) */}
-              <div className="lg:col-span-1 p-5 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm space-y-5">
+              <div className="lg:col-span-1 p-5 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-5">
                 <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-zinc-800/80">
                   <SlidersHorizontal className="w-4 h-4 text-primary" /> Training Parameters
                 </h2>
@@ -859,7 +859,7 @@ export default function ModelTrainingView({
 
                 {/* RUNNING TRAINING PROGRESS */}
                 {training && jobStatus && (
-                  <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm space-y-4 animate-fade-in">
+                  <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-4 animate-fade-in">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
                         <Activity className="w-5 h-5 text-primary animate-pulse" />
@@ -900,7 +900,7 @@ export default function ModelTrainingView({
                           <div 
                             key={model.algorithm}
                             onClick={() => loadJobDetail(trainingJobDetail.id).then(() => setSelectedModelForModal(model.algorithm))}
-                            className={`p-5 rounded-2xl border bg-white dark:bg-[#121212] shadow-sm hover:shadow-md cursor-pointer transition duration-200 relative group flex flex-col justify-between h-48 ${
+                            className={`p-5 rounded-2xl border bg-white dark:bg-[#212121] shadow-sm hover:shadow-md cursor-pointer transition duration-200 relative group flex flex-col justify-between h-48 ${
                               isBest 
                                 ? "border-primary/80 ring-2 ring-primary/20" 
                                 : "border-slate-200/80 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700"
@@ -943,7 +943,7 @@ export default function ModelTrainingView({
 
                 {/* DATASHEET PREVIEW TAB */}
                 {!trainingJobDetail && preview && (
-                  <div className="rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm overflow-hidden flex flex-col">
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm overflow-hidden flex flex-col">
                     <div className="p-4 border-b border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-900/40 flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 flex items-center gap-2">
                         <Eye className="w-4 h-4 text-slate-400" />
@@ -989,7 +989,7 @@ export default function ModelTrainingView({
           {/* Blurred overlay */}
           <div className="absolute inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
           
-          <div className="relative w-full max-w-5xl h-[85vh] bg-white dark:bg-[#121212] border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-in font-sans">
+          <div className="relative w-full max-w-5xl h-[85vh] bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-in font-sans">
             
             {/* Header */}
             <div className="p-4 px-6 border-b border-slate-100 dark:border-zinc-800/80 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-900/30">

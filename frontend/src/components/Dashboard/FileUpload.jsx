@@ -273,7 +273,7 @@ const FileUpload = ({
             className={`relative group cursor-pointer w-full min-h-[340px] rounded-3xl p-8 flex flex-col items-center justify-center text-center transition-all duration-300 border-2 border-dashed outline-none overflow-hidden ${
               isDragging
                 ? "border-[#673ab7] bg-[#673ab7]/10 dark:bg-[#673ab7]/15 ring-4 ring-[#673ab7]/20 shadow-xl"
-                : "border-slate-300 dark:border-zinc-800 bg-slate-50/50 dark:bg-[#121212]/60 hover:border-[#673ab7]/70 hover:bg-slate-100/60 dark:hover:bg-zinc-900/60"
+                : "border-slate-300 dark:border-zinc-800 bg-slate-50/50 dark:bg-[#212121]/60 hover:border-[#673ab7]/70 hover:bg-slate-100/60 dark:hover:bg-zinc-900/60"
             }`}
           >
             {/* Ambient Dynamic Background Blur ("Goo" Glow) */}
@@ -347,7 +347,7 @@ const FileUpload = ({
           </div>
         ) : (
           /* ACTIVE FILE / UPLOADING / COMPLETED CARD */
-          <div className="w-full bg-white dark:bg-[#121212] border border-slate-200 dark:border-zinc-800 rounded-3xl p-6 shadow-lg shadow-slate-100/50 dark:shadow-none transition-all duration-300 space-y-5 relative overflow-hidden">
+          <div className="w-full bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 rounded-3xl p-6 shadow-lg shadow-slate-100/50 dark:shadow-none transition-all duration-300 space-y-5 relative overflow-hidden">
             {/* Top Header: File metadata + actions */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-zinc-800/80">
               <div className="flex items-start sm:items-center gap-4 min-w-0">

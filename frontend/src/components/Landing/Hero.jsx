@@ -194,7 +194,7 @@ export default function Hero() {
     <section
       id="home"
       ref={containerRef}
-      className="relative h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-white dark:bg-black transition-colors duration-300"
+      className="relative h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-white dark:bg-[#0F0F0F] transition-colors duration-300"
     >
       {/* The canvas is now the primary background */}
       <canvas

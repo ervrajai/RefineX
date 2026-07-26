@@ -1,10 +1,13 @@
-// src/components/Landing/Features.jsx
 import React from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
-function FeatureCard({ title, steps }) {
+function FeatureCard({ title, steps, onClick }) {
   return (
-    <div className="w-full h-[420px] relative border border-solid border-lightBorder/50 dark:border-white/10 rounded-2xl overflow-hidden group hover:shadow-[0_0_30px_rgba(103,58,183,0.2)] transition-shadow duration-300">
+    <div 
+      onClick={onClick}
+      className="w-full h-[420px] relative border border-solid border-lightBorder/50 dark:border-white/10 rounded-2xl overflow-hidden group hover:shadow-[0_0_30px_rgba(103,58,183,0.3)] transition-all duration-300 cursor-pointer"
+    >
       
       {/* Background Layer 1: Solid Brand color peering through the cut corners */}
       <div className="w-full h-full p-1 absolute bg-[#673ab7]">
@@ -60,7 +63,7 @@ function FeatureCard({ title, steps }) {
           <span className="text-[10px] uppercase font-bold tracking-widest leading-[13px]">Engine</span>
           
           {/* Circular Arrow Button */}
-          <div className="w-10 h-10 mt-auto flex items-center justify-center rounded-full backdrop-blur-lg bg-gray-200/50 dark:bg-gray-50/10 cursor-pointer transition-all duration-300 hover:bg-[#673ab7] hover:text-white dark:hover:bg-[#673ab7] dark:hover:text-white text-gray-700 dark:text-gray-300 border border-lightBorder/50 dark:border-white/10 group-hover:scale-110">
+          <div className="w-10 h-10 mt-auto flex items-center justify-center rounded-full backdrop-blur-lg bg-gray-200/50 dark:bg-gray-50/10 cursor-pointer transition-all duration-300 group-hover:bg-[#673ab7] group-hover:text-white dark:group-hover:bg-[#673ab7] dark:group-hover:text-white text-gray-700 dark:text-gray-300 border border-lightBorder/50 dark:border-white/10 group-hover:scale-110">
             <span className="font-serif">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -82,6 +85,7 @@ function FeatureCard({ title, steps }) {
     </div>
   );
 }
+
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -110,6 +114,8 @@ const cardVariants = {
 };
 
 export default function Features() {
+  const navigate = useNavigate();
+
   const cleaningSteps = [
     { name: "Upload Dataset", desc: "Import your raw CSV safely." },
     { name: "Auto-Detect Issues", desc: "Find nulls, duplicates & outliers instantly." },
@@ -142,30 +148,40 @@ export default function Features() {
           </p>
         </div>
 
-        {/* CHANGED: Animated Feature Cards Grid Container */}
+        {/* Animated Feature Cards Grid Container */}
         <motion.div 
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }} // Triggers when cards are 100px into view
+          viewport={{ once: true, margin: "-100px" }}
           className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8"
         >
-          {/* CHANGED: Wrapped each card in a motion item variant */}
           <motion.div variants={cardVariants}>
-            <FeatureCard title="Data Cleaning" steps={cleaningSteps} />
+            <FeatureCard
+              title="Data Cleaning"
+              steps={cleaningSteps}
+              onClick={() => navigate("/clean")}
+            />
           </motion.div>
           
           <motion.div variants={cardVariants}>
-            <FeatureCard title="Model Training" variables={trainingSteps} steps={trainingSteps} />
+            <FeatureCard
+              title="Model Training"
+              steps={trainingSteps}
+              onClick={() => navigate("/signup", { state: { message: "Sign up required: Please create a free account first to access ML Model Training features." } })}
+            />
           </motion.div>
           
           <motion.div variants={cardVariants}>
-            <FeatureCard title="Visualization" steps={visualizationSteps} />
+            <FeatureCard
+              title="Visualization"
+              steps={visualizationSteps}
+              onClick={() => navigate("/signup", { state: { message: "Sign up required: Please create a free account first to access Data Visualization features." } })}
+            />
           </motion.div>
         </motion.div>
         
       </div>
     </section>
   );
-
-}
+}

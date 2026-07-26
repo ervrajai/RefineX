@@ -19,11 +19,21 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from apps.cleaning.views import GuestUploadAndCleanView, GuestSessionView
+from apps.accounts.views import RegisterView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("accounts/", include("allauth.urls")),
 
-    # APIs
+    # Direct Unified Upload & Guest API routes
+    path("api/upload-and-clean/", GuestUploadAndCleanView.as_view(), name="unified-upload-clean"),
+    path("api/guest/upload-and-clean/", GuestUploadAndCleanView.as_view(), name="direct-guest-upload-clean"),
+    path("api/guest/session/", GuestSessionView.as_view(), name="direct-guest-session"),
+    path("api/auth/register/", RegisterView.as_view(), name="direct-auth-register"),
+
+
+    # App APIs
     path("api/", include("apps.core.urls")),
     path("api/accounts/", include("apps.accounts.urls")),
     path("api/dashboard/", include("apps.dashboard.urls")),
@@ -32,6 +42,7 @@ urlpatterns = [
     path("api/visualization/", include("apps.visualization.urls")),
     path("api/history/", include("apps.history.urls")),
 ]
+
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

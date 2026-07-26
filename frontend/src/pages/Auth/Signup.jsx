@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AlertCircle, X } from "lucide-react";
 
 import AuthLayout from "../../components/Auth/AuthLayout";
@@ -9,7 +9,9 @@ import PasswordChecklist from "../../components/Auth/PasswordChecklist";
 import OtpInput from "../../components/Auth/OtpInput";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
+import { getGuestId } from "../../utils/guestSession";
 import { validatePassword } from "../../utils/passwordPolicy";
+
 
 const initialBasicInfo = {
   first_name: "",
@@ -19,15 +21,22 @@ const initialBasicInfo = {
 
 function Signup() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setLoggedIn } = useAuth();
   const [step, setStep] = useState(1);
   const [basicInfo, setBasicInfo] = useState(initialBasicInfo);
   const [otp, setOtp] = useState("");
   const [passwords, setPasswords] = useState({ password: "", confirm_password: "" });
-  const [error, setError] = useState("");
+  const [error, setError] = useState(location.state?.message || "");
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [resendIn, setResendIn] = useState(0);
+
+  useEffect(() => {
+    if (location.state?.message) {
+      setError(location.state.message);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (resendIn <= 0) {
@@ -120,8 +129,10 @@ function Signup() {
     try {
       const res = await api.post("accounts/signup/complete/", {
         email: basicInfo.email,
+        guest_id: getGuestId(),
         ...passwords,
       });
+
       setLoggedIn(res.data);
       setBasicInfo(initialBasicInfo);
       setOtp("");

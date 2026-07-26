@@ -1,5 +1,5 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { AlertCircle, X } from "lucide-react";
 
 import AuthLayout from "../../components/Auth/AuthLayout";
@@ -7,14 +7,23 @@ import FormField from "../../components/Auth/FormField";
 import OAuthButtons from "../../components/Auth/OAuthButtons";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
+import { getGuestId } from "../../utils/guestSession";
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setLoggedIn } = useAuth();
   const [form, setForm] = useState({ email: "", password: "", remember_me: false });
-  const [error, setError] = useState("");
+  const [error, setError] = useState(location.state?.message || "");
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.message) {
+      setError(location.state.message);
+    }
+  }, [location.state]);
+
 
   const handleFieldChange = (name, val) => {
     setForm((current) => ({ ...current, [name]: val }));
@@ -28,9 +37,10 @@ function Login() {
     setFieldErrors({});
     setLoading(true);
     try {
-      const res = await api.post("accounts/login/", form);
+      const res = await api.post("accounts/login/", { ...form, guest_id: getGuestId() });
       setLoggedIn(res.data);
       navigate("/dashboard", { replace: true });
+
     } catch (err) {
       const data = err.response?.data;
       if (data && typeof data === "object") {

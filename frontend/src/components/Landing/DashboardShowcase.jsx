@@ -23,7 +23,13 @@ import {
   HardDrive,
   Activity,
   BarChart3,
-  Plus
+  Plus,
+  ArrowRight,
+  User,
+  ShieldCheck,
+  FolderOpen,
+  ChevronRight,
+  Sparkles
 } from "lucide-react";
 
 export default function DashboardShowcase() {
@@ -77,219 +83,294 @@ export default function DashboardShowcase() {
     switch (activeTab) {
       case "overview":
         return (
-          <div className="space-y-6 font-sans text-slate-800 dark:text-zinc-100 animate-fade-in pb-10">
-            {/* Greeting Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black text-black dark:text-white tracking-tight flex items-center gap-2">
-                  Welcome back, RefineX User 👋
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400 mt-1">
-                  Here is your dataset cleaning and machine learning studio performance overview.
-                </p>
-              </div>
-              <button 
-                onClick={() => setActiveTab("clean")}
-                className="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-extrabold text-xs shadow-md shadow-primary/20 flex items-center gap-2 transition cursor-pointer self-start sm:self-auto"
-              >
-                <Plus className="w-4 h-4" />
-                <span>New Cleaning Job</span>
-              </button>
-            </div>
-
-            {/* 4 STATS METRIC CARDS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                {
-                  title: "Total Datasets Cleaned",
-                  value: "14",
-                  unit: "files",
-                  badge: "+12% this week",
-                  badgeType: "positive",
-                  gradient: "from-blue-500/10 to-cyan-500/10",
-                  borderColor: "border-blue-500/20",
-                  iconColor: "text-blue-500",
-                  icon: UploadCloud
-                },
-                {
-                  title: "Cleaning Actions Ran",
-                  value: "128",
-                  unit: "transforms",
-                  badge: "100% automated",
-                  badgeType: "positive",
-                  gradient: "from-purple-500/10 to-pink-500/10",
-                  borderColor: "border-purple-500/20",
-                  iconColor: "text-purple-500",
-                  icon: Wand2
-                },
-                {
-                  title: "ML Models Trained",
-                  value: "7",
-                  unit: "estimators",
-                  badge: "7 Models Supported",
-                  badgeType: "positive",
-                  gradient: "from-amber-500/10 to-orange-500/10",
-                  borderColor: "border-amber-500/20",
-                  iconColor: "text-amber-500",
-                  icon: BrainCircuit
-                },
-                {
-                  title: "Workspace Storage",
-                  value: "145.2 MB",
-                  limit: "of 1 GB",
-                  percent: 14.5,
-                  gradient: "from-emerald-500/10 to-teal-500/10",
-                  borderColor: "border-emerald-500/20",
-                  iconColor: "text-emerald-500",
-                  icon: HardDrive
-                }
-              ].map((card, idx) => {
-                const Icon = card.icon;
-                return (
-                  <div
-                    key={idx}
-                    className="relative flex flex-col justify-between p-5 rounded-2xl bg-white/70 dark:bg-[#212121]/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-sm hover:shadow-md transition duration-200"
+          <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto font-sans animate-fade-in text-slate-900 dark:text-white pb-10 overflow-visible">
+            {/* ASYMMETRICAL 2-COLUMN GRID (MAIN CONTENT LEFT 8 COLS, STICKY SIDEBAR RIGHT 4 COLS) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              
+              {/* --- LEFT COLUMN: MAIN CONTENT (lg:col-span-8) --- */}
+              <div className="lg:col-span-8 space-y-6 min-w-0">
+                
+                {/* 1. HERO BANNER & QUICK ACTIONS */}
+                <div className="flex flex-col gap-4">
+                  {/* Purple Hero Card */}
+                  <div 
+                    onClick={() => setActiveTab("clean")}
+                    className="group relative w-full min-h-[200px] rounded-3xl p-6 sm:p-8 bg-[#374151] dark:bg-[#1E1C27] border border-transparent dark:border-white/5 overflow-hidden cursor-pointer select-none flex flex-col justify-between shadow-sm"
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-extrabold uppercase tracking-widest text-slate-500 dark:text-zinc-400 truncate">
-                        {card.title}
-                      </span>
-                      <div className={`p-2.5 rounded-xl bg-gradient-to-br ${card.gradient} border ${card.borderColor} ${card.iconColor} shrink-0`}>
-                        <Icon className="w-4.5 h-4.5" />
+                    <div className="flex flex-col gap-2">
+                      <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white/95 leading-tight m-0 max-w-lg">
+                        Refine & Automate Your Data Pipelines
+                      </h1>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mt-6">
+                      <p className="text-xs text-slate-300 dark:text-white/60 max-w-md leading-relaxed m-0 font-normal">
+                        Upload raw CSV files, clean missing values and outliers automatically, and train high-accuracy models in one click.
+                      </p>
+                      
+                      <div className="flex items-center text-white/80 text-xs font-bold uppercase tracking-widest outline-none group-hover:text-white shrink-0 transition-colors">
+                        <span>Upload CSV</span>
+                        <ArrowRight className="w-4 h-4 ml-2 transition-transform duration-300 group-hover:translate-x-1" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Secondary Action Cards (Notched Stepper Tracking Cards) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 group/action-cards p-1.5 z-20">
+                    
+                    {/* Step 1 Card: Start Cleaning */}
+                    <div 
+                      onClick={() => setActiveTab("clean")}
+                      className="group/card relative flex flex-col justify-between p-5 min-h-[130px] rounded-3xl bg-white dark:bg-[#121212] border border-slate-200/80 dark:border-zinc-800 shadow-md cursor-pointer transition-all duration-300 hover:!scale-105 hover:z-30 hover:shadow-2xl dark:hover:shadow-purple-500/20 dark:hover:border-purple-500/50 overflow-hidden"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="p-2.5 rounded-2xl bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/20 shrink-0 group-hover/card:scale-110 transition-transform duration-300">
+                          <Wand2 className="w-4.5 h-4.5" />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-0.5 pr-6">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
+                            Step 1
+                          </span>
+                        </div>
+                        <div className="w-[1.5px] h-3.5 bg-purple-500/30 dark:bg-purple-500/25 ml-[3px] my-0.5" />
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-2 h-2 rounded-full border-2 border-purple-500 bg-white dark:bg-[#121212] shrink-0" />
+                          <span className="text-xs font-black text-slate-900 dark:text-white truncate group-hover/card:text-purple-600 dark:group-hover/card:text-purple-400 transition-colors">
+                            Start Cleaning
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="absolute top-0 right-0 w-10 h-10 bg-slate-50 dark:bg-[#09090b] rounded-bl-2xl flex items-center justify-center p-1 z-10 pointer-events-none">
+                        <div className="w-7 h-7 rounded-full bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-sm flex items-center justify-center text-slate-500 dark:text-zinc-400 group-hover/card:bg-purple-600 group-hover/card:text-white group-hover/card:border-purple-600 group-hover/card:translate-x-0.5 transition-all duration-300">
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </div>
                       </div>
                     </div>
 
-                    {card.percent !== undefined ? (
-                      <div className="flex flex-col gap-2 mt-1">
-                        <div className="flex items-baseline justify-between">
-                          <span className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                            {card.value}
-                          </span>
-                          <span className="text-xs font-bold text-slate-400">{card.limit}</span>
-                        </div>
-                        <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-zinc-800 overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full" style={{ width: `${card.percent}%` }} />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-baseline justify-between mt-1">
-                        <div className="flex items-baseline gap-1.5">
-                          <span className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                            {card.value}
-                          </span>
-                          <span className="text-xs font-semibold text-slate-400">{card.unit}</span>
-                        </div>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
-                          {card.badge}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* QUICK ACTIONS BUTTONS */}
-            <div className="p-6 rounded-2xl bg-white/70 dark:bg-[#212121]/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col gap-4">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-zinc-800 pb-3">
-                Quick Actions
-              </h3>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { label: "Upload Dataset", icon: UploadCloud, color: "text-emerald-500", bg: "bg-emerald-500/10", tab: "clean" },
-                  { label: "Start Cleaning", icon: Wand2, color: "text-purple-500", bg: "bg-purple-500/10", tab: "clean" },
-                  { label: "Visualization", icon: LineChart, color: "text-cyan-500", bg: "bg-cyan-500/10", tab: "visualization" },
-                  { label: "Train Model", icon: BrainCircuit, color: "text-amber-500", bg: "bg-amber-500/10", tab: "model-training" },
-                ].map((action, i) => {
-                  const Icon = action.icon;
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => setActiveTab(action.tab)}
-                      className="p-4 rounded-xl bg-slate-50 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 hover:border-primary text-slate-900 dark:text-white flex flex-col items-center text-center gap-2.5 transition duration-200 cursor-pointer active:scale-95 group"
+                    {/* Step 2 Card: Visualize Data */}
+                    <div 
+                      onClick={() => setActiveTab("visualization")}
+                      className="group/card relative flex flex-col justify-between p-5 min-h-[130px] rounded-3xl bg-white dark:bg-[#121212] border border-slate-200/80 dark:border-zinc-800 shadow-md cursor-pointer transition-all duration-300 hover:!scale-105 hover:z-30 hover:shadow-2xl dark:hover:shadow-pink-500/20 dark:hover:border-pink-500/50 overflow-hidden"
                     >
-                      <div className={`p-3 rounded-xl ${action.bg} ${action.color} group-hover:scale-110 transition duration-200 shrink-0`}>
-                        <Icon className="w-5 h-5" />
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="p-2.5 rounded-2xl bg-pink-500/10 text-pink-600 dark:bg-pink-500/20 dark:text-pink-400 border border-pink-500/20 shrink-0 group-hover/card:scale-110 transition-transform duration-300">
+                          <LineChart className="w-4.5 h-4.5" />
+                        </div>
                       </div>
-                      <span className="text-xs font-extrabold truncate w-full">{action.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
 
-            {/* MAIN WORKSPACE SPLIT (RECENT PIPELINES + 7 MODELS LEADERBOARD) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Pipeline Runs Table (2 Cols) */}
-              <div className="lg:col-span-2 p-6 rounded-2xl bg-white/70 dark:bg-[#212121]/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col gap-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800">
-                  <div className="flex items-center gap-2">
-                    <Activity className="w-4.5 h-4.5 text-primary" />
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Active Pipeline Executions</h3>
+                      <div className="flex flex-col gap-0.5 pr-6">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-pink-500 shrink-0" />
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
+                            Step 2
+                          </span>
+                        </div>
+                        <div className="w-[1.5px] h-3.5 bg-pink-500/30 dark:bg-pink-500/25 ml-[3px] my-0.5" />
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-2 h-2 rounded-full border-2 border-pink-500 bg-white dark:bg-[#121212] shrink-0" />
+                          <span className="text-xs font-black text-slate-900 dark:text-white truncate group-hover/card:text-pink-600 dark:group-hover/card:text-pink-400 transition-colors">
+                            Visualize Data
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="absolute top-0 right-0 w-10 h-10 bg-slate-50 dark:bg-[#09090b] rounded-bl-2xl flex items-center justify-center p-1 z-10 pointer-events-none">
+                        <div className="w-7 h-7 rounded-full bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-sm flex items-center justify-center text-slate-500 dark:text-zinc-400 group-hover/card:bg-pink-600 group-hover/card:text-white group-hover/card:border-pink-600 group-hover/card:translate-x-0.5 transition-all duration-300">
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Step 3 Card: Train Model */}
+                    <div 
+                      onClick={() => setActiveTab("model-training")}
+                      className="group/card relative flex flex-col justify-between p-5 min-h-[130px] rounded-3xl bg-white dark:bg-[#121212] border border-slate-200/80 dark:border-zinc-800 shadow-md cursor-pointer transition-all duration-300 hover:!scale-105 hover:z-30 hover:shadow-2xl dark:hover:shadow-[#673ab7]/20 dark:hover:border-[#673ab7]/50 overflow-hidden"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="p-2.5 rounded-2xl bg-[#673ab7]/10 text-[#673ab7] dark:bg-[#673ab7]/20 dark:text-[#a855f7] border border-[#673ab7]/20 shrink-0 group-hover/card:scale-110 transition-transform duration-300">
+                          <BrainCircuit className="w-4.5 h-4.5" />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-0.5 pr-6">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-[#673ab7] shrink-0" />
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
+                            Step 3
+                          </span>
+                        </div>
+                        <div className="w-[1.5px] h-3.5 bg-[#673ab7]/30 dark:bg-[#673ab7]/25 ml-[3px] my-0.5" />
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-2 h-2 rounded-full border-2 border-[#673ab7] bg-white dark:bg-[#121212] shrink-0" />
+                          <span className="text-xs font-black text-slate-900 dark:text-white truncate group-hover/card:text-[#673ab7] dark:group-hover/card:text-[#a855f7] transition-colors">
+                            Train Model
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="absolute top-0 right-0 w-10 h-10 bg-slate-50 dark:bg-[#09090b] rounded-bl-2xl flex items-center justify-center p-1 z-10 pointer-events-none">
+                        <div className="w-7 h-7 rounded-full bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-sm flex items-center justify-center text-slate-500 dark:text-zinc-400 group-hover/card:bg-[#673ab7] group-hover/card:text-white group-hover/card:border-[#673ab7] group-hover/card:translate-x-0.5 transition-all duration-300">
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                    ● Live Audit
+                </div>
+
+                {/* 2. TOP-LEVEL SUMMARY METRICS */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {[
+                    {
+                      id: "datasets",
+                      title: "Datasets Processed",
+                      value: "14",
+                      unit: "files",
+                      badge: "+14 active",
+                      badgeType: "positive",
+                      icon: FileSpreadsheet,
+                      borderColor: "border-emerald-500/30 dark:border-zinc-800",
+                      iconColor: "text-emerald-500 dark:text-emerald-400",
+                      accentBg: "bg-emerald-500/10 dark:bg-emerald-500/10",
+                      onClick: () => setActiveTab("clean")
+                    },
+                    {
+                      id: "rows",
+                      title: "Total Rows Cleaned",
+                      value: "199,500",
+                      unit: "rows",
+                      badge: "Cleaned",
+                      badgeType: "positive",
+                      icon: Sparkles,
+                      borderColor: "border-purple-500/30 dark:border-zinc-800",
+                      iconColor: "text-purple-500 dark:text-purple-400",
+                      accentBg: "bg-purple-500/10 dark:bg-purple-500/10",
+                      onClick: () => setActiveTab("clean")
+                    },
+                    {
+                      id: "models",
+                      title: "Active ML Models",
+                      value: "7",
+                      unit: "models ready",
+                      badge: "Inference Ready",
+                      badgeType: "positive",
+                      icon: BrainCircuit,
+                      borderColor: "border-amber-500/30 dark:border-zinc-800",
+                      iconColor: "text-amber-500 dark:text-amber-400",
+                      accentBg: "bg-amber-500/10 dark:bg-amber-500/10",
+                      onClick: () => setActiveTab("model-training")
+                    }
+                  ].map((card) => {
+                    const Icon = card.icon;
+                    return (
+                      <div
+                        key={card.id}
+                        onClick={card.onClick}
+                        className={`relative flex flex-col justify-between p-5 rounded-2xl bg-white dark:bg-[#121212] border ${card.borderColor} shadow-sm transition-all duration-300 cursor-pointer group hover:-translate-y-0.5 overflow-hidden min-w-0`}
+                      >
+                        <div className="relative z-10 flex items-center justify-between mb-3 min-w-0">
+                          <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400 truncate">
+                            {card.title}
+                          </span>
+                          <div className={`p-2 rounded-xl ${card.accentBg} ${card.iconColor} border ${card.borderColor} shrink-0`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                        </div>
+
+                        <div className="relative z-10 flex items-baseline justify-between mt-1 min-w-0">
+                          <div className="flex items-baseline gap-1 min-w-0">
+                            <span className="text-2xl font-black tracking-tight text-slate-900 dark:text-white truncate">
+                              {card.value}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 shrink-0">
+                              {card.unit}
+                            </span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-wider bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shrink-0">
+                            {card.badge}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+              </div>
+
+              {/* --- RIGHT COLUMN: PROFILE WIDGET & RECENT WORKSPACES (lg:col-span-4) --- */}
+              <div className="lg:col-span-4 sticky top-6 space-y-0 rounded-3xl bg-white dark:bg-[#121212] border border-slate-200/80 dark:border-zinc-800 shadow-md overflow-hidden flex flex-col min-w-0">
+                
+                {/* Profile Widget */}
+                <div className="p-6 border-b border-slate-100 dark:border-zinc-800/80 flex flex-col items-center text-center gap-3 relative overflow-hidden bg-slate-50/40 dark:bg-zinc-900/30 shrink-0">
+                  <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-slate-200 dark:border-zinc-700 shadow-sm bg-slate-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                    <User className="w-7 h-7 text-primary dark:text-purple-400" />
+                  </div>
+
+                  <div className="flex flex-col items-center">
+                    <h2 className="text-sm font-black text-slate-900 dark:text-white tracking-tight">
+                      Welcome back, RefineX User 👋
+                    </h2>
+                  </div>
+
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-wider bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                    <ShieldCheck className="w-3 h-3" />
+                    Verified Account
                   </span>
                 </div>
 
-                <div className="space-y-3">
-                  {[
-                    { name: "customer_churn_v2.csv", type: "KNN Imputation + Scaling", rows: "12,450", status: "Completed", score: "98.4%", time: "2m ago" },
-                    { name: "sales_q3_clean.csv", type: "Outlier Trimming", rows: "45,210", status: "Completed", score: "96.1%", time: "1h ago" },
-                    { name: "telecom_churn_dataset.csv", type: "AutoML Training", rows: "8,920", status: "Completed", score: "95.8%", time: "3h ago" },
-                  ].map((job, idx) => (
-                    <div key={idx} className="p-3.5 rounded-xl border border-slate-200/70 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/40 hover:border-primary/50 transition flex items-center justify-between">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
-                          <FileSpreadsheet className="w-4 h-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-xs font-bold text-slate-900 dark:text-white block truncate">{job.name}</span>
-                          <span className="text-[10px] text-slate-400 block truncate">{job.type} • {job.rows} rows</span>
-                        </div>
+                {/* Recent Workspaces */}
+                <div className="p-5 flex flex-col gap-3 min-w-0 flex-1">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-500 border border-purple-500/20">
+                        <FolderOpen className="w-4 h-4" />
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-xs font-bold text-emerald-500">{job.score}</span>
-                        <span className="text-[10px] text-slate-400">{job.time}</span>
-                      </div>
+                      <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Recent Workspaces</h3>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Supported 7 Models Leaderboard (1 Col) */}
-              <div className="p-6 rounded-2xl bg-white/70 dark:bg-[#212121]/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col gap-4">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-800 pb-3">
-                  <div className="flex items-center gap-2">
-                    <Award className="w-5 h-5 text-amber-500 shrink-0" />
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Supported 7 Models</h3>
+                    <span className="text-[10px] font-bold text-slate-400">3 Projects</span>
                   </div>
-                  <span className="text-[10px] font-mono text-slate-400">5-Fold CV</span>
+
+                  <div className="space-y-2.5">
+                    {[
+                      { name: "customer_churn_v2.csv", rows: "12,450 rows", date: "2m ago" },
+                      { name: "sales_q3_cleaned.csv", rows: "45,210 rows", date: "1h ago" },
+                      { name: "telecom_churn_dataset.csv", rows: "8,920 rows", date: "3h ago" },
+                    ].map((ds, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => setActiveTab("clean")}
+                        className="p-3 rounded-2xl bg-slate-50/80 dark:bg-zinc-900/60 border border-slate-200/80 dark:border-zinc-800 hover:border-purple-500/60 dark:hover:border-purple-500/60 transition duration-200 cursor-pointer flex items-center justify-between gap-2.5 group overflow-hidden min-w-0 shadow-xs"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0 border border-purple-500/20">
+                            <FileSpreadsheet className="w-4 h-4" />
+                          </div>
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <span className="text-xs font-black text-slate-900 dark:text-zinc-100 truncate group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                              {ds.name}
+                            </span>
+                            <span className="text-[10px] font-medium text-slate-500 dark:text-zinc-400 truncate">
+                              {ds.rows} • {ds.date}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setActiveTab("clean"); }}
+                          className="px-2.5 py-1 rounded-xl bg-purple-500/10 dark:bg-purple-500/20 hover:bg-purple-600 dark:hover:bg-purple-600 text-purple-600 dark:text-purple-300 hover:text-white dark:hover:text-white group-hover:bg-purple-600 group-hover:text-white text-[10px] font-black transition-all duration-200 shrink-0 flex items-center gap-1 cursor-pointer border border-purple-500/20 dark:border-purple-500/30"
+                        >
+                          Resume <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
-                  {[
-                    { name: "Random Forest Classifier", score: 98.4, type: "Classification", color: "bg-emerald-500" },
-                    { name: "Decision Tree Classifier", score: 96.1, type: "Classification", color: "bg-primary" },
-                    { name: "KNN Classifier", score: 95.8, type: "Classification", color: "bg-cyan-500" },
-                    { name: "Support Vector Machine", score: 94.2, type: "Classification", color: "bg-indigo-500" },
-                    { name: "Multiple Linear Regression", score: 92.5, type: "Regression", color: "bg-purple-500" },
-                    { name: "Polynomial Regression", score: 91.0, type: "Regression", color: "bg-amber-500" },
-                    { name: "Linear Regression", score: 89.2, type: "Regression", color: "bg-slate-400" },
-                  ].map((m, i) => (
-                    <div key={i} className="p-2.5 rounded-xl border border-slate-200/60 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/30 space-y-1">
-                      <div className="flex justify-between items-center text-[11px] font-bold">
-                        <span className="truncate">{m.name}</span>
-                        <span className="font-mono text-primary">{m.score}%</span>
-                      </div>
-                      <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-zinc-800 overflow-hidden">
-                        <div className={`h-full ${m.color}`} style={{ width: `${m.score}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
 
             </div>
@@ -435,7 +516,7 @@ export default function DashboardShowcase() {
             <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex justify-between items-center">
               <div>
                 <h1 className="text-xl font-black text-black dark:text-white tracking-tight flex items-center gap-2">
-                  <BarChart3 className="w-6 h-6 text-cyan-500" /> Interactive Data Visualization
+                  <BarChart3 className="w-6 h-6 text-[#673ab7] dark:text-[#a855f7]" /> Interactive Data Visualization
                 </h1>
                 <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
                   Feature correlation heatmaps, distribution charts, and custom scatter projections.
@@ -450,9 +531,10 @@ export default function DashboardShowcase() {
                 {/* Mock Chart Visual Bars */}
                 <div className="flex items-end justify-between h-40 px-6 gap-3">
                   {[45, 78, 62, 94, 85, 60, 92, 70, 88].map((h, i) => (
-                    <div key={i} className="flex-1 bg-gradient-to-t from-primary to-cyan-400 rounded-t-lg transition-all hover:opacity-80" style={{ height: `${h}%` }} />
+                    <div key={i} className="flex-1 bg-gradient-to-t from-primary to-purple-500 rounded-t-lg transition-all hover:opacity-80" style={{ height: `${h}%` }} />
                   ))}
                 </div>
+
 
                 <div className="flex justify-between text-[10px] font-mono text-slate-400 pt-2 border-t border-slate-200 dark:border-zinc-800">
                   <span>0-6 mos</span>

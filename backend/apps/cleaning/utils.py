@@ -74,17 +74,20 @@ def read_dataframe(file_path, file_type, encoding='UTF-8'):
     else:
         raise ValueError(f"Unsupported file type: {file_type}")
 
+import datetime
+import uuid
+
 def make_json_safe(obj):
     """
-    Recursively converts NumPy/Pandas data types and float NaNs
+    Recursively converts NumPy/Pandas data types, datetimes, UUIDs, and float NaNs
     to standard Python types that are JSON serializable.
     """
     if isinstance(obj, dict):
-        return {k: make_json_safe(v) for k, v in obj.items()}
+        return {str(k): make_json_safe(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [make_json_safe(v) for v in obj]
-    elif isinstance(obj, tuple):
-        return tuple(make_json_safe(v) for v in obj)
+    elif isinstance(obj, (tuple, set)):
+        return [make_json_safe(v) for v in obj]
     elif isinstance(obj, (np.integer, np.int64, np.int32, np.int16, np.int8)):
         return int(obj)
     elif isinstance(obj, (np.floating, np.float64, np.float32, np.float16)):
@@ -95,11 +98,14 @@ def make_json_safe(obj):
         return bool(obj)
     elif isinstance(obj, np.ndarray):
         return make_json_safe(obj.tolist())
-    elif isinstance(obj, (pd.Timestamp, pd.DatetimeIndex)):
+    elif isinstance(obj, (pd.Timestamp, pd.DatetimeIndex, datetime.datetime, datetime.date)):
         return obj.isoformat()
+    elif isinstance(obj, uuid.UUID):
+        return str(obj)
     elif pd.isna(obj):
         return None
     return obj
+
 
 
 def calculate_quality_score(df, report):

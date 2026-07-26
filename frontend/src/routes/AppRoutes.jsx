@@ -1,4 +1,5 @@
-import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 
 import { GuestRoute, ProtectedRoute } from "./AuthGuards";
 
@@ -7,45 +8,61 @@ import Login from "../pages/Auth/Login";
 import Signup from "../pages/Auth/Signup";
 import Dashboard from "../pages/Dashboard/Dashboard";
 import Landing from "../pages/Landing/Landing";
+import GuestCleanPage from "../pages/Landing/GuestCleanPage";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
 
 function AppRoutes() {
   return (
-    <Routes>
-      {/* Public — no guard needed */}
-      <Route path="/" element={<Landing />} />
+    <>
+      <ScrollToTop />
+      <Routes>
+        {/* Public — no guard needed */}
+        <Route path="/" element={<Landing />} />
+        <Route path="/clean" element={<GuestCleanPage />} />
+        <Route path="/guest-cleaner" element={<GuestCleanPage />} />
 
-      {/* Guest-only routes: redirect to /dashboard if already logged in */}
-      <Route
-        path="/login"
-        element={
-          <GuestRoute>
-            <Login />
-          </GuestRoute>
-        }
-      />
-      <Route
-        path="/signup"
-        element={
-          <GuestRoute>
-            <Signup />
-          </GuestRoute>
-        }
-      />
-      <Route
-        path="/forgot-password"
-        element={<ForgotPassword />}
-      />
+        {/* Guest-only routes: redirect to /dashboard if already logged in */}
+        <Route
+          path="/login"
+          element={
+            <GuestRoute>
+              <Login />
+            </GuestRoute>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <GuestRoute>
+              <Signup />
+            </GuestRoute>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={<ForgotPassword />}
+        />
 
-      {/* Protected routes: redirect to /login if not logged in */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
+        {/* Protected routes: redirect to /login if not logged in */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </>
   );
 }
 

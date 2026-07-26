@@ -235,6 +235,13 @@ class CompleteSignupView(APIView):
             auth_provider=User.AuthProvider.EMAIL,
         )
         user.backend = 'django.contrib.auth.backends.ModelBackend'
+
+        guest_id = request.data.get("guest_id") or request.headers.get("X-Guest-ID")
+        if guest_id:
+            from apps.cleaning.models import Dataset, CleaningJob
+            Dataset.objects.filter(guest_id=guest_id, user__isnull=True).update(user=user)
+            CleaningJob.objects.filter(dataset__guest_id=guest_id, user__isnull=True).update(user=user)
+
         login(request, user)
         _clear_otp(request, "signup")
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
@@ -243,6 +250,43 @@ class CompleteSignupView(APIView):
 class CsrfExemptSessionAuthentication(SessionAuthentication):
     def enforce_csrf(self, request):
         return
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    def post(self, request):
+        email = (request.data.get("email") or "").lower().strip()
+        password = request.data.get("password") or ""
+        first_name = request.data.get("first_name") or ""
+        last_name = request.data.get("last_name") or ""
+        guest_id = request.data.get("guest_id") or request.headers.get("X-Guest-ID")
+
+        if not email or not password:
+            return Response({"error": "Email and password are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if UserModel.objects.filter(email__iexact=email).exists():
+            return Response({"error": "An account with this email already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = UserModel.objects.create_user(
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            auth_provider=User.AuthProvider.EMAIL
+        )
+        user.backend = 'django.contrib.auth.backends.ModelBackend'
+
+        if guest_id:
+            from apps.cleaning.models import Dataset, CleaningJob
+            Dataset.objects.filter(guest_id=guest_id, user__isnull=True).update(user=user)
+            CleaningJob.objects.filter(dataset__guest_id=guest_id, user__isnull=True).update(user=user)
+
+        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -261,6 +305,13 @@ class LoginView(APIView):
         
         django_request.session.set_expiry(60 * 60 * 24 * 30 if serializer.validated_data.get("remember_me") else 0)
 
+        guest_id = request.data.get("guest_id") or request.headers.get("X-Guest-ID")
+        if guest_id:
+            from apps.cleaning.models import Dataset, CleaningJob
+            Dataset.objects.filter(guest_id=guest_id, user__isnull=True).update(user=user)
+            CleaningJob.objects.filter(dataset__guest_id=guest_id, user__isnull=True).update(user=user)
+
+
         ActivityService.log_activity(
             user=user,
             action_type="login",
@@ -268,6 +319,7 @@ class LoginView(APIView):
             description=f"Logged in via {user.auth_provider}.",
             request=request
         )
+
 
         return Response(UserSerializer(user).data)
 

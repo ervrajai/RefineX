@@ -1,11 +1,24 @@
-// src/components/Landing/Hero.jsx
 import React, { useRef, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, Zap } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function Hero() {
+  const navigate = useNavigate();
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const handleButtonClick = () => {
+    navigate("/clean");
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      navigate("/clean", { state: { file: e.target.files[0] } });
+    }
+  };
+
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -247,8 +260,9 @@ export default function Hero() {
           animate="visible"
           className="flex justify-center"
         >
-          <label 
-            htmlFor="csv-upload-btn"
+          <button 
+            type="button"
+            onClick={handleButtonClick}
             className="relative group border-none bg-transparent p-0 outline-none cursor-pointer font-sans w-fit block"
           >
             {/* Layer 1: Drop Shadow */}
@@ -265,19 +279,12 @@ export default function Hero() {
             <div
               className="relative flex items-center justify-between px-8 py-4 font-semibold text-white bg-black dark:text-black dark:bg-white rounded-lg transform -translate-y-1 transition duration-[600ms] ease-[cubic-bezier(0.3,0.7,0.4,1)] group-hover:-translate-y-1.5 group-hover:duration-[250ms] group-active:-translate-y-0.5 gap-2"
             >
-              <span className="select-none">Upload CSV</span>
+              <span className="select-none">Upload CSV & Clean</span>
               <ArrowRight className="h-5 w-5 transition duration-250 group-hover:translate-x-1" />
             </div>
-          </label>
-          
-          <input
-            id="csv-upload-btn"
-            type="file"
-            className="hidden"
-            accept=".csv,.xlsx,.xls,.json"
-          />
+          </button>
         </motion.div>
       </motion.div>
     </section>
   );
-}
+}

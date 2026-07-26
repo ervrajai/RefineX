@@ -6,14 +6,12 @@ import {
   BrainCircuit, 
   BarChart3, 
   Activity, 
-  Clock, 
-  Play, 
-  CheckCircle2, 
   AlertCircle,
   TrendingUp,
   User,
   ShieldCheck,
   Calendar,
+  ChevronRight,
   ArrowRight,
   HardDrive,
   Cpu,
@@ -39,6 +37,35 @@ import {
   ResponsiveContainer 
 } from "recharts";
 import api from "../../services/api";
+import { 
+  ChartContainer, 
+  ChartTooltip, 
+  ChartTooltipContent, 
+  GridLayer, 
+  EllipseGradient 
+} from "../ui/chart";
+
+const barChartConfig = {
+  score: {
+    label: "Accuracy Score",
+    color: "#8b5cf6",
+  },
+};
+
+const pieChartConfig = {
+  "Cleaned Files": {
+    label: "Cleaned Files",
+    color: "#10b981",
+  },
+  "Trained Models": {
+    label: "Trained Models",
+    color: "#8b5cf6",
+  },
+  "Visualizations": {
+    label: "Visualizations",
+    color: "#06b6d4",
+  },
+};
 
 function OverviewView({ user, onQuickResume, setActiveTab }) {
   const [data, setData] = useState(null);
@@ -46,8 +73,7 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Tabbed toggle for Recent Runs vs Recent Workspaces
-  const [activeTabToggle, setActiveTabToggle] = useState("runs"); // "runs" | "workspaces"
+
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -89,6 +115,13 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
     } catch {
       return "Recently";
     }
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
   };
 
   const formatDateTime = (isoStr) => {
@@ -258,15 +291,7 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
     }
   ];
 
-  // Recent Pipeline Runs from History
-  const recentRuns = history.length > 0 ? history.slice(0, 5).map(h => ({
-    id: h.id,
-    task: h.type === "cleaning" ? "CSV Quality Normalization" : h.type === "training" ? "ML Model Training" : "Interactive Graph Render",
-    file: h.dataset_name || "Dataset",
-    duration: h.training_duration ? `${h.training_duration.toFixed(1)}s` : "1.2s",
-    time: formatDateTime(h.created_at),
-    status: "Completed"
-  })) : [];
+
 
   // 1. BAR CHART DATA: ALL 7 MODELS ALWAYS SHOWN (0% IF UNTRAINED)
   const ALL_7_MODELS = [
@@ -310,7 +335,7 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
   ];
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto font-sans animate-fade-in text-slate-900 dark:text-white pb-10 overflow-hidden">
+    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto font-sans animate-fade-in text-slate-900 dark:text-white pb-10 overflow-visible">
       
       {/* SMART EMPTY STATE (NEW USERS) vs FULL DASHBOARD */}
       {isNewUser ? (
@@ -372,50 +397,240 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
                 </div>
               </div>
 
-              {/* Secondary Action Cards (Beneath Banner) */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Secondary Action Cards (Beneath Banner - Notched Stepper Tracking Cards) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 group/action-cards p-1.5 z-20">
+                
+                {/* Step 1 Card: Start Cleaning */}
                 <div 
                   onClick={() => setActiveTab("clean")}
-                  className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-[#121212] border border-slate-100 dark:border-zinc-800 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                  className="group/card relative flex flex-col justify-between p-5 min-h-[140px] rounded-3xl bg-white dark:bg-[#121212] border border-slate-200/80 dark:border-zinc-800 shadow-md cursor-pointer transition-all duration-400 ease-out group-hover/action-cards:scale-95 group-hover/action-cards:blur-[2px] group-hover/action-cards:opacity-60 hover:!scale-105 hover:!blur-none hover:!opacity-100 hover:z-30 hover:shadow-2xl dark:hover:shadow-purple-500/20 dark:hover:border-purple-500/50 origin-left overflow-hidden"
                 >
-                  <div className="p-2.5 rounded-full bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400">
-                    <Wand2 className="w-4 h-4" />
+                  {/* Top Row: Left Icon (Bus Logo Replacement) */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-2xl bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/20 shrink-0 group-hover/card:scale-110 transition-transform duration-300">
+                      <Wand2 className="w-4.5 h-4.5" />
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 font-medium">Step 1</span>
-                    <span className="text-xs font-bold text-slate-800 dark:text-white">Start Cleaning</span>
+
+                  {/* Vertical Timeline Stepper Section (Three Dots / Route Replacement) */}
+                  <div className="flex flex-col gap-0.5 pr-6">
+                    {/* Top Dot (Solid) + Step Number */}
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
+                        Step 1
+                      </span>
+                    </div>
+
+                    {/* Vertical Connecting Line */}
+                    <div className="w-[1.5px] h-3.5 bg-purple-500/30 dark:bg-purple-500/25 ml-[3px] my-0.5" />
+
+                    {/* Bottom Dot (Hollow) + Main Action Title */}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-2 h-2 rounded-full border-2 border-purple-500 bg-white dark:bg-[#121212] shrink-0" />
+                      <span className="text-xs font-black text-slate-900 dark:text-white truncate group-hover/card:text-purple-600 dark:group-hover/card:text-purple-400 transition-colors">
+                        Start Cleaning
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Top-Right Inverted Notch & Circular Action Button */}
+                  <div className="absolute top-0 right-0 w-11 h-11 bg-slate-50 dark:bg-[#09090b] rounded-bl-2xl flex items-center justify-center p-1 z-10 pointer-events-none">
+                    <div className="absolute top-0 -left-2.5 w-2.5 h-2.5 bg-transparent rounded-tr-lg shadow-[2px_-2px_0_0_#f8fafc] dark:shadow-[2px_-2px_0_0_#09090b]" />
+                    <div className="absolute -bottom-2.5 right-0 w-2.5 h-2.5 bg-transparent rounded-tr-lg shadow-[2px_-2px_0_0_#f8fafc] dark:shadow-[2px_-2px_0_0_#09090b]" />
+
+                    <div className="w-7.5 h-7.5 rounded-full bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-sm flex items-center justify-center text-slate-500 dark:text-zinc-400 group-hover/card:bg-purple-600 group-hover/card:text-white group-hover/card:border-purple-600 group-hover/card:translate-x-0.5 transition-all duration-300">
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
                   </div>
                 </div>
 
+                {/* Step 2 Card: Visualize Data */}
                 <div 
                   onClick={() => setActiveTab("visualization")}
-                  className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-[#121212] border border-slate-100 dark:border-zinc-800 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                  className="group/card relative flex flex-col justify-between p-5 min-h-[140px] rounded-3xl bg-white dark:bg-[#121212] border border-slate-200/80 dark:border-zinc-800 shadow-md cursor-pointer transition-all duration-400 ease-out group-hover/action-cards:scale-95 group-hover/action-cards:blur-[2px] group-hover/action-cards:opacity-60 hover:!scale-105 hover:!blur-none hover:!opacity-100 hover:z-30 hover:shadow-2xl dark:hover:shadow-pink-500/20 dark:hover:border-pink-500/50 origin-center overflow-hidden"
                 >
-                  <div className="p-2.5 rounded-full bg-pink-50 text-pink-600 dark:bg-pink-900/20 dark:text-pink-400">
-                    <LineChart className="w-4 h-4" />
+                  {/* Top Row: Left Icon */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-2xl bg-pink-500/10 text-pink-600 dark:bg-pink-500/20 dark:text-pink-400 border border-pink-500/20 shrink-0 group-hover/card:scale-110 transition-transform duration-300">
+                      <LineChart className="w-4.5 h-4.5" />
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 font-medium">Step 2</span>
-                    <span className="text-xs font-bold text-slate-800 dark:text-white">Visualize Data</span>
+
+                  {/* Vertical Timeline Stepper Section */}
+                  <div className="flex flex-col gap-0.5 pr-6">
+                    {/* Top Dot (Solid) + Step Number */}
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-pink-500 shrink-0" />
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
+                        Step 2
+                      </span>
+                    </div>
+
+                    {/* Vertical Connecting Line */}
+                    <div className="w-[1.5px] h-3.5 bg-pink-500/30 dark:bg-pink-500/25 ml-[3px] my-0.5" />
+
+                    {/* Bottom Dot (Hollow) + Main Action Title */}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-2 h-2 rounded-full border-2 border-pink-500 bg-white dark:bg-[#121212] shrink-0" />
+                      <span className="text-xs font-black text-slate-900 dark:text-white truncate group-hover/card:text-pink-600 dark:group-hover/card:text-pink-400 transition-colors">
+                        Visualize Data
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Top-Right Inverted Notch & Circular Action Button */}
+                  <div className="absolute top-0 right-0 w-11 h-11 bg-slate-50 dark:bg-[#09090b] rounded-bl-2xl flex items-center justify-center p-1 z-10 pointer-events-none">
+                    <div className="absolute top-0 -left-2.5 w-2.5 h-2.5 bg-transparent rounded-tr-lg shadow-[2px_-2px_0_0_#f8fafc] dark:shadow-[2px_-2px_0_0_#09090b]" />
+                    <div className="absolute -bottom-2.5 right-0 w-2.5 h-2.5 bg-transparent rounded-tr-lg shadow-[2px_-2px_0_0_#f8fafc] dark:shadow-[2px_-2px_0_0_#09090b]" />
+
+                    <div className="w-7.5 h-7.5 rounded-full bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-sm flex items-center justify-center text-slate-500 dark:text-zinc-400 group-hover/card:bg-pink-600 group-hover/card:text-white group-hover/card:border-pink-600 group-hover/card:translate-x-0.5 transition-all duration-300">
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
                   </div>
                 </div>
 
+                {/* Step 3 Card: Train Model */}
                 <div 
                   onClick={() => setActiveTab("model-training")}
-                  className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-[#121212] border border-slate-100 dark:border-zinc-800 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                  className="group/card relative flex flex-col justify-between p-5 min-h-[140px] rounded-3xl bg-white dark:bg-[#121212] border border-slate-200/80 dark:border-zinc-800 shadow-md cursor-pointer transition-all duration-400 ease-out group-hover/action-cards:scale-95 group-hover/action-cards:blur-[2px] group-hover/action-cards:opacity-60 hover:!scale-105 hover:!blur-none hover:!opacity-100 hover:z-30 hover:shadow-2xl dark:hover:shadow-blue-500/20 dark:hover:border-blue-500/50 origin-right overflow-hidden"
                 >
-                  <div className="p-2.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
-                    <BrainCircuit className="w-4 h-4" />
+                  {/* Top Row: Left Icon */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 border border-blue-500/20 shrink-0 group-hover/card:scale-110 transition-transform duration-300">
+                      <BrainCircuit className="w-4.5 h-4.5" />
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 font-medium">Step 3</span>
-                    <span className="text-xs font-bold text-slate-800 dark:text-white">Train Model</span>
+
+                  {/* Vertical Timeline Stepper Section */}
+                  <div className="flex flex-col gap-0.5 pr-6">
+                    {/* Top Dot (Solid) + Step Number */}
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
+                        Step 3
+                      </span>
+                    </div>
+
+                    {/* Vertical Connecting Line */}
+                    <div className="w-[1.5px] h-3.5 bg-blue-500/30 dark:bg-blue-500/25 ml-[3px] my-0.5" />
+
+                    {/* Bottom Dot (Hollow) + Main Action Title */}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-2 h-2 rounded-full border-2 border-blue-500 bg-white dark:bg-[#121212] shrink-0" />
+                      <span className="text-xs font-black text-slate-900 dark:text-white truncate group-hover/card:text-blue-600 dark:group-hover/card:text-blue-400 transition-colors">
+                        Train Model
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Top-Right Inverted Notch & Circular Action Button */}
+                  <div className="absolute top-0 right-0 w-11 h-11 bg-slate-50 dark:bg-[#09090b] rounded-bl-2xl flex items-center justify-center p-1 z-10 pointer-events-none">
+                    <div className="absolute top-0 -left-2.5 w-2.5 h-2.5 bg-transparent rounded-tr-lg shadow-[2px_-2px_0_0_#f8fafc] dark:shadow-[2px_-2px_0_0_#09090b]" />
+                    <div className="absolute -bottom-2.5 right-0 w-2.5 h-2.5 bg-transparent rounded-tr-lg shadow-[2px_-2px_0_0_#f8fafc] dark:shadow-[2px_-2px_0_0_#09090b]" />
+
+                    <div className="w-7.5 h-7.5 rounded-full bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-sm flex items-center justify-center text-slate-500 dark:text-zinc-400 group-hover/card:bg-blue-600 group-hover/card:text-white group-hover/card:border-blue-600 group-hover/card:translate-x-0.5 transition-all duration-300">
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
                   </div>
                 </div>
+
               </div>
             </div>
 
-            {/* 2. TOP-LEVEL SUMMARY METRICS (3 CARDS GRID - STORAGE REMOVED) */}
+            {/* 2. UNIFIED ANALYTICS CONTAINER (BAR CHART 70% & DONUT CHART 30% WITH VERTICAL BORDER) */}
+            <div className="rounded-3xl bg-white dark:bg-[#121212] border border-slate-200/80 dark:border-zinc-800 shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
+              <div className="grid grid-cols-1 lg:grid-cols-10 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-zinc-800/80">
+                
+                {/* Bar Chart Section (70% Ratio -> lg:col-span-7) */}
+                <div className="lg:col-span-7 p-6 flex flex-col justify-between min-w-0 relative overflow-hidden">
+                  <GridLayer color="#8b5cf618" />
+                  <EllipseGradient color="#8b5cf6" />
+
+                  <div className="relative z-10 flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                        <BarChart3 className="w-4.5 h-4.5" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Model Accuracy Benchmark</h3>
+                        <span className="text-[10px] font-medium text-slate-400">All 7 Scikit-Learn Estimators</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                      7 Models
+                    </span>
+                  </div>
+
+                  <div className="relative z-10 h-56 w-full pt-4">
+                    <ChartContainer config={barChartConfig} className="h-full w-full">
+                      <BarChart data={modelChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <XAxis dataKey="name" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} interval={0} />
+                        <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                        <ChartTooltip
+                          cursor={{ fill: "rgba(139, 92, 246, 0.1)" }}
+                          content={<ChartTooltipContent indicator="line" nameKey="score" labelFormatter={(value) => `${value}`} />}
+                        />
+                        <Bar dataKey="score" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ChartContainer>
+                  </div>
+                </div>
+
+                {/* Pie/Donut Chart Section (30% Ratio -> lg:col-span-3) */}
+                <div className="lg:col-span-3 p-6 flex flex-col justify-between min-w-0 bg-slate-50/30 dark:bg-zinc-900/20 relative overflow-hidden">
+                  <GridLayer color="#10b98118" />
+                  <EllipseGradient color="#10b981" />
+
+                  <div className="relative z-10 flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800">
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-4.5 h-4.5 text-emerald-500" />
+                      <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Workspace Ratio</h3>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400">100%</span>
+                  </div>
+
+                  <div className="relative z-10 h-44 w-full flex items-center justify-center relative my-auto">
+                    <ChartContainer config={pieChartConfig} className="h-full w-full flex items-center justify-center">
+                      <PieChart>
+                        <Pie
+                          data={distributionData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={42}
+                          outerRadius={62}
+                          paddingAngle={4}
+                          dataKey="value"
+                        >
+                          {distributionData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} stroke="transparent" />
+                          ))}
+                        </Pie>
+                        <ChartTooltip
+                          content={<ChartTooltipContent hideIndicator nameKey="name" />}
+                        />
+                      </PieChart>
+                    </ChartContainer>
+                  </div>
+
+                  {/* Donut Legend */}
+                  <div className="relative z-10 flex flex-col gap-1.5 pt-2 border-t border-slate-100 dark:border-zinc-800">
+                    {distributionData.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-zinc-400">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full shadow-xs" style={{ backgroundColor: item.color }} />
+                          <span>{item.name}</span>
+                        </div>
+                        <span className="font-mono">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* 3. TOP-LEVEL SUMMARY METRICS */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {topMetrics.map((card, idx) => {
                 const Icon = card.icon;
@@ -459,145 +674,7 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
               })}
             </div>
 
-            {/* 3. UNIFIED ANALYTICS CONTAINER (BAR CHART 70% & DONUT CHART 30% WITH VERTICAL BORDER) */}
-            <div className="rounded-3xl bg-white dark:bg-[#121212] border border-slate-200/80 dark:border-zinc-800 shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
-              <div className="grid grid-cols-1 lg:grid-cols-10 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-zinc-800/80">
-                
-                {/* Bar Chart Section (70% Ratio -> lg:col-span-7) */}
-                <div className="lg:col-span-7 p-6 flex flex-col justify-between min-w-0">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
-                        <BarChart3 className="w-4.5 h-4.5" />
-                      </div>
-                      <div>
-                        <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Model Accuracy Benchmark</h3>
-                        <span className="text-[10px] font-medium text-slate-400">All 7 Scikit-Learn Estimators</span>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                      7 Models
-                    </span>
-                  </div>
 
-                  <div className="h-56 w-full pt-4">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={modelChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#888888" }} axisLine={false} tickLine={false} interval={0} />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: "#888888" }} axisLine={false} tickLine={false} />
-                        <RechartsTooltip 
-                          contentStyle={{ backgroundColor: "#1f2937", borderColor: "#374151", borderRadius: "12px", color: "#fff", fontSize: "11px" }}
-                          formatter={(val) => [`${val}%`, "Accuracy Score"]}
-                        />
-                        <Bar dataKey="score" fill="#673ab7" radius={[6, 6, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Pie/Donut Chart Section (30% Ratio -> lg:col-span-3) */}
-                <div className="lg:col-span-3 p-6 flex flex-col justify-between min-w-0 bg-slate-50/30 dark:bg-zinc-900/20">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800">
-                    <div className="flex items-center gap-2">
-                      <Activity className="w-4.5 h-4.5 text-emerald-500" />
-                      <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Workspace Ratio</h3>
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-400">100%</span>
-                  </div>
-
-                  <div className="h-44 w-full flex items-center justify-center relative my-auto">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={distributionData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={42}
-                          outerRadius={62}
-                          paddingAngle={4}
-                          dataKey="value"
-                        >
-                          {distributionData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <RechartsTooltip 
-                          contentStyle={{ backgroundColor: "#1f2937", borderColor: "#374151", borderRadius: "12px", color: "#fff", fontSize: "11px" }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Donut Legend */}
-                  <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-100 dark:border-zinc-800">
-                    {distributionData.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-zinc-400">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                          <span>{item.name}</span>
-                        </div>
-                        <span className="font-mono">{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* 4. PIPELINE HISTORY TABLE */}
-            <div className="p-6 rounded-3xl bg-white dark:bg-[#121212] border border-slate-200/80 dark:border-zinc-800 shadow-lg shadow-slate-200/50 dark:shadow-none flex flex-col gap-4 overflow-hidden min-w-0">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
-                    <Clock className="w-4.5 h-4.5" />
-                  </div>
-                  <h3 className="text-base font-black text-slate-900 dark:text-white">Execution Pipeline History</h3>
-                </div>
-                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-wider">
-                  ● Live Audit
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-3 min-w-0">
-                {recentRuns.length > 0 ? (
-                  recentRuns.map((run) => (
-                    <div
-                      key={run.id}
-                      className="p-4 rounded-2xl bg-slate-50/80 dark:bg-zinc-900/60 border border-slate-200/80 dark:border-zinc-800 hover:border-primary/60 dark:hover:border-primary/60 transition duration-200 flex items-center justify-between gap-3 group overflow-hidden min-w-0 shadow-xs"
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                        <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0 border border-primary/20">
-                          <Clock className="w-5 h-5" />
-                        </div>
-                        <div className="flex flex-col min-w-0 flex-1">
-                          <span className="text-xs font-black text-slate-900 dark:text-zinc-100 truncate group-hover:text-primary transition-colors">
-                            {run.task}
-                          </span>
-                          <span className="text-[11px] font-medium text-slate-500 dark:text-zinc-400 truncate mt-0.5">
-                            {run.file} • {run.time}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-xs font-bold text-slate-600 dark:text-zinc-300 font-mono hidden sm:inline">
-                          {run.duration}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          {run.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-8 text-center text-xs font-semibold text-slate-500 dark:text-zinc-400 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl">
-                    No execution history logged yet.
-                  </div>
-                )}
-              </div>
-            </div>
 
           </div>
 
@@ -606,47 +683,20 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
             
             {/* 1. TOP FIXED SECTION: CENTERED PROFILE WIDGET */}
             <div className="p-6 border-b border-slate-100 dark:border-zinc-800/80 flex flex-col items-center text-center gap-3 relative overflow-hidden bg-slate-50/40 dark:bg-zinc-900/30 shrink-0">
-              {/* Avatar with Circular Progress Ring */}
-              <div className="relative w-20 h-20 flex items-center justify-center">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="6" className="text-slate-200 dark:text-zinc-800" fill="transparent" />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="42"
-                    stroke="url(#profile-gradient)"
-                    strokeWidth="6"
-                    strokeDasharray={2 * Math.PI * 42}
-                    strokeDashoffset={2 * Math.PI * 42 * (1 - (clampedHealthScore / 100))}
-                    strokeLinecap="round"
-                    className="transition-all duration-1000 ease-out"
-                    fill="transparent"
-                  />
-                  <defs>
-                    <linearGradient id="profile-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#673ab7" />
-                      <stop offset="100%" stopColor="#10b981" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-
-                <div className="absolute w-15 h-15 rounded-full overflow-hidden border-2 border-white dark:border-[#121212] shadow-md bg-slate-100 dark:bg-zinc-800 flex items-center justify-center">
-                  {profile.avatar ? (
-                    <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-8 h-8 text-primary dark:text-purple-400" />
-                  )}
-                </div>
+              {/* Profile Avatar */}
+              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-200 dark:border-zinc-700 shadow-md bg-slate-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                {profile.avatar ? (
+                  <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-8 h-8 text-primary dark:text-purple-400" />
+                )}
               </div>
 
               {/* Greeting */}
-              <div className="flex flex-col gap-0.5 items-center">
-                <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
-                  Good Morning, {profile.first_name || profile.last_name ? `${profile.first_name}` : profile.username || "Pranay"} 
+              <div className="flex flex-col items-center">
+                <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+                  {getGreeting()}, {profile.first_name || profile.last_name ? `${profile.first_name}` : profile.username || "Pranay"} 
                 </h2>
-                <p className="text-[11px] font-medium text-slate-500 dark:text-zinc-400">
-                  RefineX SaaS Control Panel
-                </p>
               </div>
 
               {/* Verification Status Badge */}

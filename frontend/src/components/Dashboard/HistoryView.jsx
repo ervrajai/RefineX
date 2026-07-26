@@ -3,10 +3,7 @@ import api from "../../services/api";
 import { MdHistory } from "react-icons/md"; // Upgraded history icon
 import {
   Download,
-  ChevronDown,
-  ChevronUp,
-  FileSpreadsheet,
-  TrendingUp,
+  BrushCleaning,
   Info,
   Calendar,
   AlertCircle,
@@ -14,8 +11,68 @@ import {
   BrainCircuit,
   LineChart,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  FileText
 } from "lucide-react";
+import { BouncyAccordion } from "../ui/BouncyAccordion";
+import AnimatedDownloadButton from "../ui/AnimatedDownloadButton";
+import RestoreButton from "../ui/RestoreButton";
+import RefreshButton from "../ui/RefreshButton";
+
+// Exact Delete Trash Button from Uiverse.io by philipo30 with animated lid
+function DeleteButton({ onClick, title = "Delete item" }) {
+  return (
+    <button
+      type="button"
+      aria-label={title}
+      onClick={onClick}
+      title={title}
+      className="group relative p-1 bg-transparent border-0 cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 flex items-center justify-center shrink-0"
+    >
+      <svg
+        className="w-7 h-7 sm:w-8 sm:h-8 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-[1.08] group-hover:rotate-3 group-active:scale-[0.96] group-active:-rotate-1 overflow-visible drop-shadow-xs"
+        viewBox="0 -10 64 74"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <g id="trash-can">
+          <rect
+            x="16"
+            y="24"
+            width="32"
+            height="30"
+            rx="3"
+            ry="3"
+            fill="#e74c3c"
+          />
+          <g
+            id="lid-group"
+            style={{ transformOrigin: "12px 18px" }}
+            className="transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-rotate-[28deg] group-hover:translate-y-[2px] group-active:-rotate-[12deg] group-active:scale-[0.98]"
+          >
+            <rect
+              x="12"
+              y="12"
+              width="40"
+              height="6"
+              rx="2"
+              ry="2"
+              fill="#c0392b"
+            />
+            <rect
+              x="26"
+              y="8"
+              width="12"
+              height="4"
+              rx="2"
+              ry="2"
+              fill="#c0392b"
+            />
+          </g>
+        </g>
+      </svg>
+    </button>
+  );
+}
 
 export default function HistoryView({ 
   onLoadWorkspace, 
@@ -27,8 +84,10 @@ export default function HistoryView({
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [restoreLoading, setRestoreLoading] = useState(false);
+  const [activeRestoringId, setActiveRestoringId] = useState(null);
   const [error, setError] = useState("");
   const [expandedJobId, setExpandedJobId] = useState(null);
+  const [openLogsJobId, setOpenLogsJobId] = useState(null);
   const [showClearModal, setShowClearModal] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
@@ -60,7 +119,7 @@ export default function HistoryView({
       setShowClearModal(false);
     } catch (err) {
       console.error("Clear history error:", err);
-      setShowClearModal(false); // Close pop-up modal so user can see error banner!
+      setShowClearModal(false);
       setError(err.response?.data?.detail || "Failed to clear history records and local media files. Please try again.");
     } finally {
       setClearing(false);
@@ -77,24 +136,84 @@ export default function HistoryView({
       setItemToDelete(null);
     } catch (err) {
       console.error("Delete single history item error:", err);
-      setItemToDelete(null); // Close pop-up modal so user can see error banner!
+      setItemToDelete(null);
       setError(err.response?.data?.detail || "Failed to delete history record and media files. Please try again.");
     } finally {
       setDeletingItem(false);
     }
   };
 
-  const handleDownload = (datasetId, type) => {
-    const url = `http://localhost:8000/api/cleaning/${datasetId}/download/?type=${type}`;
-    window.open(url, "_blank");
+  const handleDownload = async (datasetId, type) => {
+    try {
+      const res = await api.get(`cleaning/${datasetId}/download/?type=${type}`, {
+        responseType: "blob",
+      });
+      const blob = new Blob([res.data]);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const ext = type === "excel" ? "xlsx" : type === "json" ? "json" : type === "report" ? "pdf" : "csv";
+      link.setAttribute("download", `cleaned_dataset.${ext}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download cleaning dataset error:", err);
+    }
   };
 
-  const handleDownloadML = (jobId, type) => {
-    const url = `http://localhost:8000/api/model-training/jobs/${jobId}/download/?type=${type}`;
-    window.open(url, "_blank");
+  const handleDownloadML = async (jobId, type) => {
+    try {
+      const res = await api.get(`model-training/jobs/${jobId}/download/?type=${type}`, {
+        responseType: "blob",
+      });
+      const blob = new Blob([res.data]);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const ext = type === "model" ? "pkl" : type === "report" ? "pdf" : "csv";
+      link.setAttribute("download", `model_record.${ext}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download ML model error:", err);
+    }
   };
 
-  const handleRestoreMLJob = async (job) => {
+  const handleExportVisualization = async (job, format) => {
+    try {
+      const res = await api.post(
+        "visualization/export/",
+        {
+          dataset_id: job.dataset_id,
+          config: job.config,
+          format: format,
+        },
+        { responseType: "blob" }
+      );
+      const blob = new Blob([res.data]);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const fileExt = format === "html" ? "html" : format;
+      link.setAttribute("download", `${job.name || "refinex_chart"}.${fileExt}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error("Export visualization error:", err);
+    }
+  };
+
+  const toggleLogs = (jobId) => {
+    setOpenLogsJobId(prev => (prev === jobId ? null : jobId));
+  };
+
+  const handleRestoreMLJob = async (job, itemId) => {
+    if (itemId) setActiveRestoringId(itemId);
     setRestoreLoading(true);
     setError("");
     try {
@@ -117,14 +236,12 @@ export default function HistoryView({
       setError("Failed to load dataset details for restoration. The file might have been deleted.");
     } finally {
       setRestoreLoading(false);
+      setActiveRestoringId(null);
     }
   };
 
-  const toggleExpand = (jobId) => {
-    setExpandedJobId(prev => (prev === jobId ? null : jobId));
-  };
-
-  const handleRestore = async (job) => {
+  const handleRestore = async (job, itemId) => {
+    if (itemId) setActiveRestoringId(itemId);
     setRestoreLoading(true);
     setError("");
     try {
@@ -147,36 +264,12 @@ export default function HistoryView({
       setError("Failed to load dataset details for restoration. The file might have been deleted.");
     } finally {
       setRestoreLoading(false);
+      setActiveRestoringId(null);
     }
   };
 
-  const handleTrainModel = async (job) => {
-    setRestoreLoading(true);
-    setError("");
-    try {
-      const res = await api.get(`cleaning/${job.dataset_id}/preview/?offset=0&limit=100`);
-      const data = res.data;
-      if (onLoadWorkspace) {
-        onLoadWorkspace(
-          job.dataset_id,
-          data.metadata,
-          job.before_stats,
-          job.after_stats,
-          job.logs,
-          data
-        );
-      }
-      if (onTrainModelRedirect) {
-        onTrainModelRedirect();
-      }
-    } catch (err) {
-      setError("Failed to load dataset for model training. The file might have been deleted.");
-    } finally {
-      setRestoreLoading(false);
-    }
-  };
-  
-  const handleRestoreVisualization = async (job) => {
+  const handleRestoreVisualization = async (job, itemId) => {
+    if (itemId) setActiveRestoringId(itemId);
     setRestoreLoading(true);
     setError("");
     try {
@@ -206,6 +299,7 @@ export default function HistoryView({
       setError("Failed to restore chart. The dataset file might have been deleted.");
     } finally {
       setRestoreLoading(false);
+      setActiveRestoringId(null);
     }
   };
 
@@ -248,35 +342,31 @@ export default function HistoryView({
     <div className="space-y-6 text-slate-800 dark:text-zinc-100 max-w-4xl mx-auto animate-fade-in font-sans pb-10">
       
       {/* Header */}
-      <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-black dark:text-white tracking-tight flex items-center gap-3">
-            <MdHistory className="w-7 h-7 text-primary" /> Execution & Audit History
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 py-1">
+        <div className="flex flex-col">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            History
           </h1>
-          <p className="text-sm text-slate-500 dark:text-zinc-400 mt-2">
-            Browse and download previously cleaned datasets, quality score records, and cleaning logs.
+          <p className="text-[11px] sm:text-xs font-medium text-slate-400 dark:text-zinc-400 mt-0.5">
+            Browse and download previously cleaned datasets, quality score records, and cleaning logs
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-stretch sm:self-center shrink-0">
-          <button 
-            onClick={fetchHistory}
-            className="px-4 py-2.5 text-sm font-bold rounded-xl border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800/80 transition duration-150 cursor-pointer text-center shadow-sm"
-          >
-            Refresh Log
-          </button>
+        <div className="flex items-center gap-2.5 self-start sm:self-center shrink-0">
+          <RefreshButton onClick={fetchHistory} loading={loading} />
 
           <button 
+            type="button"
             onClick={() => setShowClearModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-extrabold rounded-xl bg-rose-500/10 hover:bg-rose-600 text-rose-600 hover:text-white dark:bg-rose-500/20 dark:hover:bg-rose-600 dark:text-rose-300 dark:hover:text-white border border-rose-500/30 dark:border-rose-500/40 transition duration-150 cursor-pointer text-center shadow-sm whitespace-nowrap"
+            className="group flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-full bg-transparent text-slate-800 dark:text-zinc-200 border border-slate-300 dark:border-zinc-700 hover:text-rose-500 dark:hover:text-rose-400 hover:border-rose-500 dark:hover:border-rose-400 focus:text-rose-500 focus:border-rose-500 transition-all duration-300 ease-in-out cursor-pointer text-center shadow-xs whitespace-nowrap select-none active:scale-95"
           >
-            <Trash2 className="w-4 h-4" />
-            Clear History
+            <Trash2 className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors duration-300" />
+            <span>Clear History</span>
           </button>
         </div>
       </div>
 
-      {/* Clear History Confirmation Modal (No glow effect) */}
+      {/* Clear History Confirmation Modal */}
       {showClearModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
           <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 shadow-lg flex flex-col gap-5">
@@ -377,385 +467,287 @@ export default function HistoryView({
           </p>
         </div>
       ) : (
-        <div className="space-y-5">
-          {history.map((job) => {
-            const isExpanded = expandedJobId === job.id;
+        <BouncyAccordion
+          items={history.map((job) => {
             const isML = job.type === "training";
-
-            if (job.type === "visualization") {
-              return (
-                <div 
-                  key={`vis-${job.id}`} 
-                  className="rounded-2xl border border-violet-500/20 dark:border-violet-500/25 bg-white dark:bg-[#212121] shadow-sm overflow-hidden transition-all duration-300"
-                >
-                  <div 
-                    onClick={() => toggleExpand(job.id)}
-                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 cursor-pointer hover:bg-slate-50/80 dark:hover:bg-zinc-900/40 transition duration-150"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/15 mt-1">
-                        <LineChart className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-3">
-                          <h3 className="text-base font-black text-black dark:text-white tracking-tight">{job.name}</h3>
-                          <span className="px-2.5 py-1 rounded-md bg-violet-500/15 border border-violet-500/20 text-violet-600 dark:text-violet-400 text-[10px] font-black uppercase tracking-wider">
-                            {job.graph_type} ({job.library})
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-xs font-semibold text-slate-500 dark:text-zinc-400">
-                          <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatDate(job.created_at)}</span>
-                          <span>• Dataset: <strong className="text-slate-700 dark:text-zinc-200 font-extrabold">{job.dataset_name}</strong></span>
-                          <span>• Download Count: {job.download_count}</span>
-                        </div>
+            const isVis = job.type === "visualization";
+            const itemId = `${job.type || "clean"}-${job.id}`;
+            // Visualization Module Accordion Item
+            if (isVis) {
+              return {
+                id: itemId,
+                customClass: "border-slate-200 dark:border-zinc-800",
+                title: (
+                  <div className="flex items-center justify-between gap-4 w-full pr-1">
+                    <div className="flex items-center gap-4 sm:gap-4.5 min-w-0 flex-1">
+                      <LineChart className="w-5 h-5 text-primary shrink-0 ml-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate leading-snug">
+                          {job.name}
+                        </h3>
+                        <p className="text-xs font-medium text-slate-500 dark:text-zinc-400 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 shrink-0 text-slate-400" /> {formatDate(job.created_at)}</span>
+                          <span className="text-slate-300 dark:text-zinc-600">•</span>
+                          <span>Dataset: <strong className="text-slate-700 dark:text-zinc-200 font-semibold">{job.dataset_name}</strong></span>
+                        </p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-zinc-800">
-                      <button 
+                    <div className="flex items-center gap-2 shrink-0">
+                      <RestoreButton 
+                        onClick={() => handleRestoreVisualization(job, itemId)}
+                        loading={restoreLoading && activeRestoringId === itemId}
+                        title="Restore graph workspace"
+                      />
+                      <DeleteButton 
                         onClick={(e) => {
                           e.stopPropagation();
                           setItemToDelete({ id: job.id, type: job.type, name: job.name || job.dataset_name || "Visualization Chart" });
                         }}
-                        className="p-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-600 hover:bg-rose-600 hover:text-white dark:bg-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-600 dark:hover:text-white cursor-pointer transition flex items-center gap-1.5 text-xs font-bold px-2.5"
-                        title="Delete this history record"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span className="hidden sm:inline">Delete</span>
-                      </button>
-                      <button className="text-slate-500 dark:text-zinc-400 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700 transition">
-                        {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                      </button>
+                        title="Delete visualization record"
+                      />
                     </div>
                   </div>
-                  
-                  {isExpanded && (
-                    <div className="p-5 border-t border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/20 flex flex-col md:flex-row gap-6 animate-fade-in">
+                ),
+                description: (
+                  <div className="space-y-5">
+                    <div className="flex flex-col md:flex-row gap-5 items-stretch">
                       {job.preview_data && (
-                        <div className="w-full md:w-1/3 bg-slate-100 dark:bg-zinc-800 rounded-xl overflow-hidden flex items-center justify-center p-2 border border-slate-200 dark:border-zinc-700 max-h-40">
-                          <img src={job.preview_data} alt={job.name} className="max-h-full max-w-full object-contain rounded" />
+                        <div className="w-full md:w-5/12 bg-slate-100 dark:bg-zinc-800/80 rounded-xl overflow-hidden flex items-center justify-center p-3 border border-slate-200 dark:border-zinc-700 min-h-[160px] max-h-56 shadow-inner">
+                          <img src={job.preview_data} alt={job.name} className="max-h-52 max-w-full object-contain rounded" />
                         </div>
                       )}
-                      <div className="flex-1 flex flex-col justify-between">
-                        <div className="text-xs text-slate-600 dark:text-zinc-350 space-y-2">
-                          <p><span className="font-bold text-slate-700 dark:text-zinc-300">Chart Name:</span> {job.name}</p>
-                          <p><span className="font-bold text-slate-700 dark:text-zinc-300">Target Library:</span> {job.library}</p>
-                          <p><span className="font-bold text-slate-700 dark:text-zinc-300">Columns Plotted:</span> X: {job.config.x_column || "N/A"}, Y: {job.config.y_column || "N/A"}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800 items-center justify-end">
-                          <button 
-                            onClick={() => handleRestoreVisualization(job)}
-                            className="px-5 py-2.5 text-xs font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 transition duration-150 flex justify-center items-center gap-2 cursor-pointer shadow-sm"
-                          >
-                            <LineChart className="w-4 h-4" /> Open in Studio
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-            if (isML) {
-              const bestScore = job.best_model_score || 0;
-              const hasMetrics = job.evaluation_metrics && Object.keys(job.evaluation_metrics).length > 0;
-              const metricKey = hasMetrics ? (Object.values(job.evaluation_metrics)[0].metrics.r2 !== undefined ? "R²" : "Accuracy") : "Score";
-
-              return (
-                <div 
-                  key={`ml-${job.id}`} 
-                  className="rounded-2xl border border-primary/20 dark:border-primary/25 bg-white dark:bg-[#212121] shadow-sm overflow-hidden transition-all duration-300"
-                >
-                  
-                  {/* ML Job Summary Row */}
-                  <div 
-                    onClick={() => toggleExpand(job.id)}
-                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 cursor-pointer hover:bg-slate-50/80 dark:hover:bg-zinc-900/40 transition duration-150"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/15 mt-1 animate-pulse">
-                        <BrainCircuit className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-3">
-                          <h3 className="text-base font-black text-black dark:text-white tracking-tight">{job.dataset_name}</h3>
-                          <span className="px-2.5 py-1 rounded-md bg-primary/15 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-wider">
-                            ML Model
+                      <div className="flex-1 flex flex-col justify-between gap-3 w-full">
+                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Chart Name</span>
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block truncate">
+                            {job.name || "Untitled Chart"}
                           </span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-xs font-semibold text-slate-500 dark:text-zinc-400">
-                          <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatDate(job.created_at)}</span>
-                          <span>• Target (Y): <strong className="text-slate-700 dark:text-zinc-200 font-extrabold">{job.target_column}</strong></span>
-                          <span>• Job ID: #{job.id}</span>
+
+                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Target Library</span>
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block capitalize">
+                            {job.library || "Plotly"}
+                          </span>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Columns Plotted</span>
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
+                            X: <span className="text-primary font-extrabold">{job.config?.x_column || "N/A"}</span>
+                            <span className="mx-1.5 text-slate-300 dark:text-zinc-600">•</span>
+                            Y: <span className="text-primary font-extrabold">{job.config?.y_column || "N/A"}</span>
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Score & Expand */}
-                    <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-zinc-800">
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Best Model ({job.best_model_name?.replace('_', ' ') || "N/A"})</span>
-                          <strong className="text-sm font-black text-emerald-600 dark:text-emerald-400 block mt-0.5">{metricKey}: {(bestScore * 100).toFixed(2)}%</strong>
-                        </div>
-                        <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400">
-                          <TrendingUp className="w-4 h-4" />
-                        </span>
+                    {/* Footer: Export Options */}
+                    <div className="pt-4 border-t border-slate-200 dark:border-zinc-800">
+                      <span className="text-[11px] uppercase font-extrabold tracking-wider text-slate-500 dark:text-zinc-400 block mb-3">Download Options</span>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <AnimatedDownloadButton label="PNG Image" onClick={() => handleExportVisualization(job, "png")} />
+                        <AnimatedDownloadButton label="SVG Vector" onClick={() => handleExportVisualization(job, "svg")} />
+                        <AnimatedDownloadButton label="JPEG Image" onClick={() => handleExportVisualization(job, "jpeg")} />
+                        <AnimatedDownloadButton label="PDF Document" onClick={() => handleExportVisualization(job, "pdf")} />
+                        <AnimatedDownloadButton label="HTML File" onClick={() => handleExportVisualization(job, "html")} />
                       </div>
-                      <button 
+                    </div>
+                  </div>
+                )
+              };
+            }
+
+            // Model Training Module Accordion Item
+            if (isML) {
+              const bestScore = job.best_model_score || 0;
+
+              return {
+                id: itemId,
+                customClass: "border-slate-200 dark:border-zinc-800",
+                title: (
+                  <div className="flex items-center justify-between gap-4 w-full pr-1">
+                    <div className="flex items-center gap-4 sm:gap-4.5 min-w-0 flex-1">
+                      <BrainCircuit className="w-5 h-5 text-primary shrink-0 ml-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate leading-snug">
+                          {job.dataset_name}
+                        </h3>
+                        <p className="text-xs font-medium text-slate-500 dark:text-zinc-400 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 shrink-0 text-slate-400" /> {formatDate(job.created_at)}</span>
+                          <span className="text-slate-300 dark:text-zinc-600">•</span>
+                          <span>Target (Y): <strong className="text-slate-700 dark:text-zinc-200 font-semibold">{job.target_column}</strong></span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <RestoreButton 
+                        onClick={() => handleRestoreMLJob(job, itemId)}
+                        loading={restoreLoading && activeRestoringId === itemId}
+                        title="Restore training model workspace"
+                      />
+                      <DeleteButton 
                         onClick={(e) => {
                           e.stopPropagation();
                           setItemToDelete({ id: job.id, type: job.type, name: job.dataset_name || "ML Training Job" });
                         }}
-                        className="p-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-600 hover:bg-rose-600 hover:text-white dark:bg-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-600 dark:hover:text-white cursor-pointer transition flex items-center gap-1.5 text-xs font-bold px-2.5"
-                        title="Delete this history record"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span className="hidden sm:inline">Delete</span>
-                      </button>
-                      <button className="text-slate-500 dark:text-zinc-400 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700 transition">
-                        {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                      </button>
+                        title="Delete training model record"
+                      />
                     </div>
-
                   </div>
-
-                  {/* ML Expanded Details */}
-                  {isExpanded && (
-                    <div className="p-5 border-t border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/20 space-y-5 animate-fade-in">
-                      
-                      {/* Stats Grid - Highlighted */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Champion Model</span>
-                          <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block capitalize truncate">
-                            {job.best_model_name?.replace('_', ' ') || "N/A"}
-                          </span>
-                        </div>
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Evaluation Score</span>
-                          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 block">
-                            {(bestScore * 100).toFixed(2)}%
-                          </span>
-                        </div>
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Training Duration</span>
-                          <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                            {job.training_duration ? `${job.training_duration.toFixed(2)}s` : "N/A"}
-                          </span>
-                        </div>
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Pipeline Status</span>
-                          <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 mt-2 block uppercase">
-                            ✓ {job.status || "Completed"}
-                          </span>
-                        </div>
+                ),
+                description: (
+                  <div className="space-y-5">
+                    {/* Stats Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Champion Model</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block capitalize truncate">
+                          {job.best_model_name?.replace('_', ' ') || "N/A"}
+                        </span>
                       </div>
-
-                      {/* Actions and Downloads */}
-                      <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-4 border-t border-slate-200 dark:border-zinc-800 items-center justify-between">
-                        <div className="flex flex-wrap gap-3 w-full sm:w-auto">
-                          <button 
-                            onClick={() => handleDownloadML(job.id, "model")}
-                            className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121]"
-                          >
-                            <Download className="w-4 h-4 text-amber-500" /> PKL Model File
-                          </button>
-                          <button 
-                            onClick={() => handleDownloadML(job.id, "predictions")}
-                            className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121]"
-                          >
-                            <Download className="w-4 h-4" /> Predictions CSV
-                          </button>
-                          <button 
-                            onClick={() => handleDownloadML(job.id, "report")}
-                            className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121]"
-                          >
-                            <Download className="w-4 h-4" /> PDF Report
-                          </button>
-                        </div>
-                        
-                        <button 
-                          onClick={() => handleRestoreMLJob(job)}
-                          disabled={restoreLoading}
-                          className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 transition duration-150 flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm"
-                        >
-                          <BrainCircuit className="w-4 h-4" /> {restoreLoading ? "Loading..." : "Setup Training Workspace"}
-                        </button>
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Evaluation Score</span>
+                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 block">
+                          {(bestScore * 100).toFixed(2)}%
+                        </span>
                       </div>
-
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Training Duration</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                          {job.training_duration ? `${job.training_duration.toFixed(2)}s` : "N/A"}
+                        </span>
+                      </div>
                     </div>
-                  )}
 
-                </div>
-              );
+                    {/* Footer: Downloads */}
+                    <div className="pt-4 border-t border-slate-200 dark:border-zinc-800">
+                      <span className="text-[11px] uppercase font-extrabold tracking-wider text-slate-500 dark:text-zinc-400 block mb-3">Download Options</span>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <AnimatedDownloadButton label="PKL Model File" onClick={() => handleDownloadML(job.id, "model")} />
+                        <AnimatedDownloadButton label="Predictions CSV" onClick={() => handleDownloadML(job.id, "predictions")} />
+                        <AnimatedDownloadButton label="PDF Report" onClick={() => handleDownloadML(job.id, "report")} />
+                      </div>
+                    </div>
+                  </div>
+                )
+              };
             }
 
-            // Data Cleaning Job layout
-            const beforeScore = job.before_stats?.quality_score || 0;
-            const afterScore = job.after_stats?.quality_score || 0;
-            
-            return (
-              <div 
-                key={`clean-${job.id}`} 
-                className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm overflow-hidden transition-all duration-300"
-              >
-                
-                {/* Data Cleaning Summary Row */}
-                <div 
-                  onClick={() => toggleExpand(job.id)}
-                  className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 cursor-pointer hover:bg-slate-50/80 dark:hover:bg-zinc-900/40 transition duration-150"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/15 mt-1">
-                      <FileSpreadsheet className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-black text-black dark:text-white tracking-tight">{job.dataset_name}</h3>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-xs font-semibold text-slate-500 dark:text-zinc-400">
-                        <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {formatDate(job.created_at || job.cleaned_at)}</span>
-                        <span>• Job ID: #{job.id}</span>
-                      </div>
+            // Data Cleaning Module Accordion Item
+            return {
+              id: itemId,
+              customClass: "border-slate-200 dark:border-zinc-800",
+              title: (
+                <div className="flex items-center justify-between gap-4 w-full pr-1">
+                  <div className="flex items-center gap-4 sm:gap-4.5 min-w-0 flex-1">
+                    <BrushCleaning className="w-5 h-5 text-primary shrink-0 ml-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate leading-snug">
+                        {job.dataset_name}
+                      </h3>
+                      <p className="text-xs font-medium text-slate-500 dark:text-zinc-400 mt-0.5 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                        <span>{formatDate(job.created_at || job.cleaned_at)}</span>
+                      </p>
                     </div>
                   </div>
-
-                  {/* Quality Score & Expand */}
-                  <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-zinc-800">
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Quality Score</span>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs line-through text-slate-400">{beforeScore}</span>
-                          <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{afterScore}</span>
-                        </div>
-                      </div>
-                      <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400">
-                        <TrendingUp className="w-4 h-4" />
-                      </span>
-                    </div>
-
-                    <button 
+                  <div className="flex items-center gap-2 shrink-0">
+                    {onLoadWorkspace && (
+                      <RestoreButton 
+                        onClick={() => handleRestore(job, itemId)}
+                        loading={restoreLoading && activeRestoringId === itemId}
+                        title="Restore cleaning workspace"
+                      />
+                    )}
+                    <DeleteButton 
                       onClick={(e) => {
                         e.stopPropagation();
                         setItemToDelete({ id: job.id, type: job.type, name: job.dataset_name || "Cleaning Record" });
                       }}
-                      className="p-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-600 hover:bg-rose-600 hover:text-white dark:bg-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-600 dark:hover:text-white cursor-pointer transition flex items-center gap-1.5 text-xs font-bold px-2.5"
-                      title="Delete this history record"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span className="hidden sm:inline">Delete</span>
-                    </button>
+                      title="Delete cleaning record"
+                    />
+                  </div>
+                </div>
+              ),
+              description: (
+                <div className="space-y-5">
+                  {/* Stats Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Rows Change</span>
+                      <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                        {job.before_stats?.rows} <span className="text-slate-400">→</span> {job.after_stats?.rows}
+                      </span>
+                    </div>
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Columns Change</span>
+                      <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                        {job.before_stats?.columns} <span className="text-slate-400">→</span> {job.after_stats?.columns}
+                      </span>
+                    </div>
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Missing Cells</span>
+                      <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                        {job.before_stats?.missing_summary?.total_missing} <span className="text-slate-400">→</span> {job.after_stats?.missing_summary?.total_missing}
+                      </span>
+                    </div>
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Duplicate Rows</span>
+                      <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                        {job.before_stats?.duplicate_summary?.duplicate_rows_count} <span className="text-slate-400">→</span> {job.after_stats?.duplicate_summary?.duplicate_rows_count}
+                      </span>
+                    </div>
+                  </div>
 
-                    <button className="text-slate-500 dark:text-zinc-400 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700 transition">
-                      {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                    </button>
+                  {/* Action Logs Toggle */}
+                  {job.logs && job.logs.length > 0 && (
+                    <div className="flex items-center justify-end pt-3 border-t border-slate-200 dark:border-zinc-800">
+                      <button 
+                        onClick={() => toggleLogs(job.id)}
+                        className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121] text-slate-800 dark:text-zinc-200"
+                      >
+                        <FileText className="w-4 h-4 text-primary" /> {openLogsJobId === job.id ? "Hide Action Logs" : `Action Logs (${job.logs.length})`}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Action Logs Terminal Box */}
+                  {openLogsJobId === job.id && job.logs && job.logs.length > 0 && (
+                    <div className="space-y-2 pt-2 animate-fade-in">
+                      <span className="text-[11px] uppercase font-bold text-slate-500 block">Actions Logs</span>
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#18181b] font-mono text-xs text-slate-700 dark:text-zinc-300 space-y-1.5 max-h-48 overflow-y-auto shadow-inner">
+                        {job.logs.map((log, lidx) => (
+                          <div key={lidx} className="flex items-start gap-2 border-b border-slate-100 dark:border-zinc-800/50 pb-1 last:border-0 last:pb-0">
+                            <span className="text-slate-400">›</span> 
+                            <span>{log}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Footer: Downloads */}
+                  <div className="pt-4 border-t border-slate-200 dark:border-zinc-800">
+                    <span className="text-[11px] uppercase font-extrabold tracking-wider text-slate-500 dark:text-zinc-400 block mb-3">Download Options</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <AnimatedDownloadButton label="CSV File" onClick={() => handleDownload(job.dataset_id, "csv")} />
+                      <AnimatedDownloadButton label="JSON File" onClick={() => handleDownload(job.dataset_id, "json")} />
+                      <AnimatedDownloadButton label="Excel File" onClick={() => handleDownload(job.dataset_id, "excel")} />
+                      <AnimatedDownloadButton label="PDF Report" onClick={() => handleDownload(job.dataset_id, "report")} />
+                    </div>
                   </div>
 
                 </div>
-
-                {/* Expanded Details panel */}
-                {isExpanded && (
-                  <div className="p-5 border-t border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/20 space-y-5 animate-fade-in">
-                    
-                    {/* Stats comparison grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Rows Change</span>
-                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                          {job.before_stats?.rows} <span className="text-slate-400">→</span> {job.after_stats?.rows}
-                        </span>
-                      </div>
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Columns Change</span>
-                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                          {job.before_stats?.columns} <span className="text-slate-400">→</span> {job.after_stats?.columns}
-                        </span>
-                      </div>
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Missing Cells</span>
-                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                          {job.before_stats?.missing_summary?.total_missing} <span className="text-slate-400">→</span> {job.after_stats?.missing_summary?.total_missing}
-                        </span>
-                      </div>
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Duplicate Rows</span>
-                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                          {job.before_stats?.duplicate_summary?.duplicate_rows_count} <span className="text-slate-400">→</span> {job.after_stats?.duplicate_summary?.duplicate_rows_count}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Actions and Restore */}
-                    <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-4 mt-4 border-t border-slate-200 dark:border-zinc-800 items-center justify-between">
-                      <div className="flex flex-wrap gap-3 w-full sm:w-auto">
-                        <button 
-                          onClick={() => handleDownload(job.dataset_id, "csv")}
-                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg bg-primary text-white hover:bg-primary-dark transition duration-150 flex justify-center items-center gap-2 cursor-pointer shadow-sm"
-                        >
-                          <Download className="w-4 h-4" /> CSV
-                        </button>
-                        <button 
-                          onClick={() => handleDownload(job.dataset_id, "json")}
-                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121]"
-                        >
-                          <Download className="w-4 h-4" /> JSON
-                        </button>
-                        <button 
-                          onClick={() => handleDownload(job.dataset_id, "excel")}
-                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121]"
-                        >
-                          <Download className="w-4 h-4" /> Excel
-                        </button>
-                        <button 
-                          onClick={() => handleDownload(job.dataset_id, "report")}
-                          className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121]"
-                        >
-                          <Download className="w-4 h-4" /> PDF Report
-                        </button>
-                      </div>
-
-                      {onLoadWorkspace && (
-                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                          <button 
-                            onClick={() => handleTrainModel(job)}
-                            disabled={restoreLoading}
-                            className="px-5 py-2.5 text-xs font-bold rounded-lg bg-primary hover:bg-primary-dark text-white transition duration-150 flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm"
-                          >
-                            <BrainCircuit className="w-4 h-4" /> Train Model
-                          </button>
-                          <button 
-                            onClick={() => handleRestore(job)}
-                            disabled={restoreLoading}
-                            className="px-5 py-2.5 text-xs font-bold rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 transition duration-150 flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm"
-                          >
-                            <Sparkles className="w-4 h-4" /> {restoreLoading ? "Restoring..." : "Restore Workspace"}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Logs Output */}
-                    {job.logs && job.logs.length > 0 && (
-                      <div className="space-y-2 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800">
-                        <span className="text-[11px] uppercase font-bold text-slate-500 block">Actions Logs</span>
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] font-mono text-xs text-slate-700 dark:text-zinc-300 space-y-1.5 max-h-48 overflow-y-auto shadow-inner">
-                          {job.logs.map((log, lidx) => (
-                            <div key={lidx} className="flex items-start gap-2 border-b border-slate-100 dark:border-zinc-800/50 pb-1 last:border-0 last:pb-0">
-                              <span className="text-slate-400">›</span> 
-                              <span>{log}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                  </div>
-                )}
-
-              </div>
-            );
+              )
+            };
           })}
-        </div>
+          value={expandedJobId}
+          onValueChange={setExpandedJobId}
+          classNames={{
+            trigger: "p-5"
+          }}
+        />
       )}
 
     </div>

@@ -169,6 +169,8 @@ function Navbar() {
             >
               Log in
             </a>
+
+
             <a 
               href="/signup" 
               className="hidden sm:flex items-center gap-2.5 px-6 py-2.5 bg-[#673ab7] hover:bg-[#111111] dark:hover:bg-white text-white font-bold text-sm rounded-[20px] transition-colors duration-200 group shadow-sm"

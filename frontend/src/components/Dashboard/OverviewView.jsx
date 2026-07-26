@@ -538,51 +538,7 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
               </div>
             </div>
 
-            {/* 2. TOP-LEVEL SUMMARY METRICS (3 CARDS GRID - STORAGE REMOVED) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {topMetrics.map((card, idx) => {
-                const Icon = card.icon;
-                return (
-                  <motion.div
-                    key={card.id}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: idx * 0.05 }}
-                    onClick={card.onClick}
-                    className={`relative flex flex-col justify-between p-5 rounded-2xl bg-white dark:bg-[#121212] border ${card.borderColor} shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 cursor-pointer group hover:-translate-y-1 overflow-hidden min-w-0`}
-                  >
-                    <div className="relative z-10 flex items-center justify-between mb-3 min-w-0">
-                      <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400 truncate">
-                        {card.title}
-                      </span>
-                      <div className={`p-2 rounded-xl ${card.accentBg} ${card.iconColor} border ${card.borderColor} transition-transform group-hover:scale-110 duration-200 shrink-0`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                    </div>
-
-                    <div className="relative z-10 flex items-baseline justify-between mt-1 min-w-0">
-                      <div className="flex items-baseline gap-1 min-w-0">
-                        <span className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white truncate">
-                          {card.value}
-                        </span>
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 shrink-0">
-                          {card.unit}
-                        </span>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-wider shrink-0 ${
-                        card.badgeType === "positive" 
-                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400" 
-                          : "bg-slate-500/10 border-slate-500/30 text-slate-600 dark:text-zinc-400"
-                      }`}>
-                        {card.badge}
-                      </span>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            {/* 3. UNIFIED ANALYTICS CONTAINER (BAR CHART 70% & DONUT CHART 30% WITH VERTICAL BORDER) */}
+            {/* 2. UNIFIED ANALYTICS CONTAINER (BAR CHART 70% & DONUT CHART 30% WITH VERTICAL BORDER) */}
             <div className="rounded-3xl bg-white dark:bg-[#121212] border border-slate-200/80 dark:border-zinc-800 shadow-lg shadow-slate-200/50 dark:shadow-none overflow-hidden">
               <div className="grid grid-cols-1 lg:grid-cols-10 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-zinc-800/80">
                 
@@ -672,6 +628,50 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
                 </div>
 
               </div>
+            </div>
+
+            {/* 3. TOP-LEVEL SUMMARY METRICS */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {topMetrics.map((card, idx) => {
+                const Icon = card.icon;
+                return (
+                  <motion.div
+                    key={card.id}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: idx * 0.05 }}
+                    onClick={card.onClick}
+                    className={`relative flex flex-col justify-between p-5 rounded-2xl bg-white dark:bg-[#121212] border ${card.borderColor} shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 cursor-pointer group hover:-translate-y-1 overflow-hidden min-w-0`}
+                  >
+                    <div className="relative z-10 flex items-center justify-between mb-3 min-w-0">
+                      <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-zinc-400 truncate">
+                        {card.title}
+                      </span>
+                      <div className={`p-2 rounded-xl ${card.accentBg} ${card.iconColor} border ${card.borderColor} transition-transform group-hover:scale-110 duration-200 shrink-0`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                    </div>
+
+                    <div className="relative z-10 flex items-baseline justify-between mt-1 min-w-0">
+                      <div className="flex items-baseline gap-1 min-w-0">
+                        <span className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white truncate">
+                          {card.value}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 shrink-0">
+                          {card.unit}
+                        </span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-wider shrink-0 ${
+                        card.badgeType === "positive" 
+                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400" 
+                          : "bg-slate-500/10 border-slate-500/30 text-slate-600 dark:text-zinc-400"
+                      }`}>
+                        {card.badge}
+                      </span>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
 
 

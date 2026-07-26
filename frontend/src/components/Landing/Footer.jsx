@@ -1,5 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import logoImg from "../../assets/logo/refinex_logo.png";
 
 // --- 100% CRASH-PROOF INLINE SVG ICONS ---
@@ -71,21 +72,18 @@ const footerData = {
       href: "#", 
       label: "Twitter", 
       icon: <Twitter className="w-4 h-4" />,
-      // Added explicit dark:hover classes for Twitter Blue
       hoverClass: "hover:bg-[#1DA1F2] hover:border-[#1DA1F2] hover:text-white dark:hover:bg-[#1DA1F2] dark:hover:border-[#1DA1F2] dark:hover:text-white" 
     },
     { 
       href: "https://github.com/Pranay0412/RefineX", 
       label: "GitHub", 
       icon: <Github className="w-4 h-4" />,
-      // GitHub remains the same (White in dark mode, Black in light mode)
       hoverClass: "hover:bg-[#181717] hover:border-[#181717] hover:text-white dark:hover:bg-white dark:hover:border-white dark:hover:text-black" 
     },
     { 
       href: "#", 
       label: "LinkedIn", 
       icon: <Linkedin className="w-4 h-4" />,
-      // Added explicit dark:hover classes for LinkedIn Blue
       hoverClass: "hover:bg-[#0A66C2] hover:border-[#0A66C2] hover:text-white dark:hover:bg-[#0A66C2] dark:hover:border-[#0A66C2] dark:hover:text-white" 
     },
   ],
@@ -94,7 +92,7 @@ const footerData = {
 };
 
 // --- REUSABLE NAVIGATION COLUMN ---
-const NavSection = ({ title, links, index }) => (
+const NavSection = ({ title, links, index, navigate }) => (
   <motion.div variants={itemVariants} custom={index} className="flex flex-col gap-3">
     <motion.h3
       initial={{ opacity: 0, y: -10 }}
@@ -105,33 +103,55 @@ const NavSection = ({ title, links, index }) => (
     >
       {title}
     </motion.h3>
-    {links.map((link, linkIndex) => (
-      <motion.a
-        key={linkIndex}
-        variants={linkVariants}
-        custom={linkIndex}
-        href={link === "GitHub" ? "https://github.com/Pranay0412/RefineX" : "#"}
-        target={link === "GitHub" ? "_blank" : "_self"}
-        rel="noopener noreferrer"
-        whileHover={{ x: 5, transition: { type: "spring", stiffness: 300, damping: 20 } }}
-        className="text-slate-600 dark:text-zinc-400 hover:text-[#673ab7] dark:hover:text-[#8B5CF6] transition-colors duration-300 font-sans text-sm font-medium w-max group"
-      >
-        <span className="relative pb-0.5">
-          {link}
-          <motion.span
-            className="absolute bottom-0 left-0 h-[2px] bg-[#673ab7] rounded-full"
-            initial={{ width: 0 }}
-            whileHover={{ width: "100%" }}
-            transition={{ duration: 0.3 }}
-          />
-        </span>
-      </motion.a>
-    ))}
+    {links.map((link, linkIndex) => {
+      const handleClick = (e) => {
+        if (link === "Data Cleaning") {
+          e.preventDefault();
+          navigate("/clean");
+        } else if (link === "ML Training") {
+          e.preventDefault();
+          navigate("/signup", { state: { message: "Please sign up or log in to access Machine Learning Model Training." } });
+        } else if (link === "Visualizations") {
+          e.preventDefault();
+          navigate("/signup", { state: { message: "Please sign up or log in to access Interactive Data Visualizations." } });
+        }
+      };
+
+      const href = link === "GitHub" ? "https://github.com/Pranay0412/RefineX" : "#";
+      const isExternal = link === "GitHub";
+
+      return (
+        <motion.a
+          key={linkIndex}
+          variants={linkVariants}
+          custom={linkIndex}
+          href={href}
+          onClick={handleClick}
+          target={isExternal ? "_blank" : "_self"}
+          rel={isExternal ? "noopener noreferrer" : undefined}
+          whileHover={{ x: 5, transition: { type: "spring", stiffness: 300, damping: 20 } }}
+          className="text-slate-600 dark:text-zinc-400 hover:text-[#673ab7] dark:hover:text-[#8B5CF6] transition-colors duration-300 font-sans text-sm font-medium w-max group cursor-pointer"
+        >
+          <span className="relative pb-0.5">
+            {link}
+            <motion.span
+              className="absolute bottom-0 left-0 h-[2px] bg-[#673ab7] rounded-full"
+              initial={{ width: 0 }}
+              whileHover={{ width: "100%" }}
+              transition={{ duration: 0.3 }}
+            />
+          </span>
+        </motion.a>
+      );
+    })}
   </motion.div>
 );
 
+
 // --- MAIN FOOTER ---
 export default function Footer() {
+  const navigate = useNavigate();
+
   return (
     <footer className="w-full px-4 pt-20 pb-12 overflow-hidden bg-white dark:bg-[#0F0F0F]">
       
@@ -205,10 +225,11 @@ export default function Footer() {
             {/* Navigation Context Links */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12 w-full lg:w-auto">
               {footerData.sections.map((section, index) => (
-                <NavSection key={section.title} title={section.title} links={section.links} index={index} />
+                <NavSection key={section.title} title={section.title} links={section.links} index={index} navigate={navigate} />
               ))}
             </div>
           </div>
+
 
           {/* Lower Metadata Row */}
           <motion.div 

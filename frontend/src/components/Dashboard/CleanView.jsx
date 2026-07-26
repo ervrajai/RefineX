@@ -39,8 +39,10 @@ export default function CleanView({
   setAfterReport,
   cleanLogs,
   setCleanLogs,
-  setActiveTab
+  setActiveTab,
+  isGuest = false
 }) {
+
   // Loading and alerts
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -727,7 +729,7 @@ export default function CleanView({
             }}
           />
 
-          {!uploading && cleanHistoryList.length > 0 && (
+          {!uploading && !isGuest && cleanHistoryList.length > 0 && (
             <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-800/80 pb-3.5">
                 <div className="flex items-center gap-2.5">
@@ -778,6 +780,8 @@ export default function CleanView({
               </div>
             </div>
           )}
+
+
         </div>
       ) : (
         /* WORKSPACE LAYOUT */

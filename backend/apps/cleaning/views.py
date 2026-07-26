@@ -11,11 +11,14 @@ from django.http import HttpResponse
 from django.core.files.base import ContentFile
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from datetime import timedelta
+from django.utils import timezone
 from apps.accounts.views import CsrfExemptSessionAuthentication
 
-from .models import Dataset, CleaningJob
+from .models import Dataset, CleaningJob, GuestUsage
 from .utils import profile_dataset, clean_dataset, make_json_safe, read_dataframe
 from apps.core.services import ActivityService
+
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -67,9 +70,12 @@ class DatasetUploadView(APIView):
             if rows_count == 0:
                 return Response({"error": "The uploaded dataset is empty."}, status=status.HTTP_400_BAD_REQUEST)
 
+            guest_id = request.data.get('guest_id') or request.headers.get('X-Guest-ID') or request.query_params.get('guest_id')
+
             # Save dataset model
             dataset = Dataset.objects.create(
                 user=request.user if request.user.is_authenticated else None,
+                guest_id=guest_id,
                 name=file_obj.name,
                 original_filename=file_obj.name,
                 original_file=file_obj,
@@ -80,6 +86,7 @@ class DatasetUploadView(APIView):
                 encoding=detected_encoding,
                 status="uploaded"
             )
+
 
             ActivityService.log_activity(
                 user=request.user,
@@ -100,7 +107,7 @@ class DatasetUploadView(APIView):
                 "rows": make_json_safe(preview_df.to_dict(orient='records'))
             }
 
-            return Response({
+            return Response(make_json_safe({
                 "message": "Dataset uploaded successfully",
                 "dataset_id": dataset.id,
                 "metadata": {
@@ -110,12 +117,13 @@ class DatasetUploadView(APIView):
                     "rows": dataset.rows_count,
                     "columns": dataset.cols_count,
                     "encoding": dataset.encoding,
-                    "created_at": dataset.created_at,
+                    "created_at": dataset.created_at.isoformat() if dataset.created_at else None,
                     "status": dataset.status
                 },
                 "report": report,
                 "preview": preview_data
-            }, status=status.HTTP_201_CREATED)
+            }), status=status.HTTP_201_CREATED)
+
 
         except Exception as e:
             return Response({"error": f"Failed to parse dataset: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
@@ -212,13 +220,13 @@ def perform_cleaning_operation(dataset, config, user=None):
         "rows": make_json_safe(preview_df.to_dict(orient='records'))
     }
     
-    return {
+    return make_json_safe({
         "message": "Dataset cleaned successfully",
         "dataset_id": dataset.id,
         "metadata": {
             "name": dataset.name,
             "file_type": dataset.file_type,
-            "file_size": dataset.cleaned_file.size,
+            "file_size": dataset.cleaned_file.size if dataset.cleaned_file else dataset.file_size,
             "rows": dataset.rows_count,
             "columns": dataset.cols_count,
             "encoding": dataset.encoding,
@@ -229,7 +237,38 @@ def perform_cleaning_operation(dataset, config, user=None):
         "after_report": after_report,
         "logs": logs,
         "preview": preview_data
-    }
+    })
+
+
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+def check_and_increment_guest_usage(request, dataset=None):
+    # If user is authenticated OR dataset belongs to a registered user, bypass limit checks
+    if (request.user and request.user.is_authenticated) or (dataset and dataset.user is not None):
+        return True, None
+
+    guest_id = request.data.get("guest_id") or request.headers.get("X-Guest-ID") or (dataset.guest_id if dataset else None)
+    if guest_id:
+        ip_address = get_client_ip(request)
+        today = timezone.now().date()
+        usage, _ = GuestUsage.objects.get_or_create(
+            guest_id=guest_id,
+            defaults={"ip_address": ip_address, "clean_count": 0}
+        )
+        if usage.last_clean_date != today:
+            usage.clean_count = 0
+            usage.last_clean_date = today
+            usage.save()
+
+        if usage.clean_count >= 3:
+            return False, {
+                "limit_reached": True,
+                "message": "Daily guest limit reached. Maximum 3 dataset cleans allowed per calendar day."
+            }
+        usage.clean_count += 1
+        usage.save()
+    return True, None
 
 
 
@@ -239,6 +278,10 @@ class DatasetCleanView(APIView):
 
     def post(self, request, pk, *args, **kwargs):
         dataset = get_object_or_404(Dataset, pk=pk)
+        allowed, err_resp = check_and_increment_guest_usage(request, dataset)
+        if not allowed:
+            return Response(err_resp, status=status.HTTP_403_FORBIDDEN)
+
         config = request.data.get("config", {})
         try:
             res_data = perform_cleaning_operation(dataset, config, user=request.user)
@@ -253,6 +296,9 @@ class DatasetDecideView(APIView):
 
     def post(self, request, pk, *args, **kwargs):
         dataset = get_object_or_404(Dataset, pk=pk)
+        allowed, err_resp = check_and_increment_guest_usage(request, dataset)
+        if not allowed:
+            return Response(err_resp, status=status.HTTP_403_FORBIDDEN)
         
         config = {
             "standardize_column_names": True,
@@ -294,6 +340,7 @@ class DatasetDecideView(APIView):
             return Response(res_data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": f"Failed to clean dataset: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -463,3 +510,232 @@ class DatasetPreviewView(APIView):
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": f"Failed to retrieve preview: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+    return ip
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class GuestSessionView(APIView):
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    def get(self, request, *args, **kwargs):
+        guest_id = request.query_params.get("guest_id") or request.headers.get("X-Guest-ID")
+        
+        # 1. If user is authenticated, bypass limit completely and auto-migrate
+        if request.user and request.user.is_authenticated:
+            if guest_id:
+                Dataset.objects.filter(guest_id=guest_id, user__isnull=True).update(user=request.user)
+                CleaningJob.objects.filter(dataset__guest_id=guest_id, user__isnull=True).update(user=request.user)
+            return Response({
+                "guest_id": None,
+                "clean_count": 0,
+                "remaining_cleans": 999,
+                "limit_reached": False,
+                "datasets": []
+            }, status=status.HTTP_200_OK)
+
+        ip_address = get_client_ip(request)
+        today = timezone.now().date()
+
+
+        clean_count = 0
+        if guest_id:
+            usage = GuestUsage.objects.filter(guest_id=guest_id).first()
+            if usage:
+                if usage.last_clean_date != today:
+                    usage.clean_count = 0
+                    usage.last_clean_date = today
+                    usage.save(update_fields=["clean_count", "last_clean_date"])
+                clean_count = usage.clean_count
+            else:
+                ip_usage = GuestUsage.objects.filter(ip_address=ip_address, last_clean_date=today).first()
+                if ip_usage:
+                    clean_count = ip_usage.clean_count
+
+        datasets_data = []
+        if guest_id:
+            cutoff = timezone.now() - timedelta(hours=24)
+            guest_datasets = Dataset.objects.filter(
+                guest_id=guest_id,
+                user__isnull=True,
+                created_at__gte=cutoff,
+                is_deleted=False
+            ).order_by("-created_at")
+
+            for ds in guest_datasets:
+                latest_job = CleaningJob.objects.filter(dataset=ds, is_deleted=False).order_by("-created_at").first()
+                logs = latest_job.logs if latest_job else []
+                datasets_data.append({
+                    "id": ds.id,
+                    "uuid": str(ds.uuid),
+                    "name": ds.name,
+                    "original_filename": ds.original_filename or ds.name,
+                    "file_type": ds.file_type,
+                    "file_size": ds.file_size,
+                    "rows": ds.rows_count,
+                    "columns": ds.cols_count,
+                    "status": ds.status,
+                    "created_at": ds.created_at.isoformat(),
+                    "logs": logs,
+                    "download_url": f"/api/cleaning/{ds.id}/download/?type=csv"
+                })
+
+        return Response({
+            "guest_id": guest_id,
+            "clean_count": clean_count,
+            "remaining_cleans": max(0, 3 - clean_count),
+            "limit_reached": clean_count >= 3,
+            "datasets": datasets_data
+        }, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class GuestUploadAndCleanView(APIView):
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, *args, **kwargs):
+        # 1. Check Authentication First
+        if request.user and request.user.is_authenticated:
+            user = request.user
+            guest_id = None
+        else:
+            user = None
+            guest_id = request.data.get("guest_id") or request.headers.get("X-Guest-ID") or request.query_params.get("guest_id")
+            if not guest_id:
+                return Response({"error": "guest_id is required for unauthenticated sessions."}, status=status.HTTP_400_BAD_REQUEST)
+
+            ip_address = get_client_ip(request)
+            today = timezone.now().date()
+
+            usage, _ = GuestUsage.objects.get_or_create(
+                guest_id=guest_id,
+                defaults={"ip_address": ip_address, "clean_count": 0}
+            )
+            if usage.last_clean_date != today:
+                usage.clean_count = 0
+                usage.last_clean_date = today
+                usage.ip_address = ip_address
+                usage.save()
+
+            ip_usage = GuestUsage.objects.filter(ip_address=ip_address, last_clean_date=today).first()
+            effective_count = usage.clean_count
+            if ip_usage and ip_usage.clean_count > effective_count:
+                effective_count = ip_usage.clean_count
+
+            if effective_count >= 3:
+                return Response(
+                    {
+                        "limit_reached": True,
+                        "message": "Daily guest limit reached. Please log in or sign up to continue."
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        file_obj = request.FILES.get("file")
+        if not file_obj:
+            return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
+
+        name, ext = os.path.splitext(file_obj.name)
+        file_type = ext.lower().replace(".", "")
+        if file_type not in ["csv", "xlsx", "xls"]:
+            return Response({"error": "Unsupported file format. Please upload CSV or Excel files."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            temp_content = file_obj.read()
+            file_obj.seek(0)
+            
+            if file_type == "csv":
+                try:
+                    df_full = pd.read_csv(io.BytesIO(temp_content), encoding="utf-8")
+                    detected_encoding = "utf-8"
+                except UnicodeDecodeError:
+                    df_full = pd.read_csv(io.BytesIO(temp_content), encoding="latin-1")
+                    detected_encoding = "latin-1"
+            else:
+                detected_encoding = "UTF-8"
+                df_full = pd.read_excel(io.BytesIO(temp_content))
+
+            rows_count = len(df_full)
+            cols_count = len(df_full.columns)
+            if rows_count == 0:
+                return Response({"error": "The uploaded dataset is empty."}, status=status.HTTP_400_BAD_REQUEST)
+
+            dataset = Dataset.objects.create(
+                user=user,
+                guest_id=guest_id if not user else None,
+                name=file_obj.name,
+                original_filename=file_obj.name,
+                original_file=file_obj,
+                file_type=file_type,
+                file_size=len(temp_content),
+                rows_count=rows_count,
+                cols_count=cols_count,
+                encoding=detected_encoding,
+                status="uploaded"
+            )
+
+            config = {
+                "standardize_column_names": True,
+                "standardize_trim": True,
+                "standardize_replace_spaces": True,
+                "standardize_lowercase": True,
+                "standardize_remove_special": True,
+                "standardize_replace_multiple_underscores": True,
+                "standardize_remove_outer_underscores": True,
+                "blank_value_detection": True,
+                "text_cleaning": True,
+                "text_trim": True,
+                "text_remove_multiple_spaces": True,
+                "text_remove_html": True,
+                "text_remove_emoji": True,
+                "text_remove_tabs_newlines": True,
+                "text_case_mode": "none",
+                "remove_duplicate_rows": True,
+                "remove_duplicate_columns": True,
+                "clean_numeric_values": True,
+                "data_type_conversion": True,
+                "type_conversion_mode": "auto",
+                "date_formatting": True,
+                "date_format": "YYYY-MM-DD",
+                "remove_constant_columns": True,
+                "remove_high_missing_columns": True,
+                "missing_threshold": 90,
+                "decimal_formatting": True,
+                "decimal_format": "2",
+                "reset_index": True,
+                "handle_missing_values": True,
+                "missing_strategy": "fill_median",
+                "remove_invalid_values": True,
+                "remove_low_variance_columns": True
+            }
+
+            res_data = perform_cleaning_operation(dataset, config, user=user)
+
+            if not user and guest_id:
+                usage.clean_count += 1
+                usage.save()
+                if ip_usage and ip_usage.id != usage.id:
+                    ip_usage.clean_count = max(ip_usage.clean_count, usage.clean_count)
+                    ip_usage.save()
+
+                res_data["limit_info"] = {
+                    "clean_count": usage.clean_count,
+                    "remaining_cleans": max(0, 3 - usage.clean_count),
+                    "limit_reached": usage.clean_count >= 3
+                }
+            
+            res_data["download_url"] = f"/api/cleaning/{dataset.id}/download/?type=csv"
+            return Response(res_data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({"error": f"Failed to clean dataset: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+

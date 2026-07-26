@@ -106,26 +106,27 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-slate-50 dark:bg-[#000000] text-slate-900 dark:text-white font-sans flex items-center justify-center py-8 px-4 transition-colors duration-300 select-none overflow-hidden">
+    <div className="relative min-h-screen w-full bg-white dark:bg-[#0F0F0F] text-slate-900 dark:text-white font-sans flex items-center justify-center py-8 px-4 transition-colors duration-300 select-none overflow-hidden">
       
       {/* Background Smooth Keyframe Animations */}
       <style>{`
         @keyframes pulseGlow {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(1.08); }
+          0%, 100% { opacity: 0.35; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.08); }
         }
         .animate-glow-1 {
           animation: pulseGlow 10s ease-in-out infinite;
         }
       `}</style>
 
-      {/* --- AMBIENT BACKDROP (Bottom Right Gradient Removed) --- */}
+      {/* --- AMBIENT BACKDROP --- */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="animate-glow-1 absolute -top-24 -left-20 w-[450px] h-[450px] rounded-full bg-[#673AB7]/20 dark:bg-[#673AB7]/25 blur-[120px]" />
+        <div className="animate-glow-1 absolute -top-24 -left-20 w-[450px] h-[450px] rounded-full bg-[#673ab7]/20 dark:bg-[#673ab7]/30 blur-[120px]" />
       </div>
 
       {/* Interactive Particles Layer */}
-      <Particles className="absolute inset-0 z-0 opacity-40 dark:opacity-30 pointer-events-none" color="#673AB7" quantity={60} staticity={50} />
+      <Particles className="absolute inset-0 z-0 opacity-60 dark:opacity-50 pointer-events-none" color="#bf80ff" quantity={70} staticity={40} />
+
 
       <div className="relative z-10 mx-auto max-w-5xl w-full flex items-center justify-center">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center w-full">

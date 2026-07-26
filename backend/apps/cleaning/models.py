@@ -14,6 +14,7 @@ class Dataset(models.Model):
         blank=True,
         db_index=True
     )
+    guest_id = models.CharField(max_length=64, null=True, blank=True, db_index=True)
     name = models.CharField(max_length=255)
     original_filename = models.CharField(max_length=255, null=True, blank=True)
     original_file = models.FileField(upload_to="datasets/original/")
@@ -37,12 +38,31 @@ class Dataset(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["user", "is_deleted"]),
+            models.Index(fields=["guest_id"]),
             models.Index(fields=["uuid"]),
             models.Index(fields=["created_at"]),
         ]
 
     def __str__(self):
         return f"{self.name} ({self.file_type.upper()})"
+
+
+class GuestUsage(models.Model):
+    guest_id = models.CharField(max_length=64, db_index=True)
+    ip_address = models.GenericIPAddressField()
+    clean_count = models.IntegerField(default=0)
+    last_clean_date = models.DateField(auto_now=True)
+
+    class Meta:
+        ordering = ["-last_clean_date"]
+        indexes = [
+            models.Index(fields=["guest_id", "last_clean_date"]),
+            models.Index(fields=["ip_address", "last_clean_date"]),
+        ]
+
+    def __str__(self):
+        return f"GuestUsage ({self.guest_id}) - {self.clean_count} cleans"
+
 
 
 class CleaningJob(models.Model):

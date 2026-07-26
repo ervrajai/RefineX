@@ -17,13 +17,21 @@ class CleaningHistoryView(APIView):
     authentication_classes = [CsrfExemptSessionAuthentication]
     def get(self, request, *args, **kwargs):
         if request.user.is_authenticated:
-            clean_jobs = CleaningJob.objects.filter(user=request.user)
-            ml_jobs = ModelTrainingJob.objects.filter(user=request.user, is_deleted=False)
-            vis_graphs = SavedGraph.objects.filter(user=request.user, is_deleted=False)
+            guest_id = request.query_params.get("guest_id") or request.headers.get("X-Guest-ID")
+            if guest_id:
+                Dataset.objects.filter(guest_id=guest_id, user__isnull=True).update(user=request.user)
+                CleaningJob.objects.filter(dataset__guest_id=guest_id, user__isnull=True).update(user=request.user)
+
+            from django.db.models import Q
+            clean_jobs = CleaningJob.objects.filter(Q(user=request.user) | Q(dataset__user=request.user)).distinct()
+            ml_jobs = ModelTrainingJob.objects.filter(Q(user=request.user) | Q(dataset__user=request.user), is_deleted=False).distinct()
+            vis_graphs = SavedGraph.objects.filter(Q(user=request.user) | Q(dataset__user=request.user), is_deleted=False).distinct()
+
         else:
             clean_jobs = CleaningJob.objects.all()
             ml_jobs = ModelTrainingJob.objects.filter(is_deleted=False)
             vis_graphs = SavedGraph.objects.filter(is_deleted=False)
+
 
         results = []
         for job in clean_jobs:

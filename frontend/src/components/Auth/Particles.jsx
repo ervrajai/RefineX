@@ -24,10 +24,11 @@ const Particles = ({
   ease = 30,
   size = 2.0,
   refresh = false,
-  color = "#A855F7", // Bright solid purple for high visibility on dark mode
+  color = "#673ab7", // RefineX brand purple
   vx = 0,
   vy = 0,
 }) => {
+
   const canvasRef = useRef(null);
   const canvasContainerRef = useRef(null);
   const context = useRef(null);

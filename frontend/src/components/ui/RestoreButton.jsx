@@ -17,39 +17,39 @@ export default function RestoreButton({ onClick, loading = false, title = "Resto
           align-items: center;
           justify-content: center;
           gap: 6px;
-          background-color: rgba(99, 102, 241, 0.1);
+          background-color: rgba(147, 51, 234, 0.1);
           border-radius: 30px;
-          color: #4f46e5;
+          color: #9333ea;
           font-weight: 700;
           font-size: 12px;
-          border: 1px solid rgba(99, 102, 241, 0.25);
+          border: 1px solid rgba(147, 51, 234, 0.25);
           position: relative;
           cursor: pointer;
-          transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+          transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
           user-select: none;
           white-space: nowrap;
         }
 
         .dark .restore-btn {
-          background-color: rgba(99, 102, 241, 0.15);
-          color: #a5b4fc;
-          border-color: rgba(99, 102, 241, 0.3);
+          background-color: rgba(168, 85, 247, 0.18);
+          color: #c084fc;
+          border-color: rgba(168, 85, 247, 0.35);
         }
 
         .restore-btn:hover {
-          background-color: #4f46e5;
+          background-color: #9333ea;
           color: #ffffff;
-          border-color: #4f46e5;
+          border-color: #9333ea;
         }
 
         .dark .restore-btn:hover {
-          background-color: #6366f1;
+          background-color: #a855f7;
           color: #ffffff;
-          border-color: #6366f1;
+          border-color: #a855f7;
         }
 
         .restore-btn:active {
-          transform: scale(0.96);
+          transform: scale(0.95);
         }
 
         .restore-btn-icon {

@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import api from "../../services/api";
 import FileUpload from "./FileUpload";
+import RecentDatasetPanel from "../ui/RecentDatasetPanel";
+import { BouncyAccordion } from "../ui/BouncyAccordion";
+import RefreshButton from "../ui/RefreshButton";
+import DatasetTableViewer from "../ui/DatasetTableViewer";
+import { AnimatedCheckbox } from "../ui/AnimatedCheckbox";
 import {
   UploadCloud,
   FileSpreadsheet,
@@ -8,6 +13,8 @@ import {
   BrushCleaning,
   RefreshCw,
   FileDown,
+  Download,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Search,
@@ -21,7 +28,15 @@ import {
   FileText,
   BrainCircuit,
   LineChart,
-  History
+  RotateCcw,
+  History,
+  Type,
+  Copy,
+  Hash,
+  Layers,
+  Calendar,
+  Filter,
+  ShieldCheck
 } from "lucide-react";
 
 export default function CleanView({
@@ -570,8 +585,478 @@ export default function CleanView({
     setSuccessMsg("Sidebar configuration cleared.");
   };
 
+  // Cleaning Configuration Accordion Items Definition
+  const cleaningAccordionItems = [
+    {
+      id: "colNames",
+      icon: <Type className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
+      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Column Names</span>,
+      description: (
+        <div className="space-y-2.5 text-[11px] select-none">
+          <AnimatedCheckbox
+            checked={config.standardize_column_names}
+            onChange={(e) => setConfig({ ...config, standardize_column_names: e.target.checked })}
+            label="Standardize Column Names"
+            className="font-bold text-slate-800 dark:text-zinc-200"
+          />
+          
+          {config.standardize_column_names && (
+            <div className="pl-4 space-y-2 text-slate-600 dark:text-zinc-400 font-semibold text-[10.5px]">
+              <AnimatedCheckbox
+                checked={config.standardize_trim}
+                onChange={(e) => setConfig({ ...config, standardize_trim: e.target.checked })}
+                label="Trim leading/trailing spaces"
+                className="font-semibold text-slate-800 dark:text-zinc-200"
+              />
+              <AnimatedCheckbox
+                checked={config.standardize_replace_spaces}
+                onChange={(e) => setConfig({ ...config, standardize_replace_spaces: e.target.checked })}
+                label={'Replace spaces with "_"'}
+                className="font-semibold text-slate-800 dark:text-zinc-200"
+              />
+              <AnimatedCheckbox
+                checked={config.standardize_lowercase}
+                onChange={(e) => setConfig({ ...config, standardize_lowercase: e.target.checked })}
+                label="Convert to lowercase"
+                className="font-semibold text-slate-800 dark:text-zinc-200"
+              />
+              <AnimatedCheckbox
+                checked={config.standardize_remove_special}
+                onChange={(e) => setConfig({ ...config, standardize_remove_special: e.target.checked })}
+                label="Remove special characters"
+                className="font-semibold text-slate-800 dark:text-zinc-200"
+              />
+              <AnimatedCheckbox
+                checked={config.standardize_replace_multiple_underscores}
+                onChange={(e) => setConfig({ ...config, standardize_replace_multiple_underscores: e.target.checked })}
+                label="Replace multiple underscores"
+                className="font-semibold text-slate-800 dark:text-zinc-200"
+              />
+              <AnimatedCheckbox
+                checked={config.standardize_remove_outer_underscores}
+                onChange={(e) => setConfig({ ...config, standardize_remove_outer_underscores: e.target.checked })}
+                label="Remove leading/trailing '_'"
+                className="font-semibold text-slate-800 dark:text-zinc-200"
+              />
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      id: "missing",
+      icon: <HelpCircle className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
+      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Missing Values</span>,
+      description: (
+        <div className="space-y-2.5 text-[11px]">
+          <AnimatedCheckbox
+            checked={config.handle_missing_values}
+            onChange={(e) => setConfig({ ...config, handle_missing_values: e.target.checked })}
+            label="Handle Missing Values"
+            className="font-bold text-slate-800 dark:text-zinc-200"
+          />
+
+          {config.handle_missing_values && (
+            <div className="pl-4 space-y-2 text-slate-600 dark:text-zinc-400 font-semibold text-[10.5px]">
+              <label className="block font-bold text-slate-800 dark:text-zinc-200">Imputation Strategy</label>
+              <select
+                value={config.missing_strategy}
+                onChange={(e) => setConfig({ ...config, missing_strategy: e.target.value })}
+                className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
+              >
+                <option value="nothing">Do Nothing</option>
+                <option value="remove_rows">Remove Rows</option>
+                <option value="remove_cols">Remove Columns</option>
+                <option value="fill_mean">Fill Mean (Numeric)</option>
+                <option value="fill_median">Fill Median (Numeric)</option>
+                <option value="fill_mode">Fill Mode</option>
+                <option value="ffill">Forward Fill</option>
+                <option value="bfill">Backward Fill</option>
+                <option value="interpolate">Interpolation (Numeric)</option>
+                <option value="custom_value">Custom Value</option>
+              </select>
+
+              {config.missing_strategy === "custom_value" && (
+                <input
+                  type="text"
+                  placeholder="Type custom value..."
+                  value={config.missing_custom_value}
+                  onChange={(e) => setConfig({ ...config, missing_custom_value: e.target.value })}
+                  className="w-full px-2 py-1.5 mt-1 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
+                />
+              )}
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      id: "duplicates",
+      icon: <Copy className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
+      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Duplicates</span>,
+      description: (
+        <div className="space-y-2.5 text-[11px] text-slate-800 dark:text-zinc-200">
+          <AnimatedCheckbox
+            checked={config.remove_duplicate_rows}
+            onChange={(e) => setConfig({ ...config, remove_duplicate_rows: e.target.checked })}
+            label="Remove Duplicate Rows"
+            className="font-bold"
+          />
+          <AnimatedCheckbox
+            checked={config.remove_duplicate_columns}
+            onChange={(e) => setConfig({ ...config, remove_duplicate_columns: e.target.checked })}
+            label="Remove Duplicate Columns"
+            className="font-bold"
+          />
+        </div>
+      )
+    },
+    {
+      id: "numeric",
+      icon: <Hash className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
+      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Numeric Cleaning</span>,
+      description: (
+        <div className="space-y-2.5 text-[11px]">
+          <AnimatedCheckbox
+            checked={config.clean_numeric_values}
+            onChange={(e) => setConfig({ ...config, clean_numeric_values: e.target.checked })}
+            label="Clean Numeric Columns"
+            className="font-bold text-slate-800 dark:text-zinc-200"
+          />
+          <p className="text-[9.5px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium pl-6">
+            Auto-extract numerical numbers. Cleans currency symbols (₹, $, €, £), percentages (%), spaces, and commas separator.
+          </p>
+        </div>
+      )
+    },
+    {
+      id: "text",
+      icon: <FileText className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
+      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Text & Blank Cleaning</span>,
+      description: (
+        <div className="space-y-2.5 text-[11px]">
+          <AnimatedCheckbox
+            checked={config.text_cleaning}
+            onChange={(e) => setConfig({ ...config, text_cleaning: e.target.checked })}
+            label="Enable Text Cleaning"
+            className="font-bold text-slate-800 dark:text-zinc-200"
+          />
+
+          {config.text_cleaning && (
+            <div className="pl-4 space-y-2 text-slate-600 dark:text-zinc-400 font-semibold text-[10.5px]">
+              <AnimatedCheckbox
+                checked={config.text_trim}
+                onChange={(e) => setConfig({ ...config, text_trim: e.target.checked })}
+                label="Trim leading/trailing spaces"
+                className="font-semibold text-slate-800 dark:text-zinc-200"
+              />
+              <AnimatedCheckbox
+                checked={config.text_remove_multiple_spaces}
+                onChange={(e) => setConfig({ ...config, text_remove_multiple_spaces: e.target.checked })}
+                label="Remove multiple spaces"
+                className="font-semibold text-slate-800 dark:text-zinc-200"
+              />
+              <AnimatedCheckbox
+                checked={config.text_remove_html}
+                onChange={(e) => setConfig({ ...config, text_remove_html: e.target.checked })}
+                label="Remove HTML tags"
+                className="font-semibold text-slate-800 dark:text-zinc-200"
+              />
+              <AnimatedCheckbox
+                checked={config.text_remove_emoji}
+                onChange={(e) => setConfig({ ...config, text_remove_emoji: e.target.checked })}
+                label="Remove emojis & non-ASCII"
+                className="font-semibold text-slate-800 dark:text-zinc-200"
+              />
+              <AnimatedCheckbox
+                checked={config.text_remove_tabs_newlines}
+                onChange={(e) => setConfig({ ...config, text_remove_tabs_newlines: e.target.checked })}
+                label="Remove tabs & newlines"
+                className="font-semibold text-slate-800 dark:text-zinc-200"
+              />
+
+              <div className="space-y-1 mt-1">
+                <label className="block font-bold text-slate-800 dark:text-zinc-200">Case Convert Mode</label>
+                <select
+                  value={config.text_case_mode}
+                  onChange={(e) => setConfig({ ...config, text_case_mode: e.target.value })}
+                  className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg focus:outline-none text-slate-900 dark:text-white"
+                >
+                  <option value="none">No case change</option>
+                  <option value="upper">UPPERCASE</option>
+                  <option value="lower">lowercase</option>
+                  <option value="title">Title Case</option>
+                  <option value="sentence">Sentence case</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-2 border-t border-slate-200/60 dark:border-zinc-800/80">
+            <AnimatedCheckbox
+              checked={config.blank_value_detection}
+              onChange={(e) => setConfig({ ...config, blank_value_detection: e.target.checked })}
+              label="Blank Value Detection"
+              className="font-bold text-slate-800 dark:text-zinc-200"
+            />
+            <p className="text-[9px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium pl-6 mt-0.5">
+              Treat cell strings like "NA", "N/A", "NULL", "null", "--", "-", "Unknown", "None", spaces as Missing (NaN).
+            </p>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: "types",
+      icon: <Layers className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
+      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Columns & Type Casting</span>,
+      description: (
+        <div className="space-y-2.5 text-[11px]">
+          <div>
+            <span className="font-bold text-slate-800 dark:text-zinc-200 block mb-1">Remove Columns</span>
+            <div className="max-h-28 overflow-y-auto border border-slate-200 dark:border-zinc-800 rounded-lg p-2 space-y-1 bg-slate-50/50 dark:bg-zinc-900/50">
+              {preview?.columns?.map(col => (
+                <label key={col} className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={selectedUnwanted.includes(col)}
+                    onChange={() => handleUnwantedToggle(col)}
+                    className="rounded text-[9px] cursor-pointer"
+                  />
+                  {col}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-200/60 dark:border-zinc-800/80">
+<AnimatedCheckbox
+            checked={config.data_type_conversion}
+            onChange={(e) => setConfig({ ...config, data_type_conversion: e.target.checked })}
+            label="Convert Data Types"
+            className="font-bold text-slate-800 dark:text-zinc-200"
+          />
+            
+            {config.data_type_conversion && (
+              <div className="pl-4 mt-2 space-y-2">
+                <label className="block font-bold text-slate-800 dark:text-zinc-200">Conversion Mode</label>
+                <select
+                  value={config.type_conversion_mode}
+                  onChange={(e) => setConfig({ ...config, type_conversion_mode: e.target.value })}
+                  className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
+                >
+                  <option value="auto">Auto-Detect types</option>
+                  <option value="manual">Manual casting</option>
+                </select>
+
+                {config.type_conversion_mode === "manual" && (
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto border p-1.5 rounded-lg bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800">
+                    {preview?.columns?.map((col) => (
+                      <div key={col} className="flex items-center justify-between gap-1">
+                        <span className="font-semibold text-slate-600 dark:text-zinc-400 truncate max-w-[80px]">{col}</span>
+                        <select
+                          value={manualTypes[col] || "string"}
+                          onChange={(e) => handleManualTypeChange(col, e.target.value)}
+                          className="px-1.5 py-0.5 border rounded bg-transparent font-medium border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 cursor-pointer text-[10px]"
+                        >
+                          <option value="string">String</option>
+                          <option value="integer">Integer</option>
+                          <option value="float">Float</option>
+                          <option value="datetime">Datetime</option>
+                          <option value="boolean">Boolean</option>
+                          <option value="category">Category</option>
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )
+    },
+    {
+      id: "outliers",
+      icon: <AlertTriangle className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
+      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Outlier Handling</span>,
+      description: (
+        <div className="space-y-2.5 text-[11px]">
+          <div>
+            <label className="block font-bold mb-1 text-slate-800 dark:text-zinc-200">Handling Strategy</label>
+            <select
+              value={config.outlier_strategy}
+              onChange={(e) => setConfig({ ...config, outlier_strategy: e.target.value })}
+              className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
+            >
+              <option value="ignore">Ignore / Do nothing</option>
+              <option value="remove">Remove Outlier Rows</option>
+              <option value="cap">Cap Outliers (Boundaries)</option>
+              <option value="replace_mean">Replace with Mean</option>
+              <option value="replace_median">Replace with Median</option>
+            </select>
+          </div>
+
+          {config.outlier_strategy !== "ignore" && (
+            <div>
+              <label className="block font-bold mb-1 text-slate-800 dark:text-zinc-200">Assessment Method</label>
+              <select
+                value={config.outlier_method}
+                onChange={(e) => setConfig({ ...config, outlier_method: e.target.value })}
+                className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
+              >
+                <option value="iqr">IQR (1.5 IQR range)</option>
+                <option value="z_score">Z-Score (3.0 StdDev)</option>
+              </select>
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      id: "dateDecimal",
+      icon: <Calendar className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
+      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Dates & Decimals</span>,
+      description: (
+        <div className="space-y-3 text-[11px]">
+          <div>
+            <AnimatedCheckbox
+              checked={config.date_formatting}
+              onChange={(e) => setConfig({ ...config, date_formatting: e.target.checked })}
+              label="Format Dates"
+              className="font-bold text-slate-800 dark:text-zinc-200"
+            />
+            {config.date_formatting && (
+              <select
+                value={config.date_format}
+                onChange={(e) => setConfig({ ...config, date_format: e.target.value })}
+                className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
+              >
+                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                <option value="DD-MM-YYYY">DD-MM-YYYY</option>
+                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+              </select>
+            )}
+          </div>
+
+          <div className="pt-2 border-t border-slate-200/60 dark:border-zinc-800/80">
+            <AnimatedCheckbox
+              checked={config.decimal_formatting}
+              onChange={(e) => setConfig({ ...config, decimal_formatting: e.target.checked })}
+              label="Decimal Rounding"
+              className="font-bold text-slate-800 dark:text-zinc-200"
+            />
+            {config.decimal_formatting && (
+              <select
+                value={config.decimal_format}
+                onChange={(e) => setConfig({ ...config, decimal_format: e.target.value })}
+                className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
+              >
+                <option value="none">No Rounding</option>
+                <option value="2">2 Decimal Places</option>
+                <option value="3">3 Decimal Places</option>
+                <option value="4">4 Decimal Places</option>
+              </select>
+            )}
+          </div>
+        </div>
+      )
+    },
+    {
+      id: "variance",
+      icon: <Filter className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
+      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Columns Filter</span>,
+      description: (
+        <div className="space-y-2.5 text-[11px] text-slate-800 dark:text-zinc-200">
+          <AnimatedCheckbox
+            checked={config.remove_constant_columns}
+            onChange={(e) => setConfig({ ...config, remove_constant_columns: e.target.checked })}
+            label="Remove Constant Columns"
+            className="font-bold"
+          />
+
+          <AnimatedCheckbox
+            checked={config.remove_low_variance_columns}
+            onChange={(e) => setConfig({ ...config, remove_low_variance_columns: e.target.checked })}
+            label="Remove Low Variance Columns"
+            className="font-bold"
+          />
+
+          <div className="pt-2 border-t border-slate-200/60 dark:border-zinc-800/80">
+            <AnimatedCheckbox
+              checked={config.remove_high_missing_columns}
+              onChange={(e) => setConfig({ ...config, remove_high_missing_columns: e.target.checked })}
+              label="Remove High-Null Columns"
+              className="font-bold"
+            />
+            {config.remove_high_missing_columns && (
+              <div className="pl-4 space-y-1.5">
+                <div className="flex justify-between font-bold text-[10px] text-slate-500">
+                  <span>Threshold</span>
+                  <span className="text-primary font-black">{config.missing_threshold}% Nulls</span>
+                </div>
+                <input
+                  type="range"
+                  min="10"
+                  max="95"
+                  step="5"
+                  value={config.missing_threshold}
+                  onChange={(e) => setConfig({ ...config, missing_threshold: Number(e.target.value) })}
+                  className="w-full h-2 rounded-lg bg-slate-200 dark:bg-zinc-800 appearance-none cursor-pointer accent-primary [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white dark:[&::-webkit-slider-thumb]:border-zinc-900 [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:transition-transform hover:[&::-webkit-slider-thumb]:scale-110 active:[&::-webkit-slider-thumb]:scale-95"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )
+    },
+    {
+      id: "invalid",
+      icon: <ShieldCheck className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
+      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Validations & Encoding</span>,
+      description: (
+        <div className="space-y-3 text-[11px]">
+          <div>
+            <AnimatedCheckbox
+              checked={config.remove_invalid_values}
+              onChange={(e) => setConfig({ ...config, remove_invalid_values: e.target.checked })}
+              label="Remove Invalid Values"
+              className="font-bold text-slate-800 dark:text-zinc-200"
+            />
+            <p className="text-[9px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium pl-6 mt-0.5">
+              Clean values like negative Age/Salary, malformed Email addresses, invalid phone formatting, or impossible dates.
+            </p>
+          </div>
+
+          <div className="pt-2 border-t border-slate-200/60 dark:border-zinc-800/80">
+            <AnimatedCheckbox
+              checked={config.reset_index}
+              onChange={(e) => setConfig({ ...config, reset_index: e.target.checked })}
+              label="Reset Row Index (0 to N)"
+              className="font-bold text-slate-800 dark:text-zinc-200"
+            />
+          </div>
+
+          <div className="pt-2 border-t border-slate-200/60 dark:border-zinc-800/80 text-slate-600 dark:text-zinc-400">
+            <label className="block font-bold text-slate-800 dark:text-zinc-200 mb-1">Import File Encoding</label>
+            <select
+              value={config.encoding}
+              onChange={(e) => setConfig({ ...config, encoding: e.target.value })}
+              className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
+            >
+              <option value="UTF-8">Auto-Detect / UTF-8</option>
+              <option value="ASCII">ASCII</option>
+              <option value="Latin-1">Latin-1 (ISO-8859-1)</option>
+              <option value="UTF-16">UTF-16</option>
+            </select>
+          </div>
+        </div>
+      )
+    }
+  ];
+
   return (
-    <div className="space-y-6 text-slate-800 dark:text-zinc-100 max-w-full pb-10 animate-fade-in font-sans">
+    <div className={`space-y-6 text-slate-800 dark:text-zinc-100 pb-10 animate-fade-in font-sans ${!datasetId ? "max-w-7xl mx-auto" : "max-w-full"}`}>
       
       {/* Toast Alerts */}
       {successMsg && (
@@ -589,327 +1074,277 @@ export default function CleanView({
       )}
 
       {/* HEADER SECTION */}
-      <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex flex-col lg:flex-row justify-between lg:items-center gap-6 mb-6 animate-fade-in">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-black dark:text-white tracking-tight flex items-center gap-3">
-            <BrushCleaning className="w-7 h-7 text-primary" /> RefineX Dataset Cleaning Console
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-0 py-1 mb-6">
+        <div className="flex flex-col">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Data Cleaning
           </h1>
-          <p className="text-sm text-slate-500 dark:text-zinc-400 mt-2">
-            Detect and resolve duplicates, missing cells, constant variables, and formatting conflicts.
+          <p className="text-[11px] sm:text-xs font-medium text-slate-400 dark:text-zinc-400 mt-0.5">
+            Detect and resolve duplicates, missing cells, constant variables, and formatting conflicts
           </p>
         </div>
         
         {datasetId && (
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* DOWNLOAD BUTTON */}
-            <div className="relative" ref={downloadRef}>
+          <div className="flex flex-col items-start sm:items-end gap-2.5">
+            {/* ROW 1: Inline Pill Buttons (Switch Dataset | Reset Dataset | Download) */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* 1. SWITCH DATASET */}
+              <RefreshButton
+                label="Switch Dataset"
+                title="Switch to another dataset"
+                onClick={() => {
+                  setDatasetId(null); setMetadata(null); setReport(null); setPreview(null);
+                  setBeforeReport(null); setAfterReport(null); setCleanLogs([]); setSelectedUnwanted([]);
+                }}
+              />
+
+              {/* 2. RESET DATASET */}
               <button 
-                onClick={() => setDownloadOpen(!downloadOpen)}
-                className="px-3.5 py-1.5 text-2xs font-bold rounded-lg border border-slate-200 dark:border-zinc-700 text-slate-650 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm bg-white dark:bg-[#212121]"
+                type="button"
+                onClick={handleReset}
+                disabled={processing}
+                className="group inline-flex items-center justify-center gap-2 px-4 py-2 h-9 text-xs font-bold rounded-full bg-transparent text-slate-800 dark:text-zinc-200 border border-slate-300 dark:border-zinc-700 hover:text-rose-500 dark:hover:text-rose-400 hover:border-rose-500 dark:hover:border-rose-400 focus:text-rose-500 focus:border-rose-500 transition-all duration-300 ease-in-out cursor-pointer text-center shadow-xs whitespace-nowrap select-none active:scale-95 disabled:opacity-50"
               >
-                <FileDown className="w-3.5 h-3.5" /> Download
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors duration-300" />
+                <span>Reset Dataset</span>
               </button>
-              {downloadOpen && (
-                <div className="absolute right-0 top-full mt-2 z-50 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl w-44 overflow-hidden py-1">
-                  <button onClick={() => { handleDownload("csv"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-violet-650 hover:text-white transition-colors cursor-pointer">Clean CSV</button>
-                  <button onClick={() => { handleDownload("excel"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-violet-650 hover:text-white transition-colors cursor-pointer">Clean Excel</button>
-                  <button onClick={() => { handleDownload("report"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-violet-650 hover:text-white transition-colors cursor-pointer">PDF Audit Report</button>
-                  <button onClick={() => { handleDownload("log"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-violet-650 hover:text-white transition-colors cursor-pointer">Cleaning Log</button>
-                </div>
-              )}
+
+              {/* 3. DOWNLOAD */}
+              <div className="relative" ref={downloadRef}>
+                <button 
+                  type="button"
+                  onClick={() => setDownloadOpen(!downloadOpen)}
+                  className="group relative inline-flex items-center justify-center gap-2 px-4 py-2 h-9 text-xs font-bold rounded-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 border border-slate-900 dark:border-white cursor-pointer transition-all duration-200 shadow-xs active:scale-95 select-none"
+                >
+                  <Download className="w-3.5 h-3.5 text-white dark:text-slate-900" />
+                  <span>Download</span>
+                  <ChevronDown className={`w-3 h-3 text-white dark:text-slate-900 transition-transform duration-200 ${downloadOpen ? "rotate-180" : ""}`} />
+                </button>
+                {downloadOpen && (
+                  <div className="absolute right-0 top-full mt-2 z-50 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl w-44 overflow-hidden py-1">
+                    <button onClick={() => { handleDownload("csv"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">Clean CSV</button>
+                    <button onClick={() => { handleDownload("excel"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">Clean Excel</button>
+                    <button onClick={() => { handleDownload("report"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">PDF Audit Report</button>
+                    <button onClick={() => { handleDownload("log"); setDownloadOpen(false); }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">Cleaning Log</button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* DATASET RESET BUTTON */}
-            <button 
-              onClick={handleReset} 
-              disabled={processing} 
-              className="px-3.5 py-1.5 text-2xs font-bold rounded-lg border border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 bg-white dark:bg-[#212121] transition duration-200 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            > 
-              Reset Dataset 
-            </button>
-
-            {/* VISUALIZE DATASET BUTTON */}
-            <button 
-              onClick={() => setActiveTab("visualization")} 
-              className="px-3.5 py-1.5 text-2xs font-bold rounded-lg bg-violet-600 hover:bg-violet-700 text-white transition duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm"
-            > 
-              <LineChart className="w-3.5 h-3.5" /> Visualize
-            </button>
-
-            {/* TRAIN ML MODEL BUTTON */}
-            <button 
-              onClick={() => setActiveTab("model-training")} 
-              className="px-3.5 py-1.5 text-2xs font-bold rounded-lg bg-primary hover:bg-primary-dark text-white transition duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm"
-            > 
-              <BrainCircuit className="w-3.5 h-3.5" /> Train Model
-            </button>
-
-            {/* UPLOAD NEW BUTTON */}
-            <button
-              onClick={() => {
-                setDatasetId(null); setMetadata(null); setReport(null); setPreview(null);
-                setBeforeReport(null); setAfterReport(null); setCleanLogs([]); setSelectedUnwanted([]);
-              }}
-              className="px-3.5 py-1.5 text-2xs font-bold rounded-lg border border-slate-900 dark:border-zinc-700 bg-slate-900 hover:bg-black hover:dark:bg-zinc-800 text-white transition duration-205 flex items-center gap-1.5 cursor-pointer shadow-sm"
-            >
-              <UploadCloud className="w-3.5 h-3.5" /> Upload New
-            </button>
+            {/* ROW 2: Empty space or action indicator */}
           </div>
         )}
       </div>
 
-        {/* DATASET INFO CARD (Main Section) */}
+        {/* DATASET METADATA TILES (In Air Layout) */}
         {datasetId && metadata && (
-          <article className="w-full bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 shadow-sm p-5 md:p-6 rounded-2xl flex flex-col gap-5">
-            
-            {/* Top: Icon + Name */}
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 text-[#673ab7] bg-[#673ab7]/10 rounded-xl flex items-center justify-center shrink-0 border border-[#673ab7]/20">
-                <FileSpreadsheet className="w-6 h-6" />
+          <div className="space-y-3.5 mb-6">
+            {/* Active CSV Title Bar (In Air) */}
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 text-purple-600 dark:text-purple-400 bg-purple-500/10 rounded-xl flex items-center justify-center shrink-0 border border-purple-500/20">
+                <FileSpreadsheet className="w-4 h-4" />
               </div>
-              <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white truncate tracking-tight">
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate tracking-tight">
                 {metadata.name}
               </h2>
             </div>
 
-            {/* Bottom: Rectangular Data Tiles (Takes up less vertical space) */}
-            <div className="flex flex-wrap gap-3">
-              
-              <div className="flex flex-col justify-center px-4 py-2 min-w-[100px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
-                <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Type</span>
-                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{metadata.file_type ? metadata.file_type.toUpperCase() : "N/A"}</span>
+            {/* Rectangular Data Tiles Grid (In Air - matches Data Visualization Studio) */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+                <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+                  Type
+                </span>
+                <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
+                  {metadata.file_type ? metadata.file_type.toUpperCase() : "N/A"}
+                </span>
               </div>
 
-              <div className="flex flex-col justify-center px-4 py-2 min-w-[100px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
-                <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Rows</span>
-                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{(metadata.rows ?? 0).toLocaleString()}</span>
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+                <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+                  Total Rows
+                </span>
+                <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
+                  {(metadata.rows ?? 0).toLocaleString()}
+                </span>
               </div>
 
-              <div className="flex flex-col justify-center px-4 py-2 min-w-[100px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
-                <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Cols</span>
-                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{(metadata.columns ?? 0).toLocaleString()}</span>
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+                <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+                  Total Columns
+                </span>
+                <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
+                  {(metadata.columns ?? 0).toLocaleString()}
+                </span>
               </div>
 
-              <div className="flex flex-col justify-center px-4 py-2 min-w-[110px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
-                <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Size</span>
-                <span className="text-sm font-black text-slate-800 dark:text-zinc-100">{metadata.file_size ? formatSize(metadata.file_size) : "N/A"}</span>
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+                <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+                  File Size
+                </span>
+                <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
+                  {metadata.file_size ? formatSize(metadata.file_size) : "N/A"}
+                </span>
               </div>
 
-              <div className="flex flex-col justify-center px-4 py-2 min-w-[110px] rounded-lg border-2 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 shadow-sm select-none">
-                <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-0.5 tracking-wider uppercase">Encoding</span>
-                <span className="text-sm font-black text-slate-800 dark:text-zinc-100 uppercase">{metadata.encoding ? metadata.encoding.toUpperCase() : "UTF-8"}</span>
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+                <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+                  Encoding
+                </span>
+                <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block uppercase">
+                  {metadata.encoding ? metadata.encoding.toUpperCase() : "UTF-8"}
+                </span>
               </div>
-
             </div>
-          </article>
+          </div>
         )}
 
       {/* NO DATASET / UPLOADER STATE */}
       {!datasetId ? (
-        <div className="space-y-6">
-          <FileUpload
-            onFileUpload={uploadFile}
-            uploading={uploading}
-            progress={uploadProgress}
-            loadedBytes={loadedBytes}
-            totalBytes={totalBytes}
-            uploadSpeed={uploadSpeed}
-            errorMsg={errorMsg}
-            successMsg={successMsg}
-            acceptedFormats={[".csv", ".xlsx", ".xls", ".json"]}
-            maxSizeMB={100}
-            onCancel={cancelUpload}
-            onReset={() => {
-              setDatasetId(null);
-              setMetadata(null);
-              setReport(null);
-              setPreview(null);
-              setErrorMsg("");
-              setSuccessMsg("");
-            }}
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* 70% Left: Upload Dropzone */}
+          <div className="lg:col-span-8 w-full">
+            <FileUpload
+              onFileUpload={uploadFile}
+              uploading={uploading}
+              progress={uploadProgress}
+              loadedBytes={loadedBytes}
+              totalBytes={totalBytes}
+              uploadSpeed={uploadSpeed}
+              errorMsg={errorMsg}
+              successMsg={successMsg}
+              acceptedFormats={[".csv", ".xlsx", ".xls", ".json"]}
+              maxSizeMB={100}
+              onCancel={cancelUpload}
+              onReset={() => {
+                setDatasetId(null);
+                setMetadata(null);
+                setReport(null);
+                setPreview(null);
+                setErrorMsg("");
+                setSuccessMsg("");
+              }}
+            />
+          </div>
 
+          {/* 30% Right: History Card Panel */}
           {!uploading && !isGuest && cleanHistoryList.length > 0 && (
-            <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-800/80 pb-3.5">
-                <div className="flex items-center gap-2.5">
-                  <History className="w-4.5 h-4.5 text-purple-500" />
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Or Select From Clean History</h3>
-                </div>
-                <button
-                  onClick={() => setActiveTab("history")}
-                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  All History Logs →
-                </button>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-zinc-400">
-                Skip uploading by choosing a dataset you've previously cleaned on RefineX.
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
-                {cleanHistoryList.map(job => (
-                  <div 
-                    key={job.id}
-                    onClick={() => handleUseFromHistory(job)}
-                    className="p-3.5 rounded-xl border border-slate-200/70 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30 hover:border-purple-500 dark:hover:border-purple-500/60 hover:bg-slate-50 dark:hover:bg-zinc-900/60 cursor-pointer transition duration-150 flex items-center justify-between group"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="p-2 rounded-lg bg-slate-200/60 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 group-hover:bg-purple-500/10 group-hover:text-purple-500 transition shrink-0">
-                        <FileSpreadsheet className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-xs font-semibold text-slate-800 dark:text-zinc-200 block truncate">{job.dataset_name}</span>
-                        <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider mt-0.5">
-                          Cleaned: {(() => {
-                            const dt = job.created_at || job.cleaned_at || job.updated_at;
-                            if (!dt) return "Recently";
-                            try {
-                              const d = new Date(dt);
-                              return isNaN(d.getTime()) ? "Recently" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-                            } catch {
-                              return "Recently";
-                            }
-                          })()}
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-500 group-hover:translate-x-0.5 transition shrink-0" />
-                  </div>
-                ))}
-              </div>
+            <div className="lg:col-span-4 w-full">
+              <RecentDatasetPanel
+                items={cleanHistoryList}
+                onSelect={(item) => handleUseFromHistory(item)}
+                onViewAll={() => setActiveTab("history")}
+              />
             </div>
           )}
-
-
         </div>
       ) : (
-        /* WORKSPACE LAYOUT */
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-          
-          {/* LEFT 75% CONTAINER */}
-          <div className="lg:col-span-3 space-y-6">
+        <div className="space-y-8">
+          {/* WORKSPACE LAYOUT (25% Left Sidebar / 75% Right Content Area) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            {/* DATASET VIEWER */}
-            <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm overflow-hidden flex flex-col">
-              
-              <div className="p-4 border-b border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50 dark:bg-zinc-950/20">
-                <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded-lg bg-primary/10 text-primary"><Table className="w-4 h-4" /></span>
-                  <span className="text-xs font-bold text-slate-700 dark:text-zinc-200">Interactive Preview <span className="font-semibold text-slate-400 dark:text-zinc-500">(Loaded {preview?.rows?.length || 0} of {metadata?.rows || 0} rows)</span></span>
-                </div>
-                
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <div className="relative flex-1 sm:w-60">
-                    <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Search preview rows..."
-                      value={searchQuery}
-                      onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                      className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:outline-none focus:border-primary transition duration-150 text-slate-900 dark:text-white"
-                    />
-                  </div>
-                  
-                  <select
-                    value={rowsPerPage}
-                    onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                    className="px-2 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:outline-none font-semibold cursor-pointer text-slate-800 dark:text-zinc-100 [&>option]:bg-white dark:[&>option]:bg-zinc-900 [&>option]:text-slate-800 dark:[&>option]:text-zinc-100"
-                  >
-                    <option value={10} className="bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-100">10 rows</option>
-                    <option value={25} className="bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-100">25 rows</option>
-                    <option value={50} className="bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-100">50 rows</option>
-                    <option value={100} className="bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-100">100 rows</option>
-                  </select>
-                </div>
-              </div>
+            {/* LEFT 25% STICKY SIDEBAR (Cleaning Configuration Options) */}
+            <div className="lg:col-span-3 space-y-4 lg:sticky lg:top-4 z-10 max-h-[calc(100vh-60px)] overflow-y-auto pr-1">
+              <div className="p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+                <h2 className="text-xs font-black text-black dark:text-white uppercase tracking-wider flex items-center gap-1.5 pb-3 border-b border-slate-150 dark:border-zinc-850 mb-3">
+                  <Settings className="w-4 h-4 text-primary" /> Cleaning Configuration
+                </h2>
 
-              <div 
-                className="overflow-x-auto max-h-[450px] overflow-y-auto"
-                onScroll={handleTableScroll}
-              >
-                <table className="w-full text-[11px] border-collapse relative">
-                  <thead className="sticky top-0 bg-slate-100 dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 font-bold uppercase tracking-wider z-20 shadow-sm">
-                    <tr>
-                      {preview?.columns?.map((col) => (
-                        <th 
-                          key={col}
-                          onClick={() => handleSort(col)}
-                          className="px-4 py-3 text-left font-bold cursor-pointer hover:bg-slate-200 dark:hover:bg-zinc-800 select-none whitespace-nowrap"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            {col}
-                            <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                          </div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/80">
-                    {paginatedRows.length > 0 ? (
-                      paginatedRows.map((row, idx) => (
-                        <tr 
-                          key={idx} 
-                          className="hover:bg-slate-50/50 dark:hover:bg-zinc-900/40 transition-colors duration-150 odd:bg-transparent even:bg-slate-50/30 dark:even:bg-zinc-900/10"
-                        >
-                          {preview?.columns?.map((col) => (
-                            <td key={col} className="px-4 py-2.5 truncate max-w-[200px] font-medium text-slate-650 dark:text-zinc-300">
-                              {row[col] === null || row[col] === undefined ? (
-                                <span className="text-rose-600 dark:text-rose-500 font-bold">null</span>
-                              ) : String(row[col])}
-                            </td>
-                          ))}
-                        </tr>
-                      ))
+                <BouncyAccordion
+                  items={cleaningAccordionItems}
+                  value={activeAccordion}
+                  onValueChange={(val) => setActiveAccordion(val)}
+                  collapsible={true}
+                  classNames={{
+                    trigger: "py-2.5 px-3.5 min-h-[44px]",
+                    description: "p-3.5"
+                  }}
+                />
+
+                {/* Sidebar bottom action buttons */}
+                <div className="mt-5 pt-5 border-t border-slate-200 dark:border-zinc-800 flex flex-col gap-3">
+                  
+                  {/* 1. CLEAN (Standard Action) */}
+                  <button
+                    onClick={handleClean}
+                    disabled={processing}
+                    className="group w-full px-4 py-3 text-sm font-bold rounded-xl bg-[#393e7f] dark:bg-[#a855f7] text-white dark:text-zinc-950 outline-2 outline-offset-[-2px] outline-[#393e7f] dark:outline-[#a855f7] border-none cursor-pointer transition-all duration-300 shadow-sm flex items-center justify-center gap-2 hover:bg-transparent dark:hover:bg-transparent hover:text-[#393e7f] dark:hover:text-[#c084fc] disabled:opacity-40 disabled:pointer-events-none"
+                  >
+                    {processing ? (
+                      <RefreshCw className="w-4 h-4 animate-spin stroke-[2.5]" />
                     ) : (
-                      <tr>
-                        <td colSpan={preview?.columns?.length || 1} className="text-center py-10 text-slate-455 dark:text-zinc-500 font-semibold">
-                          No matching records found.
-                        </td>
-                      </tr>
+                      <BrushCleaning className="w-4 h-4 transition-colors duration-300 stroke-[2.5]" />
                     )}
-                  </tbody>
-                </table>
+                    <span>Clean Features</span>
+                  </button>
+
+                  {/* 2. DECIDE (Auto Action) */}
+                  <button
+                    onClick={handleDecide}
+                    disabled={processing}
+                    className="group w-full px-4 py-3 text-sm font-bold rounded-xl bg-indigo-600 dark:bg-indigo-400 text-white dark:text-zinc-950 outline-2 outline-offset-[-2px] outline-indigo-600 dark:outline-indigo-400 border-none cursor-pointer transition-all duration-300 shadow-sm flex items-center justify-center gap-2 hover:bg-transparent dark:hover:bg-transparent hover:text-indigo-600 dark:hover:text-indigo-300 disabled:opacity-40 disabled:pointer-events-none"
+                  >
+                    <Sparkles className="w-4 h-4 transition-colors duration-300 stroke-[2.5]" /> 
+                    <span>Auto-Decide</span>
+                  </button>
+
+                  {/* 3. SIDEBAR RESET (Clears Checkboxes Only) */}
+                  <button
+                    onClick={handleConfigReset}
+                    disabled={processing}
+                    className="group w-full px-4 py-3 text-sm font-bold rounded-xl bg-rose-600 dark:bg-rose-400 text-white dark:text-zinc-950 outline-2 outline-offset-[-2px] outline-rose-600 dark:outline-rose-400 border-none cursor-pointer transition-all duration-300 shadow-sm flex items-center justify-center gap-2 hover:bg-transparent dark:hover:bg-transparent hover:text-rose-600 dark:hover:text-rose-300 disabled:opacity-40 disabled:pointer-events-none"
+                  >
+                    <RefreshCw className="w-4 h-4 transition-colors duration-300 stroke-[2.5]" /> 
+                    <span>Clear Sidebar Options</span>
+                  </button>
+
+                </div>
+
               </div>
 
-              <div className="p-3 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between gap-4 text-xs font-semibold bg-slate-50/30 dark:bg-zinc-950/10">
-                <span className="text-slate-550 dark:text-zinc-400">
-                  Showing {Math.min(processedRows.length, (currentPage - 1) * rowsPerPage + 1)} - {Math.min(processedRows.length, currentPage * rowsPerPage)} of {processedRows.length} preview rows
+              {/* MOVED FOOTER: Next Steps directly under the config sidebar */}
+              <div className="mt-4 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-[#212121]/50 shadow-sm flex flex-col gap-3">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest text-center">
+                  Next Steps in Data Workflow
                 </span>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="p-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition duration-150 flex items-center justify-center border border-primary/10 shadow-sm mx-1"
+                <div className="flex flex-col gap-2 w-full">
+                  <button 
+                    type="button"
+                    onClick={() => setActiveTab("visualization")} 
+                    className="w-full px-4 py-2.5 text-xs font-bold rounded-xl bg-violet-600 hover:bg-violet-700 text-white flex justify-center items-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <LineChart className="w-4 h-4" /> Visualize Dataset
                   </button>
-                  
-                  <span className="mx-2 text-sm text-slate-600 dark:text-zinc-400">
-                    Page <input 
-                      type="number" 
-                      min={1} 
-                      max={totalPages || 1} 
-                      value={currentPage}
-                      onChange={(e) => {
-                        const val = Math.max(1, Math.min(totalPages, Number(e.target.value)));
-                        setCurrentPage(val);
-                      }}
-                      className="w-12 text-center py-1 border border-slate-200 dark:border-zinc-800 rounded bg-white dark:bg-zinc-900 focus:outline-none text-slate-900 dark:text-white mx-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    /> of {totalPages || 1}
-                  </span>
-
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages || totalPages === 0}
-                    className="p-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition duration-150 flex items-center justify-center border border-primary/10 shadow-sm mx-1"
+                  <button 
+                    type="button"
+                    onClick={() => setActiveTab("model-training")} 
+                    className="w-full px-4 py-2.5 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 border border-slate-900 dark:border-white flex justify-center items-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <BrainCircuit className="w-4 h-4" /> Train ML Model
                   </button>
                 </div>
               </div>
             </div>
+
+            {/* RIGHT 75% CONTAINER (Dataset Table Viewer & Tabbed Reports) */}
+            <div className="lg:col-span-9 space-y-6">
+              
+              {/* DATASET TABLE VIEWER COMPONENT */}
+              <DatasetTableViewer
+                preview={preview}
+                metadata={metadata}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                rowsPerPage={rowsPerPage}
+                setRowsPerPage={setRowsPerPage}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+                handleTableScroll={handleTableScroll}
+                handleSort={handleSort}
+                paginatedRows={paginatedRows}
+                processedRows={processedRows}
+                totalPages={totalPages}
+              />
 
             {/* TABED REPORTS PANEL */}
             <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm overflow-hidden">
@@ -1227,7 +1662,133 @@ export default function CleanView({
                           {report.outlier_report?.map((out) => (
                             <tr key={out.column} className="hover:bg-slate-50/50 dark:hover:bg-zinc-900/30">
                               <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-zinc-300">{out.column}</td>
-                              <td className="px-4 py-2.5 font-semibold text-rose-505">{out.outlier_count}</td>
+                              <td className="px-4 py-2.5 font-semibold text-rose-500">{out.outlier_count}</td>
+                              <td className="px-4 py-2.5 font-semibold text-slate-500">{out.method_used}</td>
+                              <td className="px-4 py-2.5">
+                                {out.outlier_count > 0 ? (
+                                  <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-450 font-bold text-[9px] uppercase tracking-wide">Has Outliers</span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400 font-bold text-[9px] uppercase tracking-wide">Clean</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* MISSING VALUE REPORT */}
+                {activeReportTab === "missing" && report && (
+                  <div className="space-y-4 animate-fade-in">
+                    <h3 className="text-xs font-bold text-black dark:text-white uppercase tracking-wider">Missing Values Summary</h3>
+                    <div className="overflow-x-auto border border-slate-100 dark:border-zinc-800 rounded-xl">
+                      <table className="w-full text-left text-[11px]">
+                        <thead className="bg-slate-50 dark:bg-zinc-900 font-bold text-slate-650 dark:text-zinc-400">
+                          <tr>
+                            <th className="px-4 py-3">Column Name</th>
+                            <th className="px-4 py-3">Missing Count</th>
+                            <th className="px-4 py-3">Missing Percentage</th>
+                            <th className="px-4 py-3">Proportion Bar</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                          {report.missing_summary?.columns?.map((m) => (
+                            <tr key={m.column} className="hover:bg-slate-50/50 dark:hover:bg-zinc-900/30">
+                              <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-zinc-300">{m.column}</td>
+                              <td className="px-4 py-2.5 font-semibold">{m.missing_count}</td>
+                              <td className="px-4 py-2.5 font-semibold">{m.missing_percent.toFixed(2)}%</td>
+                              <td className="px-4 py-2.5 w-1/3">
+                                <div className="w-full h-2 rounded bg-slate-100 dark:bg-zinc-800 overflow-hidden">
+                                  <div 
+                                    className={`h-full rounded ${m.missing_percent > 50 ? "bg-rose-500" : m.missing_percent > 15 ? "bg-amber-500" : "bg-emerald-500"}`}
+                                    style={{ width: `${m.missing_percent}%` }}
+                                  />
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* DUPLICATES REPORT */}
+                {activeReportTab === "duplicates" && report && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="p-4 rounded-xl border border-slate-150 dark:border-zinc-800/80 bg-slate-50/20 dark:bg-zinc-950/10">
+                        <h4 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Duplicate Rows</h4>
+                        <div className="flex items-baseline gap-2 mt-2">
+                          <span className="text-xl font-black text-black dark:text-white">{report.duplicate_summary?.duplicate_rows_count}</span>
+                          <span className="text-xs text-slate-550 dark:text-zinc-500">rows ({report.duplicate_summary?.duplicate_rows_percentage.toFixed(2)}%)</span>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-xl border border-slate-150 dark:border-zinc-800/80 bg-slate-50/20 dark:bg-zinc-950/10">
+                        <h4 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Duplicate Columns</h4>
+                        <div className="flex items-baseline gap-2 mt-2">
+                          <span className="text-xl font-black text-black dark:text-white">{report.duplicate_summary?.duplicate_columns_count}</span>
+                          <span className="text-xs text-slate-550 dark:text-zinc-500">columns</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold text-black dark:text-white uppercase tracking-wider">Data Type Conversions</h3>
+                      <div className="overflow-x-auto border border-slate-100 dark:border-zinc-800 rounded-xl">
+                        <table className="w-full text-left text-[11px]">
+                          <thead className="bg-slate-50 dark:bg-zinc-900 font-bold text-slate-650 dark:text-zinc-400">
+                            <tr>
+                              <th className="px-4 py-3">Column</th>
+                              <th className="px-4 py-3">Current Type</th>
+                              <th className="px-4 py-3">Suggested Type</th>
+                              <th className="px-4 py-3">Conversion Needed</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                            {report.data_types?.map((item) => (
+                              <tr key={item.column} className="hover:bg-slate-50/50 dark:hover:bg-zinc-900/30">
+                                <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-zinc-300">{item.column}</td>
+                                <td className="px-4 py-2.5 text-slate-500 dark:text-zinc-500">{item.current_type}</td>
+                                <td className="px-4 py-2.5 font-semibold text-primary">{item.suggested_type}</td>
+                                <td className="px-4 py-2.5">
+                                  {item.conversion_needed ? (
+                                    <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400 font-bold text-[9px] uppercase tracking-wide">Suggested</span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full bg-slate-50 text-slate-400 dark:bg-zinc-900 dark:text-zinc-500 text-[9px] uppercase">Up to date</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* OUTLIER REPORT */}
+                {activeReportTab === "outliers" && report && (
+                  <div className="space-y-4 animate-fade-in">
+                    <h3 className="text-xs font-bold text-black dark:text-white uppercase tracking-wider">Outlier Occurrences</h3>
+                    <div className="overflow-x-auto border border-slate-100 dark:border-zinc-800 rounded-xl">
+                      <table className="w-full text-left text-[11px]">
+                        <thead className="bg-slate-50 dark:bg-zinc-900 font-bold text-slate-650 dark:text-zinc-400">
+                          <tr>
+                            <th className="px-4 py-3">Column Name</th>
+                            <th className="px-4 py-3">Outlier Count</th>
+                            <th className="px-4 py-3">Method Used</th>
+                            <th className="px-4 py-3">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                          {report.outlier_report?.map((out) => (
+                            <tr key={out.column} className="hover:bg-slate-50/50 dark:hover:bg-zinc-900/30">
+                              <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-zinc-300">{out.column}</td>
+                              <td className="px-4 py-2.5 font-semibold text-rose-500">{out.outlier_count}</td>
                               <td className="px-4 py-2.5 font-semibold text-slate-500">{out.method_used}</td>
                               <td className="px-4 py-2.5">
                                 {out.outlier_count > 0 ? (
@@ -1298,7 +1859,7 @@ export default function CleanView({
                         <Info className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                         <h4 className="text-xs font-bold text-black dark:text-white">No active comparison</h4>
                         <p className="text-[11px] text-slate-550 dark:text-zinc-400 max-w-xs mx-auto mt-1">
-                          Configure cleaning parameters in the right sidebar and trigger a clean operation to view before & after reports.
+                          Configure cleaning parameters in the sidebar and trigger a clean operation to view before & after reports.
                         </p>
                       </div>
                     )}
@@ -1323,614 +1884,10 @@ export default function CleanView({
             </div>
 
           </div>
+      </div>
+      </div>
+    )}
 
-          {/* RIGHT 25% STICKY SIDEBAR */}
-          <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-4 z-10 max-h-[calc(100vh-60px)] overflow-y-auto pr-1">
-            <div className="p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
-              <h2 className="text-xs font-black text-black dark:text-white uppercase tracking-wider flex items-center gap-1.5 pb-3 border-b border-slate-150 dark:border-zinc-850 mb-3">
-                <Settings className="w-4 h-4 text-primary" /> Cleaning Configuration
-              </h2>
-
-              <div className="space-y-3">
-                
-                {/* COLUMN NAMES */}
-                <div className="border border-slate-150 dark:border-zinc-850 rounded-xl overflow-hidden">
-                  <button 
-                    onClick={() => toggleAccordion("colNames")}
-                    className="w-full flex items-center justify-between p-3 text-left text-[11px] font-bold bg-slate-50/30 dark:bg-zinc-950/10 hover:bg-slate-50 dark:hover:bg-zinc-850 cursor-pointer"
-                  >
-                    <span>Column Names</span>
-                    <ChevronRight className={`w-3.5 h-3.5 transition duration-200 ${activeAccordion === "colNames" ? "rotate-90" : ""}`} />
-                  </button>
-                  {activeAccordion === "colNames" && (
-                    <div className="p-3 border-t border-slate-150 dark:border-zinc-850 space-y-2.5 text-[10px] animate-fade-in">
-                      <label className="flex items-start gap-2 cursor-pointer font-bold select-none text-slate-700 dark:text-zinc-200">
-                        <input
-                          type="checkbox"
-                          checked={config.standardize_column_names}
-                          onChange={(e) => setConfig({ ...config, standardize_column_names: e.target.checked })}
-                          className="mt-0.5 rounded border-slate-350 bg-transparent text-primary focus:ring-primary/20 cursor-pointer"
-                        />
-                        Standardize Column Names
-                      </label>
-                      
-                      {config.standardize_column_names && (
-                        <div className="pl-4 space-y-2 text-slate-550 dark:text-zinc-400 font-semibold">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={config.standardize_trim} onChange={(e) => setConfig({ ...config, standardize_trim: e.target.checked })} className="rounded cursor-pointer" />
-                            Trim leading/trailing spaces
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={config.standardize_replace_spaces} onChange={(e) => setConfig({ ...config, standardize_replace_spaces: e.target.checked })} className="rounded cursor-pointer" />
-                            Replace spaces with "_"
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={config.standardize_lowercase} onChange={(e) => setConfig({ ...config, standardize_lowercase: e.target.checked })} className="rounded cursor-pointer" />
-                            Convert to lowercase
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={config.standardize_remove_special} onChange={(e) => setConfig({ ...config, standardize_remove_special: e.target.checked })} className="rounded cursor-pointer" />
-                            Remove special characters
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={config.standardize_replace_multiple_underscores} onChange={(e) => setConfig({ ...config, standardize_replace_multiple_underscores: e.target.checked })} className="rounded cursor-pointer" />
-                            Replace multiple underscores
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={config.standardize_remove_outer_underscores} onChange={(e) => setConfig({ ...config, standardize_remove_outer_underscores: e.target.checked })} className="rounded cursor-pointer" />
-                            Remove leading/trailing '_'
-                          </label>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* MISSING VALUES */}
-                <div className="border border-slate-155 dark:border-zinc-850 rounded-xl overflow-hidden">
-                  <button 
-                    onClick={() => toggleAccordion("missing")}
-                    className="w-full flex items-center justify-between p-3 text-left text-[11px] font-bold bg-slate-50/30 dark:bg-zinc-950/10 hover:bg-slate-50 dark:hover:bg-zinc-850 cursor-pointer"
-                  >
-                    <span>Missing Values</span>
-                    <ChevronRight className={`w-3.5 h-3.5 transition duration-200 ${activeAccordion === "missing" ? "rotate-90" : ""}`} />
-                  </button>
-                  {activeAccordion === "missing" && (
-                    <div className="p-3 border-t border-slate-150 dark:border-zinc-850 space-y-2.5 text-[10px] animate-fade-in">
-                      <label className="flex items-start gap-2 cursor-pointer font-bold select-none text-slate-700 dark:text-zinc-200">
-                        <input
-                          type="checkbox"
-                          checked={config.handle_missing_values}
-                          onChange={(e) => setConfig({ ...config, handle_missing_values: e.target.checked })}
-                          className="mt-0.5 rounded border-slate-350 bg-transparent text-primary focus:ring-primary/20 cursor-pointer"
-                        />
-                        Handle Missing Values
-                      </label>
-
-                      {config.handle_missing_values && (
-                        <div className="pl-4 space-y-2 text-slate-550">
-                          <label className="block font-bold">Imputation Strategy</label>
-                          <select
-                            value={config.missing_strategy}
-                            onChange={(e) => setConfig({ ...config, missing_strategy: e.target.value })}
-                            className="w-full px-2 py-1 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded font-semibold focus:outline-none text-slate-900 dark:text-white"
-                          >
-                            <option value="nothing">Do Nothing</option>
-                            <option value="remove_rows">Remove Rows</option>
-                            <option value="remove_cols">Remove Columns</option>
-                            <option value="fill_mean">Fill Mean (Numeric)</option>
-                            <option value="fill_median">Fill Median (Numeric)</option>
-                            <option value="fill_mode">Fill Mode</option>
-                            <option value="ffill">Forward Fill</option>
-                            <option value="bfill">Backward Fill</option>
-                            <option value="interpolate">Interpolation (Numeric)</option>
-                            <option value="custom_value">Custom Value</option>
-                          </select>
-
-                          {config.missing_strategy === "custom_value" && (
-                            <input
-                              type="text"
-                              placeholder="Type custom value..."
-                              value={config.missing_custom_value}
-                              onChange={(e) => setConfig({ ...config, missing_custom_value: e.target.value })}
-                              className="w-full px-2 py-1 mt-1 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded font-semibold focus:outline-none text-slate-900 dark:text-white"
-                            />
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* DUPLICATES */}
-                <div className="border border-slate-150 dark:border-zinc-855 rounded-xl overflow-hidden">
-                  <button 
-                    onClick={() => toggleAccordion("duplicates")}
-                    className="w-full flex items-center justify-between p-3 text-left text-[11px] font-bold bg-slate-50/30 dark:bg-zinc-950/10 hover:bg-slate-50 dark:hover:bg-zinc-850 cursor-pointer"
-                  >
-                    <span>Duplicates</span>
-                    <ChevronRight className={`w-3.5 h-3.5 transition duration-200 ${activeAccordion === "duplicates" ? "rotate-90" : ""}`} />
-                  </button>
-                  {activeAccordion === "duplicates" && (
-                    <div className="p-3 border-t border-slate-150 dark:border-zinc-850 space-y-2.5 text-[10px] text-slate-700 dark:text-zinc-200 animate-fade-in">
-                      <label className="flex items-center gap-2 cursor-pointer font-bold">
-                        <input
-                          type="checkbox"
-                          checked={config.remove_duplicate_rows}
-                          onChange={(e) => setConfig({ ...config, remove_duplicate_rows: e.target.checked })}
-                          className="rounded cursor-pointer"
-                        />
-                        Remove Duplicate Rows
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer font-bold">
-                        <input
-                          type="checkbox"
-                          checked={config.remove_duplicate_columns}
-                          onChange={(e) => setConfig({ ...config, remove_duplicate_columns: e.target.checked })}
-                          className="rounded cursor-pointer"
-                        />
-                        Remove Duplicate Columns
-                      </label>
-                    </div>
-                  )}
-                </div>
-
-                {/* NUMERIC CLEANING */}
-                <div className="border border-slate-150 dark:border-zinc-850 rounded-xl overflow-hidden">
-                  <button 
-                    onClick={() => toggleAccordion("numeric")}
-                    className="w-full flex items-center justify-between p-3 text-left text-[11px] font-bold bg-slate-50/30 dark:bg-zinc-950/10 hover:bg-slate-50 dark:hover:bg-zinc-850 cursor-pointer"
-                  >
-                    <span>Numeric Cleaning</span>
-                    <ChevronRight className={`w-3.5 h-3.5 transition duration-200 ${activeAccordion === "numeric" ? "rotate-90" : ""}`} />
-                  </button>
-                  {activeAccordion === "numeric" && (
-                    <div className="p-3 border-t border-slate-150 dark:border-zinc-850 space-y-2.5 text-[10px] animate-fade-in">
-                      <label className="flex items-start gap-2 cursor-pointer font-bold select-none text-slate-700 dark:text-zinc-200">
-                        <input
-                          type="checkbox"
-                          checked={config.clean_numeric_values}
-                          onChange={(e) => setConfig({ ...config, clean_numeric_values: e.target.checked })}
-                          className="mt-0.5 rounded border-slate-350 bg-transparent text-primary focus:ring-primary/20 cursor-pointer"
-                        />
-                        Clean Numeric Columns
-                      </label>
-                      <p className="text-[9px] text-slate-550 leading-relaxed font-semibold pl-6">
-                        Auto-extract numerical numbers. Cleans currency symbols (₹, $, €, £), percentages (%), spaces, and commas separator.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* TEXT & BLANK CLEANING */}
-                <div className="border border-slate-150 dark:border-zinc-850 rounded-xl overflow-hidden">
-                  <button 
-                    onClick={() => toggleAccordion("text")}
-                    className="w-full flex items-center justify-between p-3 text-left text-[11px] font-bold bg-slate-50/30 dark:bg-zinc-950/10 hover:bg-slate-50 dark:hover:bg-zinc-850 cursor-pointer"
-                  >
-                    <span>Text & Blank Cleaning</span>
-                    <ChevronRight className={`w-3.5 h-3.5 transition duration-200 ${activeAccordion === "text" ? "rotate-90" : ""}`} />
-                  </button>
-                  {activeAccordion === "text" && (
-                    <div className="p-3 border-t border-slate-150 dark:border-zinc-850 space-y-2.5 text-[10px] animate-fade-in">
-                      <label className="flex items-start gap-2 cursor-pointer font-bold select-none text-slate-700 dark:text-zinc-200">
-                        <input
-                          type="checkbox"
-                          checked={config.text_cleaning}
-                          onChange={(e) => setConfig({ ...config, text_cleaning: e.target.checked })}
-                          className="mt-0.5 rounded border-slate-350 bg-transparent text-primary focus:ring-primary/20 cursor-pointer"
-                        />
-                        Enable Text Cleaning
-                      </label>
-
-                      {config.text_cleaning && (
-                        <div className="pl-4 space-y-2 text-slate-500 dark:text-zinc-400 font-semibold">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={config.text_trim} onChange={(e) => setConfig({ ...config, text_trim: e.target.checked })} className="rounded cursor-pointer" />
-                            Trim leading/trailing spaces
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={config.text_remove_multiple_spaces} onChange={(e) => setConfig({ ...config, text_remove_multiple_spaces: e.target.checked })} className="rounded cursor-pointer" />
-                            Remove multiple spaces
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={config.text_remove_html} onChange={(e) => setConfig({ ...config, text_remove_html: e.target.checked })} className="rounded cursor-pointer" />
-                            Remove HTML tags
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={config.text_remove_emoji} onChange={(e) => setConfig({ ...config, text_remove_emoji: e.target.checked })} className="rounded cursor-pointer" />
-                            Remove emojis & non-ASCII
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={config.text_remove_tabs_newlines} onChange={(e) => setConfig({ ...config, text_remove_tabs_newlines: e.target.checked })} className="rounded cursor-pointer" />
-                            Remove tabs & newlines
-                          </label>
-
-                          <div className="space-y-1 mt-1">
-                            <label className="block font-bold">Case Convert Mode</label>
-                            <select
-                              value={config.text_case_mode}
-                              onChange={(e) => setConfig({ ...config, text_case_mode: e.target.value })}
-                              className="w-full px-1.5 py-1 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded focus:outline-none text-slate-900 dark:text-white"
-                            >
-                              <option value="none">No case change</option>
-                              <option value="upper">UPPERCASE</option>
-                              <option value="lower">lowercase</option>
-                              <option value="title">Title Case</option>
-                              <option value="sentence">Sentence case</option>
-                            </select>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="pt-1.5 border-t border-slate-100 dark:border-zinc-800/80">
-                        <label className="flex items-start gap-2 cursor-pointer font-bold select-none text-slate-700 dark:text-zinc-200">
-                          <input
-                            type="checkbox"
-                            checked={config.blank_value_detection}
-                            onChange={(e) => setConfig({ ...config, blank_value_detection: e.target.checked })}
-                            className="mt-0.5 rounded border-slate-350 bg-transparent text-primary focus:ring-primary/20 cursor-pointer"
-                          />
-                          Blank Value Detection
-                        </label>
-                        <p className="text-[8.5px] text-slate-550 leading-relaxed font-semibold pl-6 mt-0.5">
-                          Treat cell strings like "NA", "N/A", "NULL", "null", "--", "-", "Unknown", "None", spaces as Missing (NaN).
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* COLUMNS & TYPE CASTING */}
-                <div className="border border-slate-150 dark:border-zinc-850 rounded-xl overflow-hidden">
-                  <button 
-                    onClick={() => toggleAccordion("types")}
-                    className="w-full flex items-center justify-between p-3 text-left text-[11px] font-bold bg-slate-50/30 dark:bg-zinc-950/10 hover:bg-slate-50 dark:hover:bg-zinc-850 cursor-pointer"
-                  >
-                    <span>Columns & Type Casting</span>
-                    <ChevronRight className={`w-3.5 h-3.5 transition duration-200 ${activeAccordion === "types" ? "rotate-90" : ""}`} />
-                  </button>
-                  {activeAccordion === "types" && (
-                    <div className="p-3 border-t border-slate-150 dark:border-zinc-850 space-y-2.5 text-[10px] animate-fade-in">
-                      <div>
-                        <span className="font-bold text-slate-700 dark:text-zinc-200 block mb-1">Remove Columns</span>
-                        <div className="max-h-24 overflow-y-auto border border-slate-100 dark:border-zinc-800 rounded p-1.5 space-y-1 bg-white dark:bg-zinc-900">
-                          {preview?.columns?.map(col => (
-                            <label key={col} className="flex items-center gap-1.5 cursor-pointer font-semibold text-slate-700 dark:text-zinc-300">
-                              <input
-                                type="checkbox"
-                                checked={selectedUnwanted.includes(col)}
-                                onChange={() => handleUnwantedToggle(col)}
-                                className="rounded text-[8px] cursor-pointer"
-                              />
-                              {col}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="pt-2 border-t border-slate-100 dark:border-zinc-800/80">
-                        <label className="flex items-start gap-2 cursor-pointer font-bold select-none text-slate-700 dark:text-zinc-200">
-                          <input
-                            type="checkbox"
-                            checked={config.data_type_conversion}
-                            onChange={(e) => setConfig({ ...config, data_type_conversion: e.target.checked })}
-                            className="mt-0.5 rounded border-slate-350 bg-transparent text-primary focus:ring-primary/20 cursor-pointer"
-                          />
-                          Convert Data Types
-                        </label>
-                        
-                        {config.data_type_conversion && (
-                          <div className="pl-4 mt-2 space-y-2">
-                            <label className="block font-bold">Conversion Mode</label>
-                            <select
-                              value={config.type_conversion_mode}
-                              onChange={(e) => setConfig({ ...config, type_conversion_mode: e.target.value })}
-                              className="w-full px-1.5 py-1 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded font-semibold focus:outline-none text-slate-900 dark:text-white"
-                            >
-                              <option value="auto">Auto-Detect types</option>
-                              <option value="manual">Manual casting</option>
-                            </select>
-
-                            {config.type_conversion_mode === "manual" && (
-                              <div className="space-y-1.5 max-h-32 overflow-y-auto border p-1 rounded bg-white dark:bg-zinc-900 border-slate-100 dark:border-zinc-800">
-                                {preview?.columns?.map((col) => (
-                                  <div key={col} className="flex items-center justify-between gap-1">
-                                    <span className="font-semibold text-slate-500 truncate max-w-[80px]">{col}</span>
-                                    <select
-                                      value={manualTypes[col] || "string"}
-                                      onChange={(e) => handleManualTypeChange(col, e.target.value)}
-                                      className="px-1 border rounded bg-transparent font-medium border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 cursor-pointer"
-                                    >
-                                      <option value="string">String</option>
-                                      <option value="integer">Integer</option>
-                                      <option value="float">Float</option>
-                                      <option value="datetime">Datetime</option>
-                                      <option value="boolean">Boolean</option>
-                                      <option value="category">Category</option>
-                                    </select>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* OUTLIER HANDLING */}
-                <div className="border border-slate-150 dark:border-zinc-850 rounded-xl overflow-hidden">
-                  <button 
-                    onClick={() => toggleAccordion("outliers")}
-                    className="w-full flex items-center justify-between p-3 text-left text-[11px] font-bold bg-slate-50/30 dark:bg-zinc-950/10 hover:bg-slate-50 dark:hover:bg-zinc-850 cursor-pointer"
-                  >
-                    <span>Outlier Handling</span>
-                    <ChevronRight className={`w-3.5 h-3.5 transition duration-200 ${activeAccordion === "outliers" ? "rotate-90" : ""}`} />
-                  </button>
-                  {activeAccordion === "outliers" && (
-                    <div className="p-3 border-t border-slate-150 dark:border-zinc-850 space-y-2 text-[10px] text-slate-550 animate-fade-in">
-                      <div>
-                        <label className="block font-bold mb-1">Handling Strategy</label>
-                        <select
-                          value={config.outlier_strategy}
-                          onChange={(e) => setConfig({ ...config, outlier_strategy: e.target.value })}
-                          className="w-full px-2 py-1 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded font-semibold focus:outline-none text-slate-900 dark:text-white"
-                        >
-                          <option value="ignore">Ignore / Do nothing</option>
-                          <option value="remove">Remove Outlier Rows</option>
-                          <option value="cap">Cap Outliers (Boundaries)</option>
-                          <option value="replace_mean">Replace with Mean</option>
-                          <option value="replace_median">Replace with Median</option>
-                        </select>
-                      </div>
-
-                      {config.outlier_strategy !== "ignore" && (
-                        <div>
-                          <label className="block font-bold mb-1">Assessment Method</label>
-                          <select
-                            value={config.outlier_method}
-                            onChange={(e) => setConfig({ ...config, outlier_method: e.target.value })}
-                            className="w-full px-2 py-1 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded font-semibold focus:outline-none text-slate-900 dark:text-white"
-                          >
-                            <option value="iqr">IQR (1.5 IQR range)</option>
-                            <option value="z_score">Z-Score (3.0 StdDev)</option>
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* DATES & DECIMALS */}
-                <div className="border border-slate-150 dark:border-zinc-850 rounded-xl overflow-hidden">
-                  <button 
-                    onClick={() => toggleAccordion("dateDecimal")}
-                    className="w-full flex items-center justify-between p-3 text-left text-[11px] font-bold bg-slate-50/30 dark:bg-zinc-950/10 hover:bg-slate-50 dark:hover:bg-zinc-850 cursor-pointer"
-                  >
-                    <span>Dates & Decimals</span>
-                    <ChevronRight className={`w-3.5 h-3.5 transition duration-200 ${activeAccordion === "dateDecimal" ? "rotate-90" : ""}`} />
-                  </button>
-                  {activeAccordion === "dateDecimal" && (
-                    <div className="p-3 border-t border-slate-150 dark:border-zinc-850 space-y-3.5 text-[10px] animate-fade-in">
-                      <div>
-                        <label className="flex items-start gap-2 cursor-pointer font-bold select-none text-slate-700 dark:text-zinc-200 mb-1.5">
-                          <input
-                            type="checkbox"
-                            checked={config.date_formatting}
-                            onChange={(e) => setConfig({ ...config, date_formatting: e.target.checked })}
-                            className="rounded cursor-pointer"
-                          />
-                          Format Dates
-                        </label>
-                        {config.date_formatting && (
-                          <select
-                            value={config.date_format}
-                            onChange={(e) => setConfig({ ...config, date_format: e.target.value })}
-                            className="w-full px-1.5 py-1 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded font-semibold focus:outline-none text-slate-900 dark:text-white"
-                          >
-                            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                            <option value="DD-MM-YYYY">DD-MM-YYYY</option>
-                            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                          </select>
-                        )}
-                      </div>
-
-                      <div className="pt-2.5 border-t border-slate-100 dark:border-zinc-800/80">
-                        <label className="flex items-start gap-2 cursor-pointer font-bold select-none text-slate-700 dark:text-zinc-200 mb-1.5">
-                          <input
-                            type="checkbox"
-                            checked={config.decimal_formatting}
-                            onChange={(e) => setConfig({ ...config, decimal_formatting: e.target.checked })}
-                            className="rounded cursor-pointer"
-                          />
-                          Decimal Rounding
-                        </label>
-                        {config.decimal_formatting && (
-                          <select
-                            value={config.decimal_format}
-                            onChange={(e) => setConfig({ ...config, decimal_format: e.target.value })}
-                            className="w-full px-1.5 py-1 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded font-semibold focus:outline-none text-slate-900 dark:text-white"
-                          >
-                            <option value="none">No Rounding</option>
-                            <option value="2">2 Decimal Places</option>
-                            <option value="3">3 Decimal Places</option>
-                            <option value="4">4 Decimal Places</option>
-                          </select>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* COLUMNS FILTER */}
-                <div className="border border-slate-150 dark:border-zinc-850 rounded-xl overflow-hidden">
-                  <button 
-                    onClick={() => toggleAccordion("variance")}
-                    className="w-full flex items-center justify-between p-3 text-left text-[11px] font-bold bg-slate-50/30 dark:bg-zinc-950/10 hover:bg-slate-50 dark:hover:bg-zinc-850 cursor-pointer"
-                  >
-                    <span>Columns Filter</span>
-                    <ChevronRight className={`w-3.5 h-3.5 transition duration-200 ${activeAccordion === "variance" ? "rotate-90" : ""}`} />
-                  </button>
-                  {activeAccordion === "variance" && (
-                    <div className="p-3 border-t border-slate-150 dark:border-zinc-850 space-y-2.5 text-[10px] text-slate-700 dark:text-zinc-200 animate-fade-in">
-                      <label className="flex items-center gap-2 cursor-pointer font-bold">
-                        <input
-                          type="checkbox"
-                          checked={config.remove_constant_columns}
-                          onChange={(e) => setConfig({ ...config, remove_constant_columns: e.target.checked })}
-                          className="rounded cursor-pointer"
-                        />
-                        Remove Constant Columns
-                      </label>
-
-                      <label className="flex items-center gap-2 cursor-pointer font-bold">
-                        <input
-                          type="checkbox"
-                          checked={config.remove_low_variance_columns}
-                          onChange={(e) => setConfig({ ...config, remove_low_variance_columns: e.target.checked })}
-                          className="rounded cursor-pointer"
-                        />
-                        Remove Low Variance Columns
-                      </label>
-
-                      {/* Premium Custom Slider */}
-                      <div className="pt-2 border-t border-slate-100 dark:border-zinc-800/80">
-                        <label className="flex items-start gap-2 cursor-pointer font-bold mb-1.5">
-                          <input
-                            type="checkbox"
-                            checked={config.remove_high_missing_columns}
-                            onChange={(e) => setConfig({ ...config, remove_high_missing_columns: e.target.checked })}
-                            className="rounded cursor-pointer"
-                          />
-                          Remove High-Null Columns
-                        </label>
-                        {config.remove_high_missing_columns && (
-                          <div className="pl-4 space-y-1.5">
-                            <div className="flex justify-between font-bold text-[9px] text-slate-500">
-                              <span>Threshold</span>
-                              <span className="text-primary font-black">{config.missing_threshold}% Nulls</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="10"
-                              max="95"
-                              step="5"
-                              value={config.missing_threshold}
-                              onChange={(e) => setConfig({ ...config, missing_threshold: Number(e.target.value) })}
-                              className="w-full h-2 rounded-lg bg-slate-200 dark:bg-zinc-800 appearance-none cursor-pointer accent-primary [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white dark:[&::-webkit-slider-thumb]:border-zinc-900 [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:transition-transform hover:[&::-webkit-slider-thumb]:scale-110 active:[&::-webkit-slider-thumb]:scale-95"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* VALIDATIONS & ENCODING */}
-                <div className="border border-slate-150 dark:border-zinc-850 rounded-xl overflow-hidden">
-                  <button 
-                    onClick={() => toggleAccordion("invalid")}
-                    className="w-full flex items-center justify-between p-3 text-left text-[11px] font-bold bg-slate-50/30 dark:bg-zinc-950/10 hover:bg-slate-50 dark:hover:bg-zinc-850 cursor-pointer"
-                  >
-                    <span>Validations & Encoding</span>
-                    <ChevronRight className={`w-3.5 h-3.5 transition duration-200 ${activeAccordion === "invalid" ? "rotate-90" : ""}`} />
-                  </button>
-                  {activeAccordion === "invalid" && (
-                    <div className="p-3 border-t border-slate-150 dark:border-zinc-850 space-y-3.5 text-[10px] animate-fade-in">
-                      <div>
-                        <label className="flex items-start gap-2 cursor-pointer font-bold select-none text-slate-700 dark:text-zinc-200">
-                          <input
-                            type="checkbox"
-                            checked={config.remove_invalid_values}
-                            onChange={(e) => setConfig({ ...config, remove_invalid_values: e.target.checked })}
-                            className="rounded cursor-pointer"
-                          />
-                          Remove Invalid Values
-                        </label>
-                        <p className="text-[8.5px] text-slate-455 leading-relaxed font-semibold pl-6 mt-0.5">
-                          Clean values like negative Age/Salary, malformed Email addresses, invalid phone formatting, or impossible dates.
-                        </p>
-                      </div>
-
-                      <div className="pt-2 border-t border-slate-100 dark:border-zinc-800/80">
-                        <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 dark:text-zinc-200">
-                          <input
-                            type="checkbox"
-                            checked={config.reset_index}
-                            onChange={(e) => setConfig({ ...config, reset_index: e.target.checked })}
-                            className="rounded cursor-pointer"
-                          />
-                          Reset Row Index (0 to N)
-                        </label>
-                      </div>
-
-                      <div className="pt-2.5 border-t border-slate-100 dark:border-zinc-800/80 text-slate-550">
-                        <label className="block font-bold mb-1">Import File Encoding</label>
-                        <select
-                          value={config.encoding}
-                          onChange={(e) => setConfig({ ...config, encoding: e.target.value })}
-                          className="w-full px-2 py-1 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded font-semibold focus:outline-none text-slate-900 dark:text-white"
-                        >
-                          <option value="UTF-8">Auto-Detect / UTF-8</option>
-                          <option value="ASCII">ASCII</option>
-                          <option value="Latin-1">Latin-1 (ISO-8859-1)</option>
-                          <option value="UTF-16">UTF-16</option>
-                        </select>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-              </div>
-
-              {/* Sidebar bottom action buttons */}
-              <div className="mt-5 pt-5 border-t border-slate-200 dark:border-zinc-800 flex flex-col gap-3">
-                
-                {/* 1. CLEAN (Standard Action) */}
-{/* 1. CLEAN (Standard Action) */}
-<button
-  onClick={handleClean}
-  disabled={processing}
-  className="group w-full px-4 py-3 text-sm font-bold rounded-xl bg-[#393e7f] dark:bg-[#a855f7] text-white dark:text-zinc-950 outline-2 outline-offset-[-2px] outline-[#393e7f] dark:outline-[#a855f7] border-none cursor-pointer transition-all duration-300 shadow-sm flex items-center justify-center gap-2 hover:bg-transparent dark:hover:bg-transparent hover:text-[#393e7f] dark:hover:text-[#c084fc] disabled:opacity-40 disabled:pointer-events-none"
->
-  {processing ? (
-    <RefreshCw className="w-4 h-4 animate-spin stroke-[2.5]" />
-  ) : (
-    <BrushCleaning className="w-4 h-4 transition-colors duration-300 stroke-[2.5]" />
-  )}
-  <span>Clean Features</span>
-</button>
-
-{/* 2. DECIDE (Auto Action) */}
-<button
-  onClick={handleDecide}
-  disabled={processing}
-  className="group w-full px-4 py-3 text-sm font-bold rounded-xl bg-indigo-600 dark:bg-indigo-400 text-white dark:text-zinc-950 outline-2 outline-offset-[-2px] outline-indigo-600 dark:outline-indigo-400 border-none cursor-pointer transition-all duration-300 shadow-sm flex items-center justify-center gap-2 hover:bg-transparent dark:hover:bg-transparent hover:text-indigo-600 dark:hover:text-indigo-300 disabled:opacity-40 disabled:pointer-events-none"
->
-  <Sparkles className="w-4 h-4 transition-colors duration-300 stroke-[2.5]" /> 
-  <span>Auto-Decide</span>
-</button>
-
-{/* 3. SIDEBAR RESET (Clears Checkboxes Only) */}
-<button
-  onClick={handleConfigReset}
-  disabled={processing}
-  className="group w-full px-4 py-3 text-sm font-bold rounded-xl bg-rose-600 dark:bg-rose-400 text-white dark:text-zinc-950 outline-2 outline-offset-[-2px] outline-rose-600 dark:outline-rose-400 border-none cursor-pointer transition-all duration-300 shadow-sm flex items-center justify-center gap-2 hover:bg-transparent dark:hover:bg-transparent hover:text-rose-600 dark:hover:text-rose-300 disabled:opacity-40 disabled:pointer-events-none"
->
-  <RefreshCw className="w-4 h-4 transition-colors duration-300 stroke-[2.5]" /> 
-  <span>Clear Sidebar Options</span>
-</button>
-
-              </div>
-
-            </div>
-          </div>
-
-        </div>
-      )}
-
-    </div>
-  );
+  </div>
+);
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import api from "../../services/api";
 import { MdHistory } from "react-icons/md"; // Upgraded history icon
 import {
@@ -12,12 +12,71 @@ import {
   LineChart,
   Trash2,
   AlertTriangle,
-  FileText
+  FileText,
+  ChevronDown
 } from "lucide-react";
 import { BouncyAccordion } from "../ui/BouncyAccordion";
 import AnimatedDownloadButton from "../ui/AnimatedDownloadButton";
 import RestoreButton from "../ui/RestoreButton";
 import RefreshButton from "../ui/RefreshButton";
+
+// Mobile Download Dropdown Component
+function MobileDownloadDropdown({ options }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative inline-block text-left" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen((prev) => !prev);
+        }}
+        className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 border border-slate-900 dark:border-white transition cursor-pointer shadow-xs active:scale-95 whitespace-nowrap"
+      >
+        <Download className="w-3.5 h-3.5" />
+        <span>Download</span>
+        <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 bottom-full mb-2 w-44 rounded-xl bg-white dark:bg-[#1f1f23] border border-slate-200 dark:border-zinc-700 shadow-xl p-1 z-50 animate-fade-in">
+          <div className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-zinc-500 px-2.5 py-1.5 border-b border-slate-100 dark:border-zinc-800/60">
+            Select Format
+          </div>
+          <div className="py-1 space-y-0.5">
+            {options.map((opt, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  opt.onClick();
+                  setIsOpen(false);
+                }}
+                className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800/80 rounded-lg transition flex items-center justify-between cursor-pointer"
+              >
+                <span>{opt.label}</span>
+                <Download className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Exact Delete Trash Button from Uiverse.io by philipo30 with animated lid
 function DeleteButton({ onClick, title = "Delete item" }) {
@@ -342,12 +401,12 @@ export default function HistoryView({
     <div className="space-y-6 text-slate-800 dark:text-zinc-100 max-w-4xl mx-auto animate-fade-in font-sans pb-10">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 py-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-0 py-1 mb-6">
         <div className="flex flex-col">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
             History
           </h1>
-          <p className="text-[11px] sm:text-xs font-medium text-slate-400 dark:text-zinc-400 mt-0.5">
+          <p className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-zinc-400 mt-0.5">
             Browse and download previously cleaned datasets, quality score records, and cleaning logs
           </p>
         </div>
@@ -472,6 +531,7 @@ export default function HistoryView({
             const isML = job.type === "training";
             const isVis = job.type === "visualization";
             const itemId = `${job.type || "clean"}-${job.id}`;
+
             // Visualization Module Accordion Item
             if (isVis) {
               return {
@@ -480,7 +540,7 @@ export default function HistoryView({
                 title: (
                   <div className="flex items-center justify-between gap-4 w-full pr-1">
                     <div className="flex items-center gap-4 sm:gap-4.5 min-w-0 flex-1">
-                      <LineChart className="w-5 h-5 text-primary shrink-0 ml-0.5" />
+                      <LineChart className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0 ml-0.5" />
                       <div className="min-w-0 flex-1">
                         <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate leading-snug">
                           {job.name}
@@ -492,7 +552,8 @@ export default function HistoryView({
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    {/* Desktop Only Actions in Header */}
+                    <div className="hidden sm:flex items-center gap-2 shrink-0">
                       <RestoreButton 
                         onClick={() => handleRestoreVisualization(job, itemId)}
                         loading={restoreLoading && activeRestoringId === itemId}
@@ -510,47 +571,109 @@ export default function HistoryView({
                 ),
                 description: (
                   <div className="space-y-5">
-                    <div className="flex flex-col md:flex-row gap-5 items-stretch">
-                      {job.preview_data && (
-                        <div className="w-full md:w-5/12 bg-slate-100 dark:bg-zinc-800/80 rounded-xl overflow-hidden flex items-center justify-center p-3 border border-slate-200 dark:border-zinc-700 min-h-[160px] max-h-56 shadow-inner">
-                          <img src={job.preview_data} alt={job.name} className="max-h-52 max-w-full object-contain rounded" />
-                        </div>
-                      )}
-                      <div className="flex-1 flex flex-col justify-between gap-3 w-full">
-                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Chart Name</span>
-                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block truncate">
-                            {job.name || "Untitled Chart"}
-                          </span>
-                        </div>
+                    {/* DESKTOP VIEW */}
+                    <div className="hidden sm:block space-y-5">
+                      <div className="flex flex-col md:flex-row gap-5 items-stretch">
+                        {job.preview_data && (
+                          <div className="w-full md:w-5/12 bg-slate-100 dark:bg-zinc-800/80 rounded-xl overflow-hidden flex items-center justify-center p-3 border border-slate-200 dark:border-zinc-700 min-h-[160px] max-h-56 shadow-inner">
+                            <img src={job.preview_data} alt={job.name} className="max-h-52 max-w-full object-contain rounded" />
+                          </div>
+                        )}
+                        <div className="flex-1 flex flex-col justify-between gap-3 w-full">
+                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 block">Chart Name</span>
+                            <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block truncate">
+                              {job.name || "Untitled Chart"}
+                            </span>
+                          </div>
 
-                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Target Library</span>
-                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block capitalize">
-                            {job.library || "Plotly"}
-                          </span>
-                        </div>
+                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 block">Target Library</span>
+                            <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block capitalize">
+                              {job.library || "Plotly"}
+                            </span>
+                          </div>
 
-                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Columns Plotted</span>
-                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
-                            X: <span className="text-primary font-extrabold">{job.config?.x_column || "N/A"}</span>
-                            <span className="mx-1.5 text-slate-300 dark:text-zinc-600">•</span>
-                            Y: <span className="text-primary font-extrabold">{job.config?.y_column || "N/A"}</span>
-                          </span>
+                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 block">Columns Plotted</span>
+                            <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
+                              X: <span className="text-purple-600 dark:text-purple-400 font-extrabold">{job.config?.x_column || "N/A"}</span>
+                              <span className="mx-1.5 text-slate-300 dark:text-zinc-600">•</span>
+                              Y: <span className="text-purple-600 dark:text-purple-400 font-extrabold">{job.config?.y_column || "N/A"}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Footer: Export Options */}
+                      <div className="pt-4 border-t border-slate-200 dark:border-zinc-800">
+                        <span className="text-[11px] uppercase font-extrabold tracking-wider text-slate-500 dark:text-zinc-400 block mb-3">Download Options</span>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <AnimatedDownloadButton label="PNG Image" onClick={() => handleExportVisualization(job, "png")} />
+                          <AnimatedDownloadButton label="SVG Vector" onClick={() => handleExportVisualization(job, "svg")} />
+                          <AnimatedDownloadButton label="JPEG Image" onClick={() => handleExportVisualization(job, "jpeg")} />
+                          <AnimatedDownloadButton label="PDF Document" onClick={() => handleExportVisualization(job, "pdf")} />
+                          <AnimatedDownloadButton label="HTML File" onClick={() => handleExportVisualization(job, "html")} />
                         </div>
                       </div>
                     </div>
 
-                    {/* Footer: Export Options */}
-                    <div className="pt-4 border-t border-slate-200 dark:border-zinc-800">
-                      <span className="text-[11px] uppercase font-extrabold tracking-wider text-slate-500 dark:text-zinc-400 block mb-3">Download Options</span>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <AnimatedDownloadButton label="PNG Image" onClick={() => handleExportVisualization(job, "png")} />
-                        <AnimatedDownloadButton label="SVG Vector" onClick={() => handleExportVisualization(job, "svg")} />
-                        <AnimatedDownloadButton label="JPEG Image" onClick={() => handleExportVisualization(job, "jpeg")} />
-                        <AnimatedDownloadButton label="PDF Document" onClick={() => handleExportVisualization(job, "pdf")} />
-                        <AnimatedDownloadButton label="HTML File" onClick={() => handleExportVisualization(job, "html")} />
+                    {/* MOBILE VIEW */}
+                    <div className="block sm:hidden space-y-4">
+                      {/* 1. Picture of Graph */}
+                      {job.preview_data && (
+                        <div className="w-full bg-slate-100 dark:bg-zinc-800/80 rounded-xl overflow-hidden flex items-center justify-center p-2.5 border border-slate-200 dark:border-zinc-700 min-h-[140px] max-h-48 shadow-inner">
+                          <img src={job.preview_data} alt={job.name} className="max-h-44 max-w-full object-contain rounded" />
+                        </div>
+                      )}
+
+                      {/* 2. [ | | ] 3-Column Row for Visualize */}
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                          <span className="text-[9px] uppercase font-bold text-slate-500 block truncate">Chart Name</span>
+                          <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 mt-1 block truncate">
+                            {job.name || "Chart"}
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                          <span className="text-[9px] uppercase font-bold text-slate-500 block truncate">Library</span>
+                          <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 mt-1 block capitalize truncate">
+                            {job.library || "Plotly"}
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                          <span className="text-[9px] uppercase font-bold text-slate-500 block truncate">Columns</span>
+                          <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 mt-1 block truncate">
+                            {job.config?.x_column || "X"} / {job.config?.y_column || "Y"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 3. Mobile Footer Bar: [ Download Dropdown | Restore | Delete ] */}
+                      <div className="pt-3 border-t border-slate-200 dark:border-zinc-800 flex items-center justify-between gap-2">
+                        <MobileDownloadDropdown
+                          options={[
+                            { label: "PNG Image", onClick: () => handleExportVisualization(job, "png") },
+                            { label: "SVG Vector", onClick: () => handleExportVisualization(job, "svg") },
+                            { label: "JPEG Image", onClick: () => handleExportVisualization(job, "jpeg") },
+                            { label: "PDF Document", onClick: () => handleExportVisualization(job, "pdf") },
+                            { label: "HTML File", onClick: () => handleExportVisualization(job, "html") },
+                          ]}
+                        />
+                        <div className="flex items-center gap-2">
+                          <RestoreButton
+                            onClick={() => handleRestoreVisualization(job, itemId)}
+                            loading={restoreLoading && activeRestoringId === itemId}
+                            title="Restore chart workspace"
+                          />
+                          <DeleteButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setItemToDelete({ id: job.id, type: job.type, name: job.name || job.dataset_name || "Visualization Chart" });
+                            }}
+                            title="Delete visualization record"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -568,7 +691,7 @@ export default function HistoryView({
                 title: (
                   <div className="flex items-center justify-between gap-4 w-full pr-1">
                     <div className="flex items-center gap-4 sm:gap-4.5 min-w-0 flex-1">
-                      <BrainCircuit className="w-5 h-5 text-primary shrink-0 ml-0.5" />
+                      <BrainCircuit className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0 ml-0.5" />
                       <div className="min-w-0 flex-1">
                         <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate leading-snug">
                           {job.dataset_name}
@@ -580,7 +703,8 @@ export default function HistoryView({
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    {/* Desktop Only Actions in Header */}
+                    <div className="hidden sm:flex items-center gap-2 shrink-0">
                       <RestoreButton 
                         onClick={() => handleRestoreMLJob(job, itemId)}
                         loading={restoreLoading && activeRestoringId === itemId}
@@ -598,35 +722,86 @@ export default function HistoryView({
                 ),
                 description: (
                   <div className="space-y-5">
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Champion Model</span>
-                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block capitalize truncate">
-                          {job.best_model_name?.replace('_', ' ') || "N/A"}
-                        </span>
+                    {/* DESKTOP VIEW */}
+                    <div className="hidden sm:block space-y-5">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Champion Model</span>
+                          <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block capitalize truncate">
+                            {job.best_model_name?.replace('_', ' ') || "N/A"}
+                          </span>
+                        </div>
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Evaluation Score</span>
+                          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 block">
+                            {(bestScore * 100).toFixed(2)}%
+                          </span>
+                        </div>
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block">Training Duration</span>
+                          <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                            {job.training_duration ? `${job.training_duration.toFixed(2)}s` : "N/A"}
+                          </span>
+                        </div>
                       </div>
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Evaluation Score</span>
-                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 block">
-                          {(bestScore * 100).toFixed(2)}%
-                        </span>
-                      </div>
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Training Duration</span>
-                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                          {job.training_duration ? `${job.training_duration.toFixed(2)}s` : "N/A"}
-                        </span>
+
+                      <div className="pt-4 border-t border-slate-200 dark:border-zinc-800">
+                        <span className="text-[11px] uppercase font-extrabold tracking-wider text-slate-500 dark:text-zinc-400 block mb-3">Download Options</span>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <AnimatedDownloadButton label="PKL Model File" onClick={() => handleDownloadML(job.id, "model")} />
+                          <AnimatedDownloadButton label="Predictions CSV" onClick={() => handleDownloadML(job.id, "predictions")} />
+                          <AnimatedDownloadButton label="PDF Report" onClick={() => handleDownloadML(job.id, "report")} />
+                        </div>
                       </div>
                     </div>
 
-                    {/* Footer: Downloads */}
-                    <div className="pt-4 border-t border-slate-200 dark:border-zinc-800">
-                      <span className="text-[11px] uppercase font-extrabold tracking-wider text-slate-500 dark:text-zinc-400 block mb-3">Download Options</span>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <AnimatedDownloadButton label="PKL Model File" onClick={() => handleDownloadML(job.id, "model")} />
-                        <AnimatedDownloadButton label="Predictions CSV" onClick={() => handleDownloadML(job.id, "predictions")} />
-                        <AnimatedDownloadButton label="PDF Report" onClick={() => handleDownloadML(job.id, "report")} />
+                    {/* MOBILE VIEW */}
+                    <div className="block sm:hidden space-y-4">
+                      {/* 1. [ | | ] 3-Column Row for ML */}
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                          <span className="text-[9px] uppercase font-bold text-slate-500 block truncate">Model</span>
+                          <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 mt-1 block capitalize truncate">
+                            {job.best_model_name?.replace('_', ' ') || "N/A"}
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                          <span className="text-[9px] uppercase font-bold text-slate-500 block truncate">Score</span>
+                          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1 block truncate">
+                            {(bestScore * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                          <span className="text-[9px] uppercase font-bold text-slate-500 block truncate">Duration</span>
+                          <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 mt-1 block truncate">
+                            {job.training_duration ? `${job.training_duration.toFixed(1)}s` : "N/A"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 2. Mobile Footer Bar: [ Download Dropdown | Restore | Delete ] */}
+                      <div className="pt-3 border-t border-slate-200 dark:border-zinc-800 flex items-center justify-between gap-2">
+                        <MobileDownloadDropdown
+                          options={[
+                            { label: "PKL Model File", onClick: () => handleDownloadML(job.id, "model") },
+                            { label: "Predictions CSV", onClick: () => handleDownloadML(job.id, "predictions") },
+                            { label: "PDF Report", onClick: () => handleDownloadML(job.id, "report") },
+                          ]}
+                        />
+                        <div className="flex items-center gap-2">
+                          <RestoreButton
+                            onClick={() => handleRestoreMLJob(job, itemId)}
+                            loading={restoreLoading && activeRestoringId === itemId}
+                            title="Restore training model workspace"
+                          />
+                          <DeleteButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setItemToDelete({ id: job.id, type: job.type, name: job.dataset_name || "ML Training Job" });
+                            }}
+                            title="Delete training model record"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -641,7 +816,7 @@ export default function HistoryView({
               title: (
                 <div className="flex items-center justify-between gap-4 w-full pr-1">
                   <div className="flex items-center gap-4 sm:gap-4.5 min-w-0 flex-1">
-                    <BrushCleaning className="w-5 h-5 text-primary shrink-0 ml-0.5" />
+                    <BrushCleaning className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0 ml-0.5" />
                     <div className="min-w-0 flex-1">
                       <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate leading-snug">
                         {job.dataset_name}
@@ -652,7 +827,8 @@ export default function HistoryView({
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  {/* Desktop Only Actions in Header */}
+                  <div className="hidden sm:flex items-center gap-2 shrink-0">
                     {onLoadWorkspace && (
                       <RestoreButton 
                         onClick={() => handleRestore(job, itemId)}
@@ -672,72 +848,152 @@ export default function HistoryView({
               ),
               description: (
                 <div className="space-y-5">
-                  {/* Stats Cards */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Rows Change</span>
-                      <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                        {job.before_stats?.rows} <span className="text-slate-400">→</span> {job.after_stats?.rows}
-                      </span>
-                    </div>
-                    <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Columns Change</span>
-                      <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                        {job.before_stats?.columns} <span className="text-slate-400">→</span> {job.after_stats?.columns}
-                      </span>
-                    </div>
-                    <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Missing Cells</span>
-                      <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                        {job.before_stats?.missing_summary?.total_missing} <span className="text-slate-400">→</span> {job.after_stats?.missing_summary?.total_missing}
-                      </span>
-                    </div>
-                    <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Duplicate Rows</span>
-                      <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                        {job.before_stats?.duplicate_summary?.duplicate_rows_count} <span className="text-slate-400">→</span> {job.after_stats?.duplicate_summary?.duplicate_rows_count}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Action Logs Toggle */}
-                  {job.logs && job.logs.length > 0 && (
-                    <div className="flex items-center justify-end pt-3 border-t border-slate-200 dark:border-zinc-800">
-                      <button 
-                        onClick={() => toggleLogs(job.id)}
-                        className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121] text-slate-800 dark:text-zinc-200"
-                      >
-                        <FileText className="w-4 h-4 text-primary" /> {openLogsJobId === job.id ? "Hide Action Logs" : `Action Logs (${job.logs.length})`}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Action Logs Terminal Box */}
-                  {openLogsJobId === job.id && job.logs && job.logs.length > 0 && (
-                    <div className="space-y-2 pt-2 animate-fade-in">
-                      <span className="text-[11px] uppercase font-bold text-slate-500 block">Actions Logs</span>
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#18181b] font-mono text-xs text-slate-700 dark:text-zinc-300 space-y-1.5 max-h-48 overflow-y-auto shadow-inner">
-                        {job.logs.map((log, lidx) => (
-                          <div key={lidx} className="flex items-start gap-2 border-b border-slate-100 dark:border-zinc-800/50 pb-1 last:border-0 last:pb-0">
-                            <span className="text-slate-400">›</span> 
-                            <span>{log}</span>
-                          </div>
-                        ))}
+                  {/* DESKTOP VIEW */}
+                  <div className="hidden sm:block space-y-5">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Rows Change</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                          {job.before_stats?.rows} <span className="text-slate-400">→</span> {job.after_stats?.rows}
+                        </span>
+                      </div>
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Columns Change</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                          {job.before_stats?.columns} <span className="text-slate-400">→</span> {job.after_stats?.columns}
+                        </span>
+                      </div>
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Missing Cells</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                          {job.before_stats?.missing_summary?.total_missing} <span className="text-slate-400">→</span> {job.after_stats?.missing_summary?.total_missing}
+                        </span>
+                      </div>
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Duplicate Rows</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                          {job.before_stats?.duplicate_summary?.duplicate_rows_count} <span className="text-slate-400">→</span> {job.after_stats?.duplicate_summary?.duplicate_rows_count}
+                        </span>
                       </div>
                     </div>
-                  )}
 
-                  {/* Footer: Downloads */}
-                  <div className="pt-4 border-t border-slate-200 dark:border-zinc-800">
-                    <span className="text-[11px] uppercase font-extrabold tracking-wider text-slate-500 dark:text-zinc-400 block mb-3">Download Options</span>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <AnimatedDownloadButton label="CSV File" onClick={() => handleDownload(job.dataset_id, "csv")} />
-                      <AnimatedDownloadButton label="JSON File" onClick={() => handleDownload(job.dataset_id, "json")} />
-                      <AnimatedDownloadButton label="Excel File" onClick={() => handleDownload(job.dataset_id, "excel")} />
-                      <AnimatedDownloadButton label="PDF Report" onClick={() => handleDownload(job.dataset_id, "report")} />
+                    {job.logs && job.logs.length > 0 && (
+                      <div className="flex items-center justify-end pt-3 border-t border-slate-200 dark:border-zinc-800">
+                        <button 
+                          onClick={() => toggleLogs(job.id)}
+                          className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121] text-slate-800 dark:text-zinc-200"
+                        >
+                          <FileText className="w-4 h-4 text-primary" /> {openLogsJobId === job.id ? "Hide Action Logs" : `Action Logs (${job.logs.length})`}
+                        </button>
+                      </div>
+                    )}
+
+                    {openLogsJobId === job.id && job.logs && job.logs.length > 0 && (
+                      <div className="space-y-2 pt-2 animate-fade-in">
+                        <span className="text-[11px] uppercase font-bold text-slate-500 block">Actions Logs</span>
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#18181b] font-mono text-xs text-slate-700 dark:text-zinc-300 space-y-1.5 max-h-48 overflow-y-auto shadow-inner">
+                          {job.logs.map((log, lidx) => (
+                            <div key={lidx} className="flex items-start gap-2 border-b border-slate-100 dark:border-zinc-800/50 pb-1 last:border-0 last:pb-0">
+                              <span className="text-slate-400">›</span> 
+                              <span>{log}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-4 border-t border-slate-200 dark:border-zinc-800">
+                      <span className="text-[11px] uppercase font-extrabold tracking-wider text-slate-500 dark:text-zinc-400 block mb-3">Download Options</span>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <AnimatedDownloadButton label="CSV File" onClick={() => handleDownload(job.dataset_id, "csv")} />
+                        <AnimatedDownloadButton label="JSON File" onClick={() => handleDownload(job.dataset_id, "json")} />
+                        <AnimatedDownloadButton label="Excel File" onClick={() => handleDownload(job.dataset_id, "excel")} />
+                        <AnimatedDownloadButton label="PDF Report" onClick={() => handleDownload(job.dataset_id, "report")} />
+                      </div>
                     </div>
                   </div>
 
+                  {/* MOBILE VIEW */}
+                  <div className="block sm:hidden space-y-4">
+                    {/* 1. [ | | | ] 4-Column Row for Cleaning */}
+                    <div className="grid grid-cols-4 gap-1 sm:gap-1.5">
+                      <div className="p-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                        <span className="text-[8px] uppercase font-bold text-slate-500 block truncate">Rows</span>
+                        <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 mt-0.5 block truncate">
+                          {job.before_stats?.rows}→{job.after_stats?.rows}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                        <span className="text-[8px] uppercase font-bold text-slate-500 block truncate">Cols</span>
+                        <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 mt-0.5 block truncate">
+                          {job.before_stats?.columns}→{job.after_stats?.columns}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                        <span className="text-[8px] uppercase font-bold text-slate-500 block truncate">Missing</span>
+                        <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 mt-0.5 block truncate">
+                          {job.before_stats?.missing_summary?.total_missing}→{job.after_stats?.missing_summary?.total_missing}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                        <span className="text-[8px] uppercase font-bold text-slate-500 block truncate">Dups</span>
+                        <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 mt-0.5 block truncate">
+                          {job.before_stats?.duplicate_summary?.duplicate_rows_count}→{job.after_stats?.duplicate_summary?.duplicate_rows_count}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 2. Action Log Button */}
+                    {job.logs && job.logs.length > 0 && (
+                      <div className="space-y-2">
+                        <button 
+                          onClick={() => toggleLogs(job.id)}
+                          className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition duration-150 flex justify-center items-center gap-2 cursor-pointer bg-white dark:bg-[#212121] text-slate-800 dark:text-zinc-200"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-primary" /> {openLogsJobId === job.id ? "Hide Action Logs" : `Action Logs (${job.logs.length})`}
+                        </button>
+
+                        {openLogsJobId === job.id && (
+                          <div className="p-3 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#18181b] font-mono text-[11px] text-slate-700 dark:text-zinc-300 space-y-1 max-h-40 overflow-y-auto shadow-inner animate-fade-in">
+                            {job.logs.map((log, lidx) => (
+                              <div key={lidx} className="flex items-start gap-1.5 border-b border-slate-100 dark:border-zinc-800/50 pb-1 last:border-0 last:pb-0">
+                                <span className="text-slate-400">›</span> 
+                                <span>{log}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 3. Mobile Footer Bar: [ Download Dropdown | Restore | Delete ] */}
+                    <div className="pt-3 border-t border-slate-200 dark:border-zinc-800 flex items-center justify-between gap-2">
+                      <MobileDownloadDropdown
+                        options={[
+                          { label: "CSV File", onClick: () => handleDownload(job.dataset_id, "csv") },
+                          { label: "JSON File", onClick: () => handleDownload(job.dataset_id, "json") },
+                          { label: "Excel File", onClick: () => handleDownload(job.dataset_id, "excel") },
+                          { label: "PDF Report", onClick: () => handleDownload(job.dataset_id, "report") },
+                        ]}
+                      />
+                      <div className="flex items-center gap-2">
+                        {onLoadWorkspace && (
+                          <RestoreButton
+                            onClick={() => handleRestore(job, itemId)}
+                            loading={restoreLoading && activeRestoringId === itemId}
+                            title="Restore cleaning workspace"
+                          />
+                        )}
+                        <DeleteButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setItemToDelete({ id: job.id, type: job.type, name: job.dataset_name || "Cleaning Record" });
+                          }}
+                          title="Delete cleaning record"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )
             };

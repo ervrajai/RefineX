@@ -287,7 +287,7 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
   return (
     <div className="flex flex-col gap-4 sm:gap-6 w-full max-w-md md:max-w-3xl lg:max-w-4xl mx-auto font-sans antialiased text-slate-900 dark:text-zinc-100 pb-16 px-3 sm:px-4 md:px-0">
       {/* Settings Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 py-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-0 py-1 mb-6">
         {/* Page Title */}
         <div className="flex flex-col">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">

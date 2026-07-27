@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import api from "../../services/api";
+import FileUpload from "./FileUpload";
 import GraphCanvas from "./GraphCanvas";
 import visualizationImg from "../../assets/icons/Visualization.png";
+import RecentDatasetPanel from "../ui/RecentDatasetPanel";
+import RefreshButton from "../ui/RefreshButton";
 import {
   Sparkles,
   LineChart,
@@ -36,6 +39,7 @@ import {
   Layers,
   Palette as PaletteIcon,
   X,
+  History,
 } from "lucide-react";
 
 // Initial Configuration Map
@@ -812,99 +816,59 @@ export default function VisualizationView({
   // Empty state selector
   if (!datasetId) {
     return (
-      <div className="space-y-6 max-w-4xl mx-auto font-sans pb-10">
-        <div className="p-8 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex flex-col items-center justify-center text-center py-14">
-          <div className="mb-6 flex items-center justify-center">
-            <img
-              src={visualizationImg}
-              alt="Visualization Studio"
-              className="w-28 h-28 sm:w-36 sm:h-36 object-contain select-none"
-            />
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-zinc-100 tracking-tight">
-            RefineX Data Visualization Studio
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-zinc-400 mt-2 max-w-md leading-relaxed">
-            Please select or load a dataset to configure variables, customize
-            themes, and export production-ready charts.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 w-full max-w-lg">
-            <button
-              onClick={() => setActiveTab("clean")}
-              className="p-5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-[#151516] hover:border-[#673ab7]/40 hover:bg-white dark:hover:bg-zinc-900 transition-colors shadow-sm text-left flex flex-col items-start gap-3 cursor-pointer group"
-            >
-              <div className="p-2 rounded-lg bg-[#673ab7]/10 text-[#673ab7] dark:text-[#a855f7]">
-                <Upload className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 block">
-                  Upload New Dataset
-                </span>
-                <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium leading-normal block mt-1">
-                  Upload a CSV or Excel document into the cleaning engine.
-                </span>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("history")}
-              className="p-5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-[#151516] hover:border-violet-500/40 hover:bg-white dark:hover:bg-zinc-900 transition-colors shadow-sm text-left flex flex-col items-start gap-3 cursor-pointer group"
-            >
-              <div className="p-2 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
-                <FolderOpen className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 block">
-                  Select from History
-                </span>
-                <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium leading-normal block mt-1">
-                  Select a previously cleaned dataset from your repository.
-                </span>
-              </div>
-            </button>
+      <div className="space-y-6 max-w-7xl mx-auto font-sans pb-10">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-0 py-1 mb-6">
+          <div className="flex flex-col">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Data Visualization
+            </h1>
+            <p className="text-[11px] sm:text-xs font-medium text-slate-400 dark:text-zinc-400 mt-0.5">
+              Configure data parameters, aesthetics, and layout controls to export production-ready charts
+            </p>
           </div>
         </div>
 
-        {datasetsList.length > 0 && (
-          <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
-            <h2 className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-[#673ab7] dark:text-[#a855f7]" />{" "}
-              Recent Datasets
-            </h2>
-            <div className="space-y-2">
-              {datasetsList.map((ds) => (
-                <div
-                  key={ds.id}
-                  className="flex justify-between items-center p-3.5 border border-slate-200 dark:border-zinc-800/80 rounded-xl hover:bg-slate-50/80 dark:hover:bg-zinc-900/50 transition-colors"
-                >
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-800 dark:text-zinc-200">
-                      {ds.name}
-                    </h3>
-                    <span className="text-[10px] text-slate-400 block mt-0.5">
-                      Uploaded {formatDate(ds.created_at)}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => handleSelectHistoryDataset(ds)}
-                    disabled={loadingDatasetId !== null}
-                    className="px-3 py-1.5 text-2xs font-bold text-[#673ab7] dark:text-[#a855f7] border border-[#673ab7]/30 dark:border-[#673ab7]/40 hover:bg-[#673ab7]/10 dark:hover:bg-[#673ab7]/20 rounded-lg cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                  >
-                    {loadingDatasetId === ds.id ? (
-                      <>
-                        <RefreshCw className="w-3 h-3 animate-spin" />{" "}
-                        Loading...
-                      </>
-                    ) : (
-                      "Visualize"
-                    )}
-                  </button>
-                </div>
-              ))}
-            </div>
+        {/* 70% / 30% Split Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* 70% Left: Upload Dropzone */}
+          <div className="lg:col-span-8 w-full">
+            <FileUpload
+              onFileUpload={async (file) => {
+                const formData = new FormData();
+                formData.append("file", file);
+                try {
+                  const uploadRes = await api.post("cleaning/upload/", formData, {
+                    headers: { "Content-Type": "multipart/form-data" }
+                  });
+                  const dsId = uploadRes.data.dataset_id;
+                  const previewRes = await api.get(`cleaning/${dsId}/preview/?offset=0&limit=100`);
+                  const analyzeRes = await api.get(`visualization/analyze/${dsId}/`);
+                  setDatasetId(dsId);
+                  setMetadata(previewRes.data.metadata);
+                  setPreview(previewRes.data);
+                  setReport(analyzeRes.data);
+                } catch (err) {
+                  console.error("Failed to upload dataset for visualization:", err);
+                }
+              }}
+              acceptedFormats={[".csv", ".xlsx", ".xls", ".json"]}
+              maxSizeMB={100}
+            />
           </div>
-        )}
+
+          {/* 30% Right: Recent Datasets Sidebar Card */}
+          {datasetsList.length > 0 && (
+            <div className="lg:col-span-4 w-full">
+              <RecentDatasetPanel
+                items={datasetsList}
+                onSelect={(ds) => handleSelectHistoryDataset(ds)}
+                onViewAll={() => setActiveTab("history")}
+                loadingId={loadingDatasetId}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Saved Graphs Gallery Card (When no dataset loaded - Outside View) */}
         {savedGraphs.length > 0 && (
@@ -1024,19 +988,20 @@ export default function VisualizationView({
 
   return (
     <div className="space-y-6 text-slate-800 dark:text-zinc-100 font-sans pb-10 max-w-7xl mx-auto">
-      {/* Top Banner Dashboard Profile */}
-      <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex flex-col lg:flex-row justify-between lg:items-center gap-6">
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-zinc-100 tracking-tight flex items-center gap-2.5">
-            <BarChart3 className="w-6 h-6 text-[#673ab7] dark:text-[#a855f7]" />{" "}
-            RefineX Data Visualization Studio
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-0 py-1 mb-6">
+        <div className="flex flex-col">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Data Visualization
           </h1>
-          <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
-            Configure data parameters, aesthetics, and layout controls. View and
-            copy auto-generated Python code instantly.
+          <p className="text-[11px] sm:text-xs font-medium text-slate-400 dark:text-zinc-400 mt-0.5">
+            Configure data parameters, aesthetics, and layout controls to export production-ready charts
           </p>
         </div>
-        <button
+
+        <RefreshButton
+          label="Switch Dataset"
+          title="Switch to another dataset"
           onClick={() => {
             setDatasetId(null);
             setProfile(null);
@@ -1045,16 +1010,13 @@ export default function VisualizationView({
             setChartImage("");
             setPythonCode("");
           }}
-          className="px-3.5 py-2 text-xs font-semibold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 rounded-xl cursor-pointer transition shadow-sm border border-slate-200 dark:border-zinc-700 flex items-center gap-2 self-start lg:self-center"
-        >
-          <RefreshCw className="w-3.5 h-3.5" /> Switch Dataset
-        </button>
+        />
       </div>
 
       {/* Dataset Profile Auto-Analysis Info Summary */}
       {profile && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
             <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
               Total Rows
             </span>
@@ -1062,7 +1024,7 @@ export default function VisualizationView({
               {profile.total_rows?.toLocaleString()}
             </span>
           </div>
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
             <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
               Total Columns
             </span>
@@ -1070,7 +1032,7 @@ export default function VisualizationView({
               {profile.total_columns}
             </span>
           </div>
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
             <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
               File Size
             </span>
@@ -1078,7 +1040,7 @@ export default function VisualizationView({
               {(profile.file_size / 1024).toFixed(1)} KB
             </span>
           </div>
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
             <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
               Numeric Columns
             </span>
@@ -1086,7 +1048,7 @@ export default function VisualizationView({
               {profile.numeric_columns?.length || 0}
             </span>
           </div>
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
             <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
               Categorical Columns
             </span>
@@ -1094,7 +1056,7 @@ export default function VisualizationView({
               {profile.categorical_columns?.length || 0}
             </span>
           </div>
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
             <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
               Duplicate Rows
             </span>
@@ -1109,7 +1071,7 @@ export default function VisualizationView({
 
       {/* Auto Graph Recommendation Carousel Row */}
       {recommendations.length > 0 && (
-        <div className="p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
+        <div className="p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
           <h2 className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-3.5 flex items-center gap-2">
             <Sparkles className="w-3.5 h-3.5 text-[#673ab7] dark:text-[#a855f7]" />{" "}
             Recommended Visualizations
@@ -1157,7 +1119,7 @@ export default function VisualizationView({
       {/* Main Studio layout: properties (left) + canvas (middle) + options (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         {/* Left Sidebar: Data mappings, specific chart settings, and color customizations */}
-        <div className="lg:col-span-1 p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm flex flex-col gap-4 max-w-full overflow-hidden">
+        <div className="lg:col-span-1 p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex flex-col gap-4 max-w-full overflow-hidden">
           <div className="space-y-4">
             {/* Side sub tab header */}
             <div className="grid grid-cols-3 border-b border-slate-200 dark:border-zinc-800 pb-2 text-center text-[10px] font-bold uppercase tracking-wider">
@@ -2523,7 +2485,7 @@ export default function VisualizationView({
 
         {/* Center Canvas Area: Toolbar + canvas display + smart notes list */}
         <div className="lg:col-span-3 space-y-6">
-          <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+          <div className="bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden flex flex-col">
             {/* Horizontal Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30">
               {/* Undo / Redo */}
@@ -2574,31 +2536,32 @@ export default function VisualizationView({
 
                 <div className="relative" ref={exportDropdownRef}>
                   <button
+                    type="button"
                     onClick={() => setShowExportDropdown(!showExportDropdown)}
                     disabled={exportLoading}
-                    className="px-3 py-1.5 text-xs font-semibold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 rounded-lg cursor-pointer flex items-center gap-1.5 border border-slate-200 dark:border-zinc-700 transition shadow-sm"
+                    className="group relative inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 border border-slate-900 dark:border-white cursor-pointer transition-all duration-200 shadow-xs active:scale-95 disabled:opacity-50 select-none"
                   >
-                    <Download className="w-3.5 h-3.5" />{" "}
-                    {exportLoading ? "Exporting..." : "Export"}{" "}
-                    <ChevronDown className="w-3 h-3" />
+                    <Download className="w-3.5 h-3.5 text-white dark:text-slate-900" />
+                    <span>{exportLoading ? "Exporting..." : "Export"}</span>
+                    <ChevronDown className={`w-3 h-3 text-white dark:text-slate-900 transition-transform duration-200 ${showExportDropdown ? "rotate-180" : ""}`} />
                   </button>
                   {showExportDropdown && (
-                    <div className="absolute right-0 mt-1.5 w-36 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-lg z-30 py-1.5 font-medium text-xs">
+                    <div className="absolute right-0 mt-2 w-38 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl z-30 py-1 font-bold text-xs overflow-hidden">
                       <button
-                        onClick={() => handleExport("png")}
-                        className="w-full text-left px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300"
+                        onClick={() => { handleExport("png"); setShowExportDropdown(false); }}
+                        className="w-full text-left px-3.5 py-2 hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300 transition-colors"
                       >
                         PNG Image
                       </button>
                       <button
-                        onClick={() => handleExport("svg")}
-                        className="w-full text-left px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300"
+                        onClick={() => { handleExport("svg"); setShowExportDropdown(false); }}
+                        className="w-full text-left px-3.5 py-2 hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300 transition-colors"
                       >
                         SVG Vector
                       </button>
                       <button
-                        onClick={() => handleExport("jpeg")}
-                        className="w-full text-left px-3.5 py-1.5 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300"
+                        onClick={() => { handleExport("jpeg"); setShowExportDropdown(false); }}
+                        className="w-full text-left px-3.5 py-2 hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer text-slate-700 dark:text-zinc-300 transition-colors"
                       >
                         JPEG Image
                       </button>

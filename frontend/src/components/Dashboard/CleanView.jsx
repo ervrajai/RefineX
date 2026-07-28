@@ -5,6 +5,7 @@ import RecentDatasetPanel from "../ui/RecentDatasetPanel";
 import { BouncyAccordion } from "../ui/BouncyAccordion";
 import RefreshButton from "../ui/RefreshButton";
 import DatasetTableViewer from "../ui/DatasetTableViewer";
+import { AnimatedSelect } from "../ui/AnimatedSelect";
 import { AnimatedCheckbox } from "../ui/AnimatedCheckbox";
 import {
   UploadCloud,
@@ -487,11 +488,25 @@ export default function CleanView({
     }
   };
 
-  // Download handler
-  const handleDownload = (type) => {
+  // Download handler (direct background download without page redirect)
+  const handleDownload = async (type) => {
     if (!datasetId) return;
-    const url = `http://localhost:8000/api/cleaning/${datasetId}/download/?type=${type}`;
-    window.open(url, "_blank");
+    try {
+      const res = await api.get(`cleaning/${datasetId}/download/?type=${type}`, {
+        responseType: "blob",
+      });
+      const ext = type === "excel" ? "xlsx" : type === "report" ? "pdf" : type === "log" ? "txt" : "csv";
+      const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.setAttribute("download", `cleaned_dataset_${datasetId}.${ext}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      setErrorMsg("Failed to download file. Please try again.");
+    }
   };
 
   // Sorting columns in preview table
@@ -580,8 +595,6 @@ export default function CleanView({
       remove_low_variance_columns: false, remove_invalid_values: false, remove_unwanted_columns: false,
       reset_index: false, encoding: "UTF-8"
     });
-    setSelectedUnwanted([]);
-    setManualTypes({});
     setSuccessMsg("Sidebar configuration cleared.");
   };
 
@@ -589,54 +602,54 @@ export default function CleanView({
   const cleaningAccordionItems = [
     {
       id: "colNames",
-      icon: <Type className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
-      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Column Names</span>,
+      icon: <Type className="w-4 h-4 text-slate-500 dark:text-zinc-400 shrink-0" />,
+      title: <span className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-zinc-100">Column Names</span>,
       description: (
-        <div className="space-y-2.5 text-[11px] select-none">
+        <div className="space-y-3 text-xs select-none">
           <AnimatedCheckbox
             checked={config.standardize_column_names}
             onChange={(e) => setConfig({ ...config, standardize_column_names: e.target.checked })}
             label="Standardize Column Names"
-            className="font-bold text-slate-800 dark:text-zinc-200"
+            className="font-bold text-slate-800 dark:text-zinc-200 text-xs sm:text-[13px]"
           />
           
           {config.standardize_column_names && (
-            <div className="pl-4 space-y-2 text-slate-600 dark:text-zinc-400 font-semibold text-[10.5px]">
+            <div className="pl-3.5 space-y-2.5 text-slate-600 dark:text-zinc-400 font-medium text-xs">
               <AnimatedCheckbox
                 checked={config.standardize_trim}
                 onChange={(e) => setConfig({ ...config, standardize_trim: e.target.checked })}
                 label="Trim leading/trailing spaces"
-                className="font-semibold text-slate-800 dark:text-zinc-200"
+                className="font-medium text-slate-700 dark:text-zinc-300 text-xs"
               />
               <AnimatedCheckbox
                 checked={config.standardize_replace_spaces}
                 onChange={(e) => setConfig({ ...config, standardize_replace_spaces: e.target.checked })}
                 label={'Replace spaces with "_"'}
-                className="font-semibold text-slate-800 dark:text-zinc-200"
+                className="font-medium text-slate-700 dark:text-zinc-300 text-xs"
               />
               <AnimatedCheckbox
                 checked={config.standardize_lowercase}
                 onChange={(e) => setConfig({ ...config, standardize_lowercase: e.target.checked })}
                 label="Convert to lowercase"
-                className="font-semibold text-slate-800 dark:text-zinc-200"
+                className="font-medium text-slate-700 dark:text-zinc-300 text-xs"
               />
               <AnimatedCheckbox
                 checked={config.standardize_remove_special}
                 onChange={(e) => setConfig({ ...config, standardize_remove_special: e.target.checked })}
                 label="Remove special characters"
-                className="font-semibold text-slate-800 dark:text-zinc-200"
+                className="font-medium text-slate-700 dark:text-zinc-300 text-xs"
               />
               <AnimatedCheckbox
                 checked={config.standardize_replace_multiple_underscores}
                 onChange={(e) => setConfig({ ...config, standardize_replace_multiple_underscores: e.target.checked })}
                 label="Replace multiple underscores"
-                className="font-semibold text-slate-800 dark:text-zinc-200"
+                className="font-medium text-slate-700 dark:text-zinc-300 text-xs"
               />
               <AnimatedCheckbox
                 checked={config.standardize_remove_outer_underscores}
                 onChange={(e) => setConfig({ ...config, standardize_remove_outer_underscores: e.target.checked })}
                 label="Remove leading/trailing '_'"
-                className="font-semibold text-slate-800 dark:text-zinc-200"
+                className="font-medium text-slate-700 dark:text-zinc-300 text-xs"
               />
             </div>
           )}
@@ -645,36 +658,37 @@ export default function CleanView({
     },
     {
       id: "missing",
-      icon: <HelpCircle className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
-      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Missing Values</span>,
+      icon: <HelpCircle className="w-4 h-4 text-slate-500 dark:text-zinc-400 shrink-0" />,
+      title: <span className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-zinc-100">Missing Values</span>,
       description: (
-        <div className="space-y-2.5 text-[11px]">
+        <div className="space-y-3 text-xs">
           <AnimatedCheckbox
             checked={config.handle_missing_values}
             onChange={(e) => setConfig({ ...config, handle_missing_values: e.target.checked })}
             label="Handle Missing Values"
-            className="font-bold text-slate-800 dark:text-zinc-200"
+            className="font-bold text-slate-800 dark:text-zinc-200 text-xs sm:text-[13px]"
           />
 
           {config.handle_missing_values && (
-            <div className="pl-4 space-y-2 text-slate-600 dark:text-zinc-400 font-semibold text-[10.5px]">
-              <label className="block font-bold text-slate-800 dark:text-zinc-200">Imputation Strategy</label>
-              <select
+            <div className="pl-3.5 space-y-2.5 text-xs text-slate-700 dark:text-zinc-300">
+              <label className="block font-semibold text-slate-800 dark:text-zinc-200 text-xs">Imputation Strategy</label>
+              <AnimatedSelect
                 value={config.missing_strategy}
-                onChange={(e) => setConfig({ ...config, missing_strategy: e.target.value })}
-                className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
-              >
-                <option value="nothing">Do Nothing</option>
-                <option value="remove_rows">Remove Rows</option>
-                <option value="remove_cols">Remove Columns</option>
-                <option value="fill_mean">Fill Mean (Numeric)</option>
-                <option value="fill_median">Fill Median (Numeric)</option>
-                <option value="fill_mode">Fill Mode</option>
-                <option value="ffill">Forward Fill</option>
-                <option value="bfill">Backward Fill</option>
-                <option value="interpolate">Interpolation (Numeric)</option>
-                <option value="custom_value">Custom Value</option>
-              </select>
+                onChange={(val) => setConfig({ ...config, missing_strategy: val })}
+                options={[
+                  { value: "nothing", label: "Do Nothing" },
+                  { value: "remove_rows", label: "Remove Rows" },
+                  { value: "remove_cols", label: "Remove Columns" },
+                  { value: "fill_mean", label: "Fill Mean (Numeric)" },
+                  { value: "fill_median", label: "Fill Median (Numeric)" },
+                  { value: "fill_mode", label: "Fill Mode" },
+                  { value: "ffill", label: "Forward Fill" },
+                  { value: "bfill", label: "Backward Fill" },
+                  { value: "interpolate", label: "Interpolation (Numeric)" },
+                  { value: "custom_value", label: "Custom Value" },
+                ]}
+                className="w-full"
+              />
 
               {config.missing_strategy === "custom_value" && (
                 <input
@@ -682,7 +696,7 @@ export default function CleanView({
                   placeholder="Type custom value..."
                   value={config.missing_custom_value}
                   onChange={(e) => setConfig({ ...config, missing_custom_value: e.target.value })}
-                  className="w-full px-2 py-1.5 mt-1 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
+                  className="w-full px-2.5 py-1.5 mt-1 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-medium text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 dark:focus:border-purple-400 text-slate-900 dark:text-white transition"
                 />
               )}
             </div>
@@ -692,38 +706,38 @@ export default function CleanView({
     },
     {
       id: "duplicates",
-      icon: <Copy className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
-      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Duplicates</span>,
+      icon: <Copy className="w-4 h-4 text-slate-500 dark:text-zinc-400 shrink-0" />,
+      title: <span className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-zinc-100">Duplicates</span>,
       description: (
-        <div className="space-y-2.5 text-[11px] text-slate-800 dark:text-zinc-200">
+        <div className="space-y-3 text-xs text-slate-800 dark:text-zinc-200">
           <AnimatedCheckbox
             checked={config.remove_duplicate_rows}
             onChange={(e) => setConfig({ ...config, remove_duplicate_rows: e.target.checked })}
             label="Remove Duplicate Rows"
-            className="font-bold"
+            className="font-bold text-xs sm:text-[13px]"
           />
           <AnimatedCheckbox
             checked={config.remove_duplicate_columns}
             onChange={(e) => setConfig({ ...config, remove_duplicate_columns: e.target.checked })}
             label="Remove Duplicate Columns"
-            className="font-bold"
+            className="font-bold text-xs sm:text-[13px]"
           />
         </div>
       )
     },
     {
       id: "numeric",
-      icon: <Hash className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
-      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Numeric Cleaning</span>,
+      icon: <Hash className="w-4 h-4 text-slate-500 dark:text-zinc-400 shrink-0" />,
+      title: <span className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-zinc-100">Numeric Cleaning</span>,
       description: (
-        <div className="space-y-2.5 text-[11px]">
+        <div className="space-y-2.5 text-xs">
           <AnimatedCheckbox
             checked={config.clean_numeric_values}
             onChange={(e) => setConfig({ ...config, clean_numeric_values: e.target.checked })}
             label="Clean Numeric Columns"
-            className="font-bold text-slate-800 dark:text-zinc-200"
+            className="font-bold text-slate-800 dark:text-zinc-200 text-xs sm:text-[13px]"
           />
-          <p className="text-[9.5px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium pl-6">
+          <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed font-normal pl-1 pt-0.5">
             Auto-extract numerical numbers. Cleans currency symbols (₹, $, €, £), percentages (%), spaces, and commas separator.
           </p>
         </div>
@@ -731,75 +745,76 @@ export default function CleanView({
     },
     {
       id: "text",
-      icon: <FileText className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
-      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Text & Blank Cleaning</span>,
+      icon: <FileText className="w-4 h-4 text-slate-500 dark:text-zinc-400 shrink-0" />,
+      title: <span className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-zinc-100">Text & Blank Cleaning</span>,
       description: (
-        <div className="space-y-2.5 text-[11px]">
+        <div className="space-y-3 text-xs">
           <AnimatedCheckbox
             checked={config.text_cleaning}
             onChange={(e) => setConfig({ ...config, text_cleaning: e.target.checked })}
             label="Enable Text Cleaning"
-            className="font-bold text-slate-800 dark:text-zinc-200"
+            className="font-bold text-slate-800 dark:text-zinc-200 text-xs sm:text-[13px]"
           />
 
           {config.text_cleaning && (
-            <div className="pl-4 space-y-2 text-slate-600 dark:text-zinc-400 font-semibold text-[10.5px]">
+            <div className="pl-3.5 space-y-2.5 text-xs text-slate-700 dark:text-zinc-300">
               <AnimatedCheckbox
                 checked={config.text_trim}
                 onChange={(e) => setConfig({ ...config, text_trim: e.target.checked })}
                 label="Trim leading/trailing spaces"
-                className="font-semibold text-slate-800 dark:text-zinc-200"
+                className="font-medium text-xs text-slate-700 dark:text-zinc-300"
               />
               <AnimatedCheckbox
                 checked={config.text_remove_multiple_spaces}
                 onChange={(e) => setConfig({ ...config, text_remove_multiple_spaces: e.target.checked })}
                 label="Remove multiple spaces"
-                className="font-semibold text-slate-800 dark:text-zinc-200"
+                className="font-medium text-xs text-slate-700 dark:text-zinc-300"
               />
               <AnimatedCheckbox
                 checked={config.text_remove_html}
                 onChange={(e) => setConfig({ ...config, text_remove_html: e.target.checked })}
                 label="Remove HTML tags"
-                className="font-semibold text-slate-800 dark:text-zinc-200"
+                className="font-medium text-xs text-slate-700 dark:text-zinc-300"
               />
               <AnimatedCheckbox
                 checked={config.text_remove_emoji}
                 onChange={(e) => setConfig({ ...config, text_remove_emoji: e.target.checked })}
                 label="Remove emojis & non-ASCII"
-                className="font-semibold text-slate-800 dark:text-zinc-200"
+                className="font-medium text-xs text-slate-700 dark:text-zinc-300"
               />
               <AnimatedCheckbox
                 checked={config.text_remove_tabs_newlines}
                 onChange={(e) => setConfig({ ...config, text_remove_tabs_newlines: e.target.checked })}
                 label="Remove tabs & newlines"
-                className="font-semibold text-slate-800 dark:text-zinc-200"
+                className="font-medium text-xs text-slate-700 dark:text-zinc-300"
               />
 
-              <div className="space-y-1 mt-1">
-                <label className="block font-bold text-slate-800 dark:text-zinc-200">Case Convert Mode</label>
-                <select
+              <div className="space-y-1 mt-1.5">
+                <label className="block font-semibold text-xs text-slate-800 dark:text-zinc-200 mb-1">Case Convert Mode</label>
+                <AnimatedSelect
                   value={config.text_case_mode}
-                  onChange={(e) => setConfig({ ...config, text_case_mode: e.target.value })}
-                  className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg focus:outline-none text-slate-900 dark:text-white"
-                >
-                  <option value="none">No case change</option>
-                  <option value="upper">UPPERCASE</option>
-                  <option value="lower">lowercase</option>
-                  <option value="title">Title Case</option>
-                  <option value="sentence">Sentence case</option>
-                </select>
+                  onChange={(val) => setConfig({ ...config, text_case_mode: val })}
+                  options={[
+                    { value: "none", label: "No case change" },
+                    { value: "upper", label: "UPPERCASE" },
+                    { value: "lower", label: "lowercase" },
+                    { value: "title", label: "Title Case" },
+                    { value: "sentence", label: "Sentence case" },
+                  ]}
+                  className="w-full"
+                />
               </div>
             </div>
           )}
 
-          <div className="pt-2 border-t border-slate-200/60 dark:border-zinc-800/80">
+          <div className="pt-2.5 border-t border-slate-200/60 dark:border-zinc-800/80">
             <AnimatedCheckbox
               checked={config.blank_value_detection}
               onChange={(e) => setConfig({ ...config, blank_value_detection: e.target.checked })}
               label="Blank Value Detection"
-              className="font-bold text-slate-800 dark:text-zinc-200"
+              className="font-bold text-slate-800 dark:text-zinc-200 text-xs sm:text-[13px]"
             />
-            <p className="text-[9px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium pl-6 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed font-normal pl-1 mt-1">
               Treat cell strings like "NA", "N/A", "NULL", "null", "--", "-", "Unknown", "None", spaces as Missing (NaN).
             </p>
           </div>
@@ -808,20 +823,20 @@ export default function CleanView({
     },
     {
       id: "types",
-      icon: <Layers className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
-      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Columns & Type Casting</span>,
+      icon: <Layers className="w-4 h-4 text-slate-500 dark:text-zinc-400 shrink-0" />,
+      title: <span className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-zinc-100">Columns & Type Casting</span>,
       description: (
-        <div className="space-y-2.5 text-[11px]">
+        <div className="space-y-3 text-xs">
           <div>
-            <span className="font-bold text-slate-800 dark:text-zinc-200 block mb-1">Remove Columns</span>
-            <div className="max-h-28 overflow-y-auto border border-slate-200 dark:border-zinc-800 rounded-lg p-2 space-y-1 bg-slate-50/50 dark:bg-zinc-900/50">
+            <span className="font-semibold text-xs text-slate-800 dark:text-zinc-200 block mb-1.5">Remove Columns</span>
+            <div className="max-h-32 overflow-y-auto border border-slate-200 dark:border-zinc-800 rounded-lg p-2.5 space-y-1.5 bg-slate-50/50 dark:bg-zinc-900/50">
               {preview?.columns?.map(col => (
-                <label key={col} className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700 dark:text-zinc-300">
+                <label key={col} className="flex items-center gap-2 cursor-pointer font-medium text-xs text-slate-700 dark:text-zinc-300">
                   <input
                     type="checkbox"
                     checked={selectedUnwanted.includes(col)}
                     onChange={() => handleUnwantedToggle(col)}
-                    className="rounded text-[9px] cursor-pointer"
+                    className="rounded text-xs cursor-pointer accent-purple-600"
                   />
                   {col}
                 </label>
@@ -829,43 +844,45 @@ export default function CleanView({
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-200/60 dark:border-zinc-800/80">
-<AnimatedCheckbox
-            checked={config.data_type_conversion}
-            onChange={(e) => setConfig({ ...config, data_type_conversion: e.target.checked })}
-            label="Convert Data Types"
-            className="font-bold text-slate-800 dark:text-zinc-200"
-          />
+          <div className="pt-2.5 border-t border-slate-200/60 dark:border-zinc-800/80">
+            <AnimatedCheckbox
+              checked={config.data_type_conversion}
+              onChange={(e) => setConfig({ ...config, data_type_conversion: e.target.checked })}
+              label="Convert Data Types"
+              className="font-bold text-slate-800 dark:text-zinc-200 text-xs sm:text-[13px]"
+            />
             
             {config.data_type_conversion && (
-              <div className="pl-4 mt-2 space-y-2">
-                <label className="block font-bold text-slate-800 dark:text-zinc-200">Conversion Mode</label>
-                <select
+              <div className="pl-3.5 mt-2.5 space-y-2.5">
+                <label className="block font-semibold text-xs text-slate-800 dark:text-zinc-200">Conversion Mode</label>
+                <AnimatedSelect
                   value={config.type_conversion_mode}
-                  onChange={(e) => setConfig({ ...config, type_conversion_mode: e.target.value })}
-                  className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
-                >
-                  <option value="auto">Auto-Detect types</option>
-                  <option value="manual">Manual casting</option>
-                </select>
+                  onChange={(val) => setConfig({ ...config, type_conversion_mode: val })}
+                  options={[
+                    { value: "auto", label: "Auto-Detect types" },
+                    { value: "manual", label: "Manual casting" },
+                  ]}
+                  className="w-full"
+                />
 
                 {config.type_conversion_mode === "manual" && (
-                  <div className="space-y-1.5 max-h-32 overflow-y-auto border p-1.5 rounded-lg bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800">
+                  <div className="space-y-2 max-h-36 overflow-y-auto border p-2 rounded-lg bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800">
                     {preview?.columns?.map((col) => (
-                      <div key={col} className="flex items-center justify-between gap-1">
-                        <span className="font-semibold text-slate-600 dark:text-zinc-400 truncate max-w-[80px]">{col}</span>
-                        <select
+                      <div key={col} className="flex items-center justify-between gap-1.5">
+                        <span className="font-medium text-xs text-slate-600 dark:text-zinc-400 truncate max-w-[100px]">{col}</span>
+                        <AnimatedSelect
                           value={manualTypes[col] || "string"}
-                          onChange={(e) => handleManualTypeChange(col, e.target.value)}
-                          className="px-1.5 py-0.5 border rounded bg-transparent font-medium border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 cursor-pointer text-[10px]"
-                        >
-                          <option value="string">String</option>
-                          <option value="integer">Integer</option>
-                          <option value="float">Float</option>
-                          <option value="datetime">Datetime</option>
-                          <option value="boolean">Boolean</option>
-                          <option value="category">Category</option>
-                        </select>
+                          onChange={(val) => handleManualTypeChange(col, val)}
+                          options={[
+                            { value: "string", label: "String" },
+                            { value: "integer", label: "Integer" },
+                            { value: "float", label: "Float" },
+                            { value: "datetime", label: "Datetime" },
+                            { value: "boolean", label: "Boolean" },
+                            { value: "category", label: "Category" },
+                          ]}
+                          className="w-28"
+                        />
                       </div>
                     ))}
                   </div>
@@ -878,36 +895,38 @@ export default function CleanView({
     },
     {
       id: "outliers",
-      icon: <AlertTriangle className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
-      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Outlier Handling</span>,
+      icon: <AlertTriangle className="w-4 h-4 text-slate-500 dark:text-zinc-400 shrink-0" />,
+      title: <span className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-zinc-100">Outlier Handling</span>,
       description: (
-        <div className="space-y-2.5 text-[11px]">
+        <div className="space-y-3 text-xs">
           <div>
-            <label className="block font-bold mb-1 text-slate-800 dark:text-zinc-200">Handling Strategy</label>
-            <select
+            <label className="block font-semibold mb-1 text-slate-800 dark:text-zinc-200 text-xs">Handling Strategy</label>
+            <AnimatedSelect
               value={config.outlier_strategy}
-              onChange={(e) => setConfig({ ...config, outlier_strategy: e.target.value })}
-              className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
-            >
-              <option value="ignore">Ignore / Do nothing</option>
-              <option value="remove">Remove Outlier Rows</option>
-              <option value="cap">Cap Outliers (Boundaries)</option>
-              <option value="replace_mean">Replace with Mean</option>
-              <option value="replace_median">Replace with Median</option>
-            </select>
+              onChange={(val) => setConfig({ ...config, outlier_strategy: val })}
+              options={[
+                { value: "ignore", label: "Ignore / Do nothing" },
+                { value: "remove", label: "Remove Outlier Rows" },
+                { value: "cap", label: "Cap Outliers (Boundaries)" },
+                { value: "replace_mean", label: "Replace with Mean" },
+                { value: "replace_median", label: "Replace with Median" },
+              ]}
+              className="w-full"
+            />
           </div>
 
           {config.outlier_strategy !== "ignore" && (
             <div>
-              <label className="block font-bold mb-1 text-slate-800 dark:text-zinc-200">Assessment Method</label>
-              <select
+              <label className="block font-semibold mb-1 text-slate-800 dark:text-zinc-200 text-xs">Assessment Method</label>
+              <AnimatedSelect
                 value={config.outlier_method}
-                onChange={(e) => setConfig({ ...config, outlier_method: e.target.value })}
-                className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
-              >
-                <option value="iqr">IQR (1.5 IQR range)</option>
-                <option value="z_score">Z-Score (3.0 StdDev)</option>
-              </select>
+                onChange={(val) => setConfig({ ...config, outlier_method: val })}
+                options={[
+                  { value: "iqr", label: "IQR (1.5 IQR range)" },
+                  { value: "z_score", label: "Z-Score (3.0 StdDev)" },
+                ]}
+                className="w-full"
+              />
             </div>
           )}
         </div>
@@ -915,48 +934,50 @@ export default function CleanView({
     },
     {
       id: "dateDecimal",
-      icon: <Calendar className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
-      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Dates & Decimals</span>,
+      icon: <Calendar className="w-4 h-4 text-slate-500 dark:text-zinc-400 shrink-0" />,
+      title: <span className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-zinc-100">Dates & Decimals</span>,
       description: (
-        <div className="space-y-3 text-[11px]">
+        <div className="space-y-3 text-xs">
           <div>
             <AnimatedCheckbox
               checked={config.date_formatting}
               onChange={(e) => setConfig({ ...config, date_formatting: e.target.checked })}
               label="Format Dates"
-              className="font-bold text-slate-800 dark:text-zinc-200"
+              className="font-bold text-slate-800 dark:text-zinc-200 text-xs sm:text-[13px]"
             />
             {config.date_formatting && (
-              <select
+              <AnimatedSelect
                 value={config.date_format}
-                onChange={(e) => setConfig({ ...config, date_format: e.target.value })}
-                className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
-              >
-                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                <option value="DD-MM-YYYY">DD-MM-YYYY</option>
-                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-              </select>
+                onChange={(val) => setConfig({ ...config, date_format: val })}
+                options={[
+                  { value: "YYYY-MM-DD", label: "YYYY-MM-DD" },
+                  { value: "DD-MM-YYYY", label: "DD-MM-YYYY" },
+                  { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
+                ]}
+                className="w-full mt-2"
+              />
             )}
           </div>
 
-          <div className="pt-2 border-t border-slate-200/60 dark:border-zinc-800/80">
+          <div className="pt-2.5 border-t border-slate-200/60 dark:border-zinc-800/80">
             <AnimatedCheckbox
               checked={config.decimal_formatting}
               onChange={(e) => setConfig({ ...config, decimal_formatting: e.target.checked })}
               label="Decimal Rounding"
-              className="font-bold text-slate-800 dark:text-zinc-200"
+              className="font-bold text-slate-800 dark:text-zinc-200 text-xs sm:text-[13px]"
             />
             {config.decimal_formatting && (
-              <select
+              <AnimatedSelect
                 value={config.decimal_format}
-                onChange={(e) => setConfig({ ...config, decimal_format: e.target.value })}
-                className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
-              >
-                <option value="none">No Rounding</option>
-                <option value="2">2 Decimal Places</option>
-                <option value="3">3 Decimal Places</option>
-                <option value="4">4 Decimal Places</option>
-              </select>
+                onChange={(val) => setConfig({ ...config, decimal_format: val })}
+                options={[
+                  { value: "none", label: "No Rounding" },
+                  { value: "2", label: "2 Decimal Places" },
+                  { value: "3", label: "3 Decimal Places" },
+                  { value: "4", label: "4 Decimal Places" },
+                ]}
+                className="w-full mt-2"
+              />
             )}
           </div>
         </div>
@@ -964,36 +985,36 @@ export default function CleanView({
     },
     {
       id: "variance",
-      icon: <Filter className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
-      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Columns Filter</span>,
+      icon: <Filter className="w-4 h-4 text-slate-500 dark:text-zinc-400 shrink-0" />,
+      title: <span className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-zinc-100">Columns Filter</span>,
       description: (
-        <div className="space-y-2.5 text-[11px] text-slate-800 dark:text-zinc-200">
+        <div className="space-y-3 text-xs text-slate-800 dark:text-zinc-200">
           <AnimatedCheckbox
             checked={config.remove_constant_columns}
             onChange={(e) => setConfig({ ...config, remove_constant_columns: e.target.checked })}
             label="Remove Constant Columns"
-            className="font-bold"
+            className="font-bold text-xs sm:text-[13px]"
           />
 
           <AnimatedCheckbox
             checked={config.remove_low_variance_columns}
             onChange={(e) => setConfig({ ...config, remove_low_variance_columns: e.target.checked })}
             label="Remove Low Variance Columns"
-            className="font-bold"
+            className="font-bold text-xs sm:text-[13px]"
           />
 
-          <div className="pt-2 border-t border-slate-200/60 dark:border-zinc-800/80">
+          <div className="pt-2.5 border-t border-slate-200/60 dark:border-zinc-800/80">
             <AnimatedCheckbox
               checked={config.remove_high_missing_columns}
               onChange={(e) => setConfig({ ...config, remove_high_missing_columns: e.target.checked })}
               label="Remove High-Null Columns"
-              className="font-bold"
+              className="font-bold text-xs sm:text-[13px]"
             />
             {config.remove_high_missing_columns && (
-              <div className="pl-4 space-y-1.5">
-                <div className="flex justify-between font-bold text-[10px] text-slate-500">
+              <div className="pl-3.5 space-y-2 mt-2">
+                <div className="flex justify-between font-semibold text-xs text-slate-600 dark:text-zinc-400">
                   <span>Threshold</span>
-                  <span className="text-primary font-black">{config.missing_threshold}% Nulls</span>
+                  <span className="text-purple-600 dark:text-purple-400 font-bold">{config.missing_threshold}% Nulls</span>
                 </div>
                 <input
                   type="range"
@@ -1002,7 +1023,7 @@ export default function CleanView({
                   step="5"
                   value={config.missing_threshold}
                   onChange={(e) => setConfig({ ...config, missing_threshold: Number(e.target.value) })}
-                  className="w-full h-2 rounded-lg bg-slate-200 dark:bg-zinc-800 appearance-none cursor-pointer accent-primary [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white dark:[&::-webkit-slider-thumb]:border-zinc-900 [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:transition-transform hover:[&::-webkit-slider-thumb]:scale-110 active:[&::-webkit-slider-thumb]:scale-95"
+                  className="w-full h-2 rounded-lg bg-slate-200 dark:bg-zinc-800 appearance-none cursor-pointer accent-purple-600 dark:accent-purple-400"
                 />
               </div>
             )}
@@ -1012,43 +1033,44 @@ export default function CleanView({
     },
     {
       id: "invalid",
-      icon: <ShieldCheck className="w-4 h-4 text-slate-500 dark:text-zinc-400" />,
-      title: <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Validations & Encoding</span>,
+      icon: <ShieldCheck className="w-4 h-4 text-slate-500 dark:text-zinc-400 shrink-0" />,
+      title: <span className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-zinc-100">Validations & Encoding</span>,
       description: (
-        <div className="space-y-3 text-[11px]">
+        <div className="space-y-3 text-xs">
           <div>
             <AnimatedCheckbox
               checked={config.remove_invalid_values}
               onChange={(e) => setConfig({ ...config, remove_invalid_values: e.target.checked })}
               label="Remove Invalid Values"
-              className="font-bold text-slate-800 dark:text-zinc-200"
+              className="font-bold text-slate-800 dark:text-zinc-200 text-xs sm:text-[13px]"
             />
-            <p className="text-[9px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium pl-6 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed font-normal pl-1 mt-1">
               Clean values like negative Age/Salary, malformed Email addresses, invalid phone formatting, or impossible dates.
             </p>
           </div>
 
-          <div className="pt-2 border-t border-slate-200/60 dark:border-zinc-800/80">
+          <div className="pt-2.5 border-t border-slate-200/60 dark:border-zinc-800/80">
             <AnimatedCheckbox
               checked={config.reset_index}
               onChange={(e) => setConfig({ ...config, reset_index: e.target.checked })}
               label="Reset Row Index (0 to N)"
-              className="font-bold text-slate-800 dark:text-zinc-200"
+              className="font-bold text-slate-800 dark:text-zinc-200 text-xs sm:text-[13px]"
             />
           </div>
 
-          <div className="pt-2 border-t border-slate-200/60 dark:border-zinc-800/80 text-slate-600 dark:text-zinc-400">
-            <label className="block font-bold text-slate-800 dark:text-zinc-200 mb-1">Import File Encoding</label>
-            <select
+          <div className="pt-2.5 border-t border-slate-200/60 dark:border-zinc-800/80 text-slate-600 dark:text-zinc-400">
+            <label className="block font-semibold text-xs text-slate-800 dark:text-zinc-200 mb-1">Import File Encoding</label>
+            <AnimatedSelect
               value={config.encoding}
-              onChange={(e) => setConfig({ ...config, encoding: e.target.value })}
-              className="w-full px-2 py-1.5 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg font-semibold focus:outline-none text-slate-900 dark:text-white"
-            >
-              <option value="UTF-8">Auto-Detect / UTF-8</option>
-              <option value="ASCII">ASCII</option>
-              <option value="Latin-1">Latin-1 (ISO-8859-1)</option>
-              <option value="UTF-16">UTF-16</option>
-            </select>
+              onChange={(val) => setConfig({ ...config, encoding: val })}
+              options={[
+                { value: "UTF-8", label: "Auto-Detect / UTF-8" },
+                { value: "ASCII", label: "ASCII" },
+                { value: "Latin-1", label: "Latin-1 (ISO-8859-1)" },
+                { value: "UTF-16", label: "UTF-16" },
+              ]}
+              className="w-full"
+            />
           </div>
         </div>
       )
@@ -1243,11 +1265,12 @@ export default function CleanView({
           {/* WORKSPACE LAYOUT (25% Left Sidebar / 75% Right Content Area) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            {/* LEFT 25% STICKY SIDEBAR (Cleaning Configuration Options) */}
-            <div className="lg:col-span-3 space-y-4 lg:sticky lg:top-4 z-10 max-h-[calc(100vh-60px)] overflow-y-auto pr-1">
+            {/* LEFT SIDEBAR (Cleaning Configuration Options) */}
+            <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-4 z-10 max-h-[calc(100vh-60px)] overflow-y-auto pr-0.5">
               <div className="p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
-                <h2 className="text-xs font-black text-black dark:text-white uppercase tracking-wider flex items-center gap-1.5 pb-3 border-b border-slate-150 dark:border-zinc-850 mb-3">
-                  <Settings className="w-4 h-4 text-primary" /> Cleaning Configuration
+                <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-3 pb-3 border-b border-slate-150 dark:border-zinc-800 mb-3.5">
+                  <Settings className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                  <span>Cleaning Configuration</span>
                 </h2>
 
                 <BouncyAccordion
@@ -1256,8 +1279,8 @@ export default function CleanView({
                   onValueChange={(val) => setActiveAccordion(val)}
                   collapsible={true}
                   classNames={{
-                    trigger: "py-2.5 px-3.5 min-h-[44px]",
-                    description: "p-3.5"
+                    trigger: "py-3 px-3.5 min-h-[46px]",
+                    description: "p-3.5 sm:p-4"
                   }}
                 />
 
@@ -1326,8 +1349,8 @@ export default function CleanView({
               </div>
             </div>
 
-            {/* RIGHT 75% CONTAINER (Dataset Table Viewer & Tabbed Reports) */}
-            <div className="lg:col-span-9 space-y-6">
+            {/* RIGHT CONTAINER (Dataset Table Viewer & Tabbed Reports) */}
+            <div className="lg:col-span-8 space-y-6 min-w-0">
               
               {/* DATASET TABLE VIEWER COMPONENT */}
               <DatasetTableViewer
@@ -1346,55 +1369,55 @@ export default function CleanView({
                 totalPages={totalPages}
               />
 
-            {/* TABED REPORTS PANEL */}
+            {/* TABBED REPORTS PANEL */}
             <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm overflow-hidden">
-              <div className="flex flex-wrap border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-950/20 px-2 pt-2">
+              <div className="flex flex-wrap border-b border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-950/20 px-3 pt-2 gap-2">
                 <button
                   onClick={() => setActiveReportTab("profile")}
-                  className={`px-4 py-2.5 text-xs font-bold border-b-2 transition duration-200 cursor-pointer ${
+                  className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors duration-150 cursor-pointer ${
                     activeReportTab === "profile" 
-                      ? "border-primary text-primary" 
-                      : "border-transparent text-slate-550 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                      ? "border-purple-600 text-purple-600 dark:border-purple-400 dark:text-purple-400 font-extrabold" 
+                      : "border-transparent text-slate-500 dark:text-zinc-400 hover:text-purple-600 dark:hover:text-purple-400"
                   }`}
                 >
                   Dataset Profile Report
                 </button>
                 <button
                   onClick={() => setActiveReportTab("missing")}
-                  className={`px-4 py-2.5 text-xs font-bold border-b-2 transition duration-200 cursor-pointer ${
+                  className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors duration-150 cursor-pointer ${
                     activeReportTab === "missing" 
-                      ? "border-primary text-primary" 
-                      : "border-transparent text-slate-550 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                      ? "border-purple-600 text-purple-600 dark:border-purple-400 dark:text-purple-400 font-extrabold" 
+                      : "border-transparent text-slate-500 dark:text-zinc-400 hover:text-purple-600 dark:hover:text-purple-400"
                   }`}
                 >
                   Missing Value Report
                 </button>
                 <button
                   onClick={() => setActiveReportTab("duplicates")}
-                  className={`px-4 py-2.5 text-xs font-bold border-b-2 transition duration-200 cursor-pointer ${
+                  className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors duration-150 cursor-pointer ${
                     activeReportTab === "duplicates" 
-                      ? "border-primary text-primary" 
-                      : "border-transparent text-slate-550 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                      ? "border-purple-600 text-purple-600 dark:border-purple-400 dark:text-purple-400 font-extrabold" 
+                      : "border-transparent text-slate-500 dark:text-zinc-400 hover:text-purple-600 dark:hover:text-purple-400"
                   }`}
                 >
                   Duplicate & Type Report
                 </button>
                 <button
                   onClick={() => setActiveReportTab("outliers")}
-                  className={`px-4 py-2.5 text-xs font-bold border-b-2 transition duration-200 cursor-pointer ${
+                  className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors duration-150 cursor-pointer ${
                     activeReportTab === "outliers" 
-                      ? "border-primary text-primary" 
-                      : "border-transparent text-slate-550 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                      ? "border-purple-600 text-purple-600 dark:border-purple-400 dark:text-purple-400 font-extrabold" 
+                      : "border-transparent text-slate-500 dark:text-zinc-400 hover:text-purple-600 dark:hover:text-purple-400"
                   }`}
                 >
                   Outlier Report
                 </button>
                 <button
                   onClick={() => setActiveReportTab("compare")}
-                  className={`px-4 py-2.5 text-xs font-bold border-b-2 transition duration-200 cursor-pointer ${
+                  className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors duration-150 cursor-pointer ${
                     activeReportTab === "compare" 
-                      ? "border-primary text-primary" 
-                      : "border-transparent text-slate-550 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                      ? "border-purple-600 text-purple-600 dark:border-purple-400 dark:text-purple-400 font-extrabold" 
+                      : "border-transparent text-slate-500 dark:text-zinc-400 hover:text-purple-600 dark:hover:text-purple-400"
                   }`}
                 >
                   Before & After Comparison
@@ -1402,10 +1425,10 @@ export default function CleanView({
                 {cleanLogs.length > 0 && (
                   <button
                     onClick={() => setActiveReportTab("logs")}
-                    className={`px-4 py-2.5 text-xs font-bold border-b-2 transition duration-200 cursor-pointer ${
+                    className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors duration-150 cursor-pointer ${
                       activeReportTab === "logs" 
-                        ? "border-primary text-primary" 
-                        : "border-transparent text-slate-550 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                        ? "border-purple-600 text-purple-600 dark:border-purple-400 dark:text-purple-400 font-extrabold" 
+                        : "border-transparent text-slate-500 dark:text-zinc-400 hover:text-purple-600 dark:hover:text-purple-400"
                     }`}
                   >
                     Cleaning Log
@@ -1414,97 +1437,93 @@ export default function CleanView({
               </div>
 
               <div className="p-6">
-                
-                {/* PROFILE REPORT */}
-                {activeReportTab === "profile" && report && (
-                  <div className="space-y-6 animate-fade-in">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-                      <div className="flex flex-col items-center justify-center p-4 rounded-xl border border-slate-100 dark:border-zinc-800/80 bg-slate-50/20 dark:bg-zinc-900/10">
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-3">Data Quality Score</span>
+              {/* PROFILE REPORT */}
+              {activeReportTab === "profile" && report && (
+                  <div className="space-y-8 animate-fade-in">
+                    
+                    {/* Top Topline Metrics */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
+                      
+                      {/* Quality Score Card - Clean Depth */}
+                      <div className="flex flex-col items-center justify-center p-6 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
+                        <span className="text-[10px] uppercase font-extrabold tracking-widest text-slate-500 dark:text-zinc-400 mb-4">Data Quality Score</span>
                         {(() => {
                           const qualityScore = typeof report?.quality_score === "number" && !isNaN(report.quality_score) ? report.quality_score : 100;
                           const dashArray = 2 * Math.PI * 48;
                           const dashOffset = dashArray * (1 - qualityScore / 100);
                           return (
-                            <div className="relative w-28 h-28 flex items-center justify-center">
-                              <svg className="absolute w-full h-full transform -rotate-90">
-                                <circle cx="56" cy="56" r="48" strokeWidth="6" stroke="var(--border)" fill="transparent" className="text-slate-100 dark:text-zinc-800" />
-                                <circle cx="56" cy="56" r="48" strokeWidth="6.5" stroke="#673ab7" fill="transparent" strokeDasharray={dashArray} strokeDashoffset={dashOffset} className="transition-all duration-1000 ease-out" />
+                            <div className="relative w-32 h-32 flex items-center justify-center">
+                              <svg className="absolute w-full h-full transform -rotate-90 drop-shadow-sm">
+                                <circle cx="64" cy="64" r="48" strokeWidth="6" stroke="currentColor" fill="transparent" className="text-slate-200 dark:text-white/5" />
+                                <circle cx="64" cy="64" r="48" strokeWidth="6.5" stroke="#9333ea" fill="transparent" strokeDasharray={dashArray} strokeDashoffset={dashOffset} className="transition-all duration-1000 ease-out" strokeLinecap="round" />
                               </svg>
-                              <div className="text-center">
-                                <span className="text-2xl font-black text-black dark:text-white">{qualityScore}</span>
-                                <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 block">/ 100</span>
+                              <div className="text-center flex flex-col items-center">
+                                <span className="text-3xl font-black text-slate-900 dark:text-white leading-none">{qualityScore}</span>
+                                <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500">/ 100</span>
                               </div>
                             </div>
                           );
                         })()}
-                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full mt-3 uppercase tracking-wide ${
-                          (report?.quality_score ?? 100) >= 90 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400" :
-                          (report?.quality_score ?? 100) >= 70 ? "bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400" :
-                          "bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400"
+                        <span className={`text-[10px] font-extrabold px-3 py-1 rounded-md mt-4 uppercase tracking-wider shadow-sm ${
+                          (report?.quality_score ?? 100) >= 90 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30" :
+                          (report?.quality_score ?? 100) >= 70 ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30" :
+                          "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30"
                         }`}>
                           {(report?.quality_score ?? 100) >= 90 ? "Premium" : (report?.quality_score ?? 100) >= 70 ? "Good" : "Needs Cleaning"}
                         </span>
                       </div>
 
-                      <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        <div className="p-3.5 rounded-xl border border-slate-100 dark:border-zinc-800 bg-slate-50/20 dark:bg-zinc-900/10">
-                          <span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Total Cells</span>
-                          <span className="text-sm font-black text-black dark:text-white">{(report.rows * report.columns).toLocaleString()}</span>
-                        </div>
-                        <div className="p-3.5 rounded-xl border border-slate-100 dark:border-zinc-800 bg-slate-50/20 dark:bg-zinc-900/10">
-                          <span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Missing Cells</span>
-                          <span className="text-sm font-black text-slate-700 dark:text-zinc-300">{report.missing_summary?.total_missing?.toLocaleString()}</span>
-                        </div>
-                        <div className="p-3.5 rounded-xl border border-slate-100 dark:border-zinc-800 bg-slate-50/20 dark:bg-zinc-900/10">
-                          <span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Duplicate Rows</span>
-                          <span className="text-sm font-black text-slate-700 dark:text-zinc-300">{report.duplicate_summary?.duplicate_rows_count}</span>
-                        </div>
-                        <div className="p-3.5 rounded-xl border border-slate-100 dark:border-zinc-800 bg-slate-50/20 dark:bg-zinc-900/10">
-                          <span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Constant Columns</span>
-                          <span className="text-sm font-black text-slate-700 dark:text-zinc-300">{report.constant_columns?.length}</span>
-                        </div>
-                        <div className="p-3.5 rounded-xl border border-slate-100 dark:border-zinc-800 bg-slate-50/20 dark:bg-zinc-900/10">
-                          <span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Low Variance Cols</span>
-                          <span className="text-sm font-black text-slate-700 dark:text-zinc-300">{report.low_variance_columns?.length}</span>
-                        </div>
-                        <div className="p-3.5 rounded-xl border border-slate-100 dark:border-zinc-800 bg-slate-50/20 dark:bg-zinc-900/10">
-                          <span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Outliers Count</span>
-                          <span className="text-sm font-black text-slate-700 dark:text-zinc-300 text-rose-500">
-                            {report.outlier_report?.reduce((acc, curr) => acc + curr.outlier_count, 0)}
-                          </span>
-                        </div>
+                      {/* Mini Stats Grid - Clean Depth */}
+                      <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {[
+                          { label: "Total Cells", val: (report.rows * report.columns).toLocaleString(), highlight: false },
+                          { label: "Missing Cells", val: report.missing_summary?.total_missing?.toLocaleString(), highlight: true, color: "text-amber-500" },
+                          { label: "Duplicate Rows", val: report.duplicate_summary?.duplicate_rows_count, highlight: true, color: "text-rose-500" },
+                          { label: "Constant Columns", val: report.constant_columns?.length, highlight: false },
+                          { label: "Low Variance Cols", val: report.low_variance_columns?.length, highlight: false },
+                          { label: "Outliers Count", val: report.outlier_report?.reduce((acc, curr) => acc + curr.outlier_count, 0), highlight: true, color: "text-rose-500" }
+                        ].map((stat, i) => (
+                          <div key={i} className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex flex-col justify-center">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-zinc-400 block mb-1.5">{stat.label}</span>
+                            <span className={`text-lg font-black ${stat.highlight && stat.val > 0 ? stat.color : "text-slate-900 dark:text-white"}`}>
+                              {stat.val}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
+                    {/* Numeric Statistics Table */}
                     {report.numeric_statistics && report.numeric_statistics.length > 0 && (
-                      <div className="space-y-3 pt-3">
-                        <h3 className="text-xs font-bold text-black dark:text-white uppercase tracking-wider flex items-center gap-1.5"><Info className="w-4 h-4 text-primary" /> Numeric Statistics Report</h3>
-                        <div className="overflow-x-auto border border-slate-100 dark:border-zinc-800 rounded-xl">
-                          <table className="w-full text-left text-[10px]">
-                            <thead className="bg-slate-50 dark:bg-zinc-900 font-bold text-slate-650 dark:text-zinc-400">
+                      <div className="space-y-3 pt-2">
+                        <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                          <Info className="w-4 h-4 text-purple-600 dark:text-purple-400" /> Numeric Statistics
+                        </h3>
+                        <div className="overflow-x-auto border border-slate-200 dark:border-zinc-800 rounded-xl shadow-sm">
+                          <table className="w-full text-left text-xs whitespace-nowrap">
+                            <thead className="bg-slate-100 dark:bg-zinc-900 font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
                               <tr>
-                                <th className="px-3.5 py-2.5">Column</th>
-                                <th className="px-3.5 py-2.5">Mean</th>
-                                <th className="px-3.5 py-2.5">Median</th>
-                                <th className="px-3.5 py-2.5">Mode</th>
-                                <th className="px-3.5 py-2.5">Min</th>
-                                <th className="px-3.5 py-2.5">Max</th>
-                                <th className="px-3.5 py-2.5">Std Dev</th>
-                                <th className="px-3.5 py-2.5">IQR</th>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-zinc-800">Column</th>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-zinc-800">Mean</th>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-zinc-800">Median</th>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-zinc-800">Mode</th>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-zinc-800">Min</th>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-zinc-800">Max</th>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-zinc-800">Std Dev</th>
+                                <th className="px-4 py-3 border-b border-slate-200 dark:border-zinc-800">IQR</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800 bg-white dark:bg-[#212121]">
                               {report.numeric_statistics.map((stat) => (
-                                <tr key={stat.column} className="hover:bg-slate-50/50 dark:hover:bg-zinc-900/30">
-                                  <td className="px-3.5 py-2.5 font-bold text-slate-750 dark:text-zinc-300">{stat.column}</td>
-                                  <td className="px-3.5 py-2.5 font-semibold">{stat.mean?.toFixed(2)}</td>
-                                  <td className="px-3.5 py-2.5 font-semibold">{stat.median?.toFixed(2)}</td>
-                                  <td className="px-3.5 py-2.5 font-semibold">{stat.mode !== null ? stat.mode : "N/A"}</td>
-                                  <td className="px-3.5 py-2.5 font-semibold">{stat.min}</td>
-                                  <td className="px-3.5 py-2.5 font-semibold">{stat.max}</td>
-                                  <td className="px-3.5 py-2.5 font-semibold">{stat.std?.toFixed(2)}</td>
-                                  <td className="px-3.5 py-2.5 font-semibold">{stat.iqr?.toFixed(2)}</td>
+                                <tr key={stat.column} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                                  <td className="px-4 py-3 font-bold text-slate-800 dark:text-zinc-200">{stat.column}</td>
+                                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400 font-medium">{stat.mean?.toFixed(2)}</td>
+                                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400 font-medium">{stat.median?.toFixed(2)}</td>
+                                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400 font-medium">{stat.mode !== null ? stat.mode : "N/A"}</td>
+                                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400 font-medium">{stat.min}</td>
+                                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400 font-medium">{stat.max}</td>
+                                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400 font-medium">{stat.std?.toFixed(2)}</td>
+                                  <td className="px-4 py-3 text-slate-600 dark:text-zinc-400 font-medium">{stat.iqr?.toFixed(2)}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -1513,32 +1532,35 @@ export default function CleanView({
                       </div>
                     )}
 
+                    {/* Correlation Matrix */}
                     {report.correlation_matrix && Object.keys(report.correlation_matrix).length > 0 && (
-                      <div className="space-y-3 pt-3">
-                        <h3 className="text-xs font-bold text-black dark:text-white uppercase tracking-wider">Correlation Matrix</h3>
-                        <div className="overflow-x-auto border border-slate-100 dark:border-zinc-800 rounded-xl">
-                          <table className="w-full text-center text-[10px]">
-                            <thead className="bg-slate-50 dark:bg-zinc-900 font-bold text-slate-650 dark:text-zinc-400">
+                      <div className="space-y-3 pt-2">
+                        <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                          <Layers className="w-4 h-4 text-purple-600 dark:text-purple-400" /> Correlation Matrix
+                        </h3>
+                        <div className="overflow-x-auto border border-slate-200 dark:border-zinc-800 rounded-xl shadow-sm">
+                          <table className="w-full text-center text-xs whitespace-nowrap">
+                            <thead className="bg-slate-100 dark:bg-zinc-900 font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
                               <tr>
-                                <th className="px-3 py-2 text-left">Variable</th>
+                                <th className="px-4 py-3 text-left border-b border-slate-200 dark:border-zinc-800">Variable</th>
                                 {Object.keys(report.correlation_matrix).map((k) => (
-                                  <th key={k} className="px-3 py-2">{k}</th>
+                                  <th key={k} className="px-4 py-3 border-b border-slate-200 dark:border-zinc-800">{k}</th>
                                 ))}
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800 bg-white dark:bg-[#212121]">
                               {Object.entries(report.correlation_matrix).map(([rowKey, colValues]) => (
                                 <tr key={rowKey}>
-                                  <td className="px-3 py-2.5 font-bold text-left text-slate-700 dark:text-zinc-300">{rowKey}</td>
+                                  <td className="px-4 py-3 font-bold text-left text-slate-800 dark:text-zinc-200 border-r border-slate-100 dark:border-zinc-800">{rowKey}</td>
                                   {Object.entries(colValues).map(([colKey, val]) => {
                                     const num = Number(val);
                                     let bg = "bg-transparent";
-                                    let text = "text-inherit";
-                                    if (num > 0.7) { bg = "bg-emerald-500/20"; text = "text-emerald-600 dark:text-emerald-400 font-bold"; }
-                                    else if (num < -0.7) { bg = "bg-rose-500/20"; text = "text-rose-600 dark:text-rose-400 font-bold"; }
-                                    else if (Math.abs(num) > 0.3) { bg = "bg-indigo-500/10"; }
+                                    let text = "text-slate-600 dark:text-zinc-400 font-medium";
+                                    if (num > 0.7 && rowKey !== colKey) { bg = "bg-emerald-100 dark:bg-emerald-500/20"; text = "text-emerald-700 dark:text-emerald-400 font-bold"; }
+                                    else if (num < -0.7) { bg = "bg-rose-100 dark:bg-rose-500/20"; text = "text-rose-700 dark:text-rose-400 font-bold"; }
+                                    
                                     return (
-                                      <td key={colKey} className={`px-3 py-2.5 ${bg} ${text}`}>
+                                      <td key={colKey} className={`px-4 py-3 ${bg} ${text} transition-colors`}>
                                         {num.toFixed(3)}
                                       </td>
                                     );
@@ -1553,30 +1575,30 @@ export default function CleanView({
                   </div>
                 )}
 
-                {/* MISSING VALUE REPORT */}
-                {activeReportTab === "missing" && report && (
+              {/* MISSING VALUE REPORT */}
+              {activeReportTab === "missing" && report && (
                   <div className="space-y-4 animate-fade-in">
-                    <h3 className="text-xs font-bold text-black dark:text-white uppercase tracking-wider">Missing Values Summary</h3>
-                    <div className="overflow-x-auto border border-slate-100 dark:border-zinc-800 rounded-xl">
-                      <table className="w-full text-left text-[11px]">
-                        <thead className="bg-slate-50 dark:bg-zinc-900 font-bold text-slate-650 dark:text-zinc-400">
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Missing Values Summary</h3>
+                    <div className="overflow-x-auto border border-slate-200 dark:border-zinc-800 rounded-xl shadow-sm">
+                      <table className="w-full text-left text-xs whitespace-nowrap">
+                        <thead className="bg-slate-100 dark:bg-zinc-900 font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
                           <tr>
-                            <th className="px-4 py-3">Column Name</th>
-                            <th className="px-4 py-3">Missing Count</th>
-                            <th className="px-4 py-3">Missing Percentage</th>
-                            <th className="px-4 py-3">Proportion Bar</th>
+                            <th className="px-5 py-3 border-b border-slate-200 dark:border-zinc-800">Column Name</th>
+                            <th className="px-5 py-3 border-b border-slate-200 dark:border-zinc-800">Missing Count</th>
+                            <th className="px-5 py-3 border-b border-slate-200 dark:border-zinc-800">Missing Percentage</th>
+                            <th className="px-5 py-3 border-b border-slate-200 dark:border-zinc-800 w-1/3">Proportion Bar</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                        <tbody className="divide-y divide-slate-100 dark:divide-zinc-800 bg-white dark:bg-[#212121]">
                           {report.missing_summary?.columns?.map((m) => (
-                            <tr key={m.column} className="hover:bg-slate-50/50 dark:hover:bg-zinc-900/30">
-                              <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-zinc-300">{m.column}</td>
-                              <td className="px-4 py-2.5 font-semibold">{m.missing_count}</td>
-                              <td className="px-4 py-2.5 font-semibold">{m.missing_percent.toFixed(2)}%</td>
-                              <td className="px-4 py-2.5 w-1/3">
-                                <div className="w-full h-2 rounded bg-slate-100 dark:bg-zinc-800 overflow-hidden">
+                            <tr key={m.column} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                              <td className="px-5 py-3 font-bold text-slate-800 dark:text-zinc-200">{m.column}</td>
+                              <td className="px-5 py-3 text-slate-600 dark:text-zinc-400 font-medium">{m.missing_count}</td>
+                              <td className="px-5 py-3 text-slate-600 dark:text-zinc-400 font-medium">{m.missing_percent.toFixed(2)}%</td>
+                              <td className="px-5 py-3">
+                                <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-zinc-800 overflow-hidden shadow-inner">
                                   <div 
-                                    className={`h-full rounded ${m.missing_percent > 50 ? "bg-rose-500" : m.missing_percent > 15 ? "bg-amber-500" : "bg-emerald-500"}`}
+                                    className={`h-full rounded-full transition-all duration-500 ${m.missing_percent > 50 ? "bg-rose-500" : m.missing_percent > 15 ? "bg-amber-500" : "bg-emerald-500"}`}
                                     style={{ width: `${m.missing_percent}%` }}
                                   />
                                 </div>
@@ -1589,50 +1611,60 @@ export default function CleanView({
                   </div>
                 )}
 
-                {/* DUPLICATES REPORT */}
-                {activeReportTab === "duplicates" && report && (
-                  <div className="space-y-6 animate-fade-in">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="p-4 rounded-xl border border-slate-150 dark:border-zinc-800/80 bg-slate-50/20 dark:bg-zinc-950/10">
-                        <h4 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Duplicate Rows</h4>
-                        <div className="flex items-baseline gap-2 mt-2">
-                          <span className="text-xl font-black text-black dark:text-white">{report.duplicate_summary?.duplicate_rows_count}</span>
-                          <span className="text-xs text-slate-550 dark:text-zinc-500">rows ({report.duplicate_summary?.duplicate_rows_percentage.toFixed(2)}%)</span>
+              {/* DUPLICATES REPORT */}
+              {activeReportTab === "duplicates" && report && (
+                  <div className="space-y-8 animate-fade-in">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex items-center justify-between">
+                        <div>
+                          <h4 className="text-[10px] uppercase font-bold text-slate-500 dark:text-zinc-400 tracking-wider">Duplicate Rows</h4>
+                          <div className="flex items-baseline gap-2 mt-2">
+                            <span className="text-3xl font-black text-slate-900 dark:text-white leading-none">{report.duplicate_summary?.duplicate_rows_count}</span>
+                            <span className="text-xs font-semibold text-slate-500 dark:text-zinc-500">({report.duplicate_summary?.duplicate_rows_percentage.toFixed(2)}%)</span>
+                          </div>
+                        </div>
+                        <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-500/20 text-rose-500 flex items-center justify-center">
+                          <Copy className="w-5 h-5" />
                         </div>
                       </div>
 
-                      <div className="p-4 rounded-xl border border-slate-150 dark:border-zinc-800/80 bg-slate-50/20 dark:bg-zinc-950/10">
-                        <h4 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Duplicate Columns</h4>
-                        <div className="flex items-baseline gap-2 mt-2">
-                          <span className="text-xl font-black text-black dark:text-white">{report.duplicate_summary?.duplicate_columns_count}</span>
-                          <span className="text-xs text-slate-550 dark:text-zinc-500">columns</span>
+                      <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex items-center justify-between">
+                        <div>
+                          <h4 className="text-[10px] uppercase font-bold text-slate-500 dark:text-zinc-400 tracking-wider">Duplicate Columns</h4>
+                          <div className="flex items-baseline gap-2 mt-2">
+                            <span className="text-3xl font-black text-slate-900 dark:text-white leading-none">{report.duplicate_summary?.duplicate_columns_count}</span>
+                            <span className="text-xs font-semibold text-slate-500 dark:text-zinc-500">columns</span>
+                          </div>
+                        </div>
+                        <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-500 flex items-center justify-center">
+                          <Copy className="w-5 h-5" />
                         </div>
                       </div>
                     </div>
 
                     <div className="space-y-3">
-                      <h3 className="text-xs font-bold text-black dark:text-white uppercase tracking-wider">Data Type Conversions</h3>
-                      <div className="overflow-x-auto border border-slate-100 dark:border-zinc-800 rounded-xl">
-                        <table className="w-full text-left text-[11px]">
-                          <thead className="bg-slate-50 dark:bg-zinc-900 font-bold text-slate-650 dark:text-zinc-400">
+                      <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Data Type Conversions</h3>
+                      <div className="overflow-x-auto border border-slate-200 dark:border-zinc-800 rounded-xl shadow-sm">
+                        <table className="w-full text-left text-xs whitespace-nowrap">
+                          <thead className="bg-slate-100 dark:bg-zinc-900 font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
                             <tr>
-                              <th className="px-4 py-3">Column</th>
-                              <th className="px-4 py-3">Current Type</th>
-                              <th className="px-4 py-3">Suggested Type</th>
-                              <th className="px-4 py-3">Conversion Needed</th>
+                              <th className="px-5 py-3 border-b border-slate-200 dark:border-zinc-800">Column</th>
+                              <th className="px-5 py-3 border-b border-slate-200 dark:border-zinc-800">Current Type</th>
+                              <th className="px-5 py-3 border-b border-slate-200 dark:border-zinc-800">Suggested Type</th>
+                              <th className="px-5 py-3 border-b border-slate-200 dark:border-zinc-800">Status</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                          <tbody className="divide-y divide-slate-100 dark:divide-zinc-800 bg-white dark:bg-[#212121]">
                             {report.data_types?.map((item) => (
-                              <tr key={item.column} className="hover:bg-slate-50/50 dark:hover:bg-zinc-900/30">
-                                <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-zinc-300">{item.column}</td>
-                                <td className="px-4 py-2.5 text-slate-500 dark:text-zinc-500">{item.current_type}</td>
-                                <td className="px-4 py-2.5 font-semibold text-primary">{item.suggested_type}</td>
-                                <td className="px-4 py-2.5">
+                              <tr key={item.column} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                                <td className="px-5 py-3 font-bold text-slate-800 dark:text-zinc-200">{item.column}</td>
+                                <td className="px-5 py-3 text-slate-500 dark:text-zinc-500 font-medium">{item.current_type}</td>
+                                <td className="px-5 py-3 font-bold text-purple-600 dark:text-purple-400">{item.suggested_type}</td>
+                                <td className="px-5 py-3">
                                   {item.conversion_needed ? (
-                                    <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400 font-bold text-[9px] uppercase tracking-wide">Suggested</span>
+                                    <span className="px-2.5 py-1 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 font-extrabold text-[9px] uppercase tracking-wider">Conversion Needed</span>
                                   ) : (
-                                    <span className="px-2 py-0.5 rounded-full bg-slate-50 text-slate-400 dark:bg-zinc-900 dark:text-zinc-500 text-[9px] uppercase">Up to date</span>
+                                    <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-zinc-400 font-extrabold text-[9px] uppercase tracking-wider">Up to date</span>
                                   )}
                                 </td>
                               </tr>
@@ -1644,31 +1676,31 @@ export default function CleanView({
                   </div>
                 )}
 
-                {/* OUTLIER REPORT */}
-                {activeReportTab === "outliers" && report && (
+              {/* OUTLIER REPORT */}
+              {activeReportTab === "outliers" && report && (
                   <div className="space-y-4 animate-fade-in">
-                    <h3 className="text-xs font-bold text-black dark:text-white uppercase tracking-wider">Outlier Occurrences</h3>
-                    <div className="overflow-x-auto border border-slate-100 dark:border-zinc-800 rounded-xl">
-                      <table className="w-full text-left text-[11px]">
-                        <thead className="bg-slate-50 dark:bg-zinc-900 font-bold text-slate-650 dark:text-zinc-400">
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Outlier Occurrences</h3>
+                    <div className="overflow-x-auto border border-slate-200 dark:border-zinc-800 rounded-xl shadow-sm">
+                      <table className="w-full text-left text-xs whitespace-nowrap">
+                        <thead className="bg-slate-100 dark:bg-zinc-900 font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
                           <tr>
-                            <th className="px-4 py-3">Column Name</th>
-                            <th className="px-4 py-3">Outlier Count</th>
-                            <th className="px-4 py-3">Method Used</th>
-                            <th className="px-4 py-3">Status</th>
+                            <th className="px-5 py-3 border-b border-slate-200 dark:border-zinc-800">Column Name</th>
+                            <th className="px-5 py-3 border-b border-slate-200 dark:border-zinc-800">Outlier Count</th>
+                            <th className="px-5 py-3 border-b border-slate-200 dark:border-zinc-800">Method Used</th>
+                            <th className="px-5 py-3 border-b border-slate-200 dark:border-zinc-800">Status</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                        <tbody className="divide-y divide-slate-100 dark:divide-zinc-800 bg-white dark:bg-[#212121]">
                           {report.outlier_report?.map((out) => (
-                            <tr key={out.column} className="hover:bg-slate-50/50 dark:hover:bg-zinc-900/30">
-                              <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-zinc-300">{out.column}</td>
-                              <td className="px-4 py-2.5 font-semibold text-rose-500">{out.outlier_count}</td>
-                              <td className="px-4 py-2.5 font-semibold text-slate-500">{out.method_used}</td>
-                              <td className="px-4 py-2.5">
+                            <tr key={out.column} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                              <td className="px-5 py-3 font-bold text-slate-800 dark:text-zinc-200">{out.column}</td>
+                              <td className={`px-5 py-3 font-bold ${out.outlier_count > 0 ? "text-rose-500" : "text-slate-500 dark:text-zinc-500"}`}>{out.outlier_count}</td>
+                              <td className="px-5 py-3 text-slate-500 dark:text-zinc-500 font-medium">{out.method_used}</td>
+                              <td className="px-5 py-3">
                                 {out.outlier_count > 0 ? (
-                                  <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-450 font-bold text-[9px] uppercase tracking-wide">Has Outliers</span>
+                                  <span className="px-2.5 py-1 rounded-md bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 font-extrabold text-[9px] uppercase tracking-wider">Has Outliers</span>
                                 ) : (
-                                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400 font-bold text-[9px] uppercase tracking-wide">Clean</span>
+                                  <span className="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 font-extrabold text-[9px] uppercase tracking-wider">Clean</span>
                                 )}
                               </td>
                             </tr>
@@ -1679,186 +1711,62 @@ export default function CleanView({
                   </div>
                 )}
 
-                {/* MISSING VALUE REPORT */}
-                {activeReportTab === "missing" && report && (
-                  <div className="space-y-4 animate-fade-in">
-                    <h3 className="text-xs font-bold text-black dark:text-white uppercase tracking-wider">Missing Values Summary</h3>
-                    <div className="overflow-x-auto border border-slate-100 dark:border-zinc-800 rounded-xl">
-                      <table className="w-full text-left text-[11px]">
-                        <thead className="bg-slate-50 dark:bg-zinc-900 font-bold text-slate-650 dark:text-zinc-400">
-                          <tr>
-                            <th className="px-4 py-3">Column Name</th>
-                            <th className="px-4 py-3">Missing Count</th>
-                            <th className="px-4 py-3">Missing Percentage</th>
-                            <th className="px-4 py-3">Proportion Bar</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-                          {report.missing_summary?.columns?.map((m) => (
-                            <tr key={m.column} className="hover:bg-slate-50/50 dark:hover:bg-zinc-900/30">
-                              <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-zinc-300">{m.column}</td>
-                              <td className="px-4 py-2.5 font-semibold">{m.missing_count}</td>
-                              <td className="px-4 py-2.5 font-semibold">{m.missing_percent.toFixed(2)}%</td>
-                              <td className="px-4 py-2.5 w-1/3">
-                                <div className="w-full h-2 rounded bg-slate-100 dark:bg-zinc-800 overflow-hidden">
-                                  <div 
-                                    className={`h-full rounded ${m.missing_percent > 50 ? "bg-rose-500" : m.missing_percent > 15 ? "bg-amber-500" : "bg-emerald-500"}`}
-                                    style={{ width: `${m.missing_percent}%` }}
-                                  />
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {/* DUPLICATES REPORT */}
-                {activeReportTab === "duplicates" && report && (
-                  <div className="space-y-6 animate-fade-in">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="p-4 rounded-xl border border-slate-150 dark:border-zinc-800/80 bg-slate-50/20 dark:bg-zinc-950/10">
-                        <h4 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Duplicate Rows</h4>
-                        <div className="flex items-baseline gap-2 mt-2">
-                          <span className="text-xl font-black text-black dark:text-white">{report.duplicate_summary?.duplicate_rows_count}</span>
-                          <span className="text-xs text-slate-550 dark:text-zinc-500">rows ({report.duplicate_summary?.duplicate_rows_percentage.toFixed(2)}%)</span>
-                        </div>
-                      </div>
-
-                      <div className="p-4 rounded-xl border border-slate-150 dark:border-zinc-800/80 bg-slate-50/20 dark:bg-zinc-950/10">
-                        <h4 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Duplicate Columns</h4>
-                        <div className="flex items-baseline gap-2 mt-2">
-                          <span className="text-xl font-black text-black dark:text-white">{report.duplicate_summary?.duplicate_columns_count}</span>
-                          <span className="text-xs text-slate-550 dark:text-zinc-500">columns</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <h3 className="text-xs font-bold text-black dark:text-white uppercase tracking-wider">Data Type Conversions</h3>
-                      <div className="overflow-x-auto border border-slate-100 dark:border-zinc-800 rounded-xl">
-                        <table className="w-full text-left text-[11px]">
-                          <thead className="bg-slate-50 dark:bg-zinc-900 font-bold text-slate-650 dark:text-zinc-400">
-                            <tr>
-                              <th className="px-4 py-3">Column</th>
-                              <th className="px-4 py-3">Current Type</th>
-                              <th className="px-4 py-3">Suggested Type</th>
-                              <th className="px-4 py-3">Conversion Needed</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-                            {report.data_types?.map((item) => (
-                              <tr key={item.column} className="hover:bg-slate-50/50 dark:hover:bg-zinc-900/30">
-                                <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-zinc-300">{item.column}</td>
-                                <td className="px-4 py-2.5 text-slate-500 dark:text-zinc-500">{item.current_type}</td>
-                                <td className="px-4 py-2.5 font-semibold text-primary">{item.suggested_type}</td>
-                                <td className="px-4 py-2.5">
-                                  {item.conversion_needed ? (
-                                    <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400 font-bold text-[9px] uppercase tracking-wide">Suggested</span>
-                                  ) : (
-                                    <span className="px-2 py-0.5 rounded-full bg-slate-50 text-slate-400 dark:bg-zinc-900 dark:text-zinc-500 text-[9px] uppercase">Up to date</span>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* OUTLIER REPORT */}
-                {activeReportTab === "outliers" && report && (
-                  <div className="space-y-4 animate-fade-in">
-                    <h3 className="text-xs font-bold text-black dark:text-white uppercase tracking-wider">Outlier Occurrences</h3>
-                    <div className="overflow-x-auto border border-slate-100 dark:border-zinc-800 rounded-xl">
-                      <table className="w-full text-left text-[11px]">
-                        <thead className="bg-slate-50 dark:bg-zinc-900 font-bold text-slate-650 dark:text-zinc-400">
-                          <tr>
-                            <th className="px-4 py-3">Column Name</th>
-                            <th className="px-4 py-3">Outlier Count</th>
-                            <th className="px-4 py-3">Method Used</th>
-                            <th className="px-4 py-3">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-                          {report.outlier_report?.map((out) => (
-                            <tr key={out.column} className="hover:bg-slate-50/50 dark:hover:bg-zinc-900/30">
-                              <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-zinc-300">{out.column}</td>
-                              <td className="px-4 py-2.5 font-semibold text-rose-500">{out.outlier_count}</td>
-                              <td className="px-4 py-2.5 font-semibold text-slate-500">{out.method_used}</td>
-                              <td className="px-4 py-2.5">
-                                {out.outlier_count > 0 ? (
-                                  <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-450 font-bold text-[9px] uppercase tracking-wide">Has Outliers</span>
-                                ) : (
-                                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400 font-bold text-[9px] uppercase tracking-wide">Clean</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {/* BEFORE AFTER COMPARISON */}
-                {activeReportTab === "compare" && (
+              {/* BEFORE AFTER COMPARISON */}
+              {activeReportTab === "compare" && (
                   <div className="space-y-6 animate-fade-in">
                     {afterReport ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="p-4 rounded-xl border border-slate-100 dark:border-zinc-800 bg-[#fafafa]/50 dark:bg-zinc-950/20">
-                          <span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Quality Score Change</span>
-                          <div className="flex items-center gap-3 mt-1.5">
-                            <span className="text-slate-500 line-through font-bold text-xs">{beforeReport.quality_score}/100</span>
-                            <span className="text-lg font-black text-black dark:text-white">{afterReport.quality_score}/100</span>
+                        
+                        <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-zinc-400 block mb-2">Quality Score</span>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-slate-400 dark:text-zinc-600 line-through font-bold text-sm">{beforeReport.quality_score}</span>
+                            <span className="text-2xl font-black text-slate-900 dark:text-white">{afterReport.quality_score}</span>
                           </div>
-                          <span className="text-[9.5px] text-emerald-500 font-bold mt-1 block">
-                            ↑ Improved by {afterReport.quality_score - beforeReport.quality_score} points
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold mt-2 block uppercase tracking-wider">
+                            ↑ +{afterReport.quality_score - beforeReport.quality_score} points
                           </span>
                         </div>
 
-                        <div className="p-4 rounded-xl border border-slate-100 dark:border-zinc-800 bg-[#fafafa]/50 dark:bg-zinc-950/20">
-                          <span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Row Count</span>
-                          <div className="flex items-center gap-3 mt-1.5">
-                            <span className="text-slate-500 line-through font-bold text-xs">{beforeReport.rows}</span>
-                            <span className="text-lg font-black text-black dark:text-white">{afterReport.rows}</span>
+                        <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-zinc-400 block mb-2">Row Count</span>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-slate-400 dark:text-zinc-600 line-through font-bold text-sm">{beforeReport.rows}</span>
+                            <span className="text-2xl font-black text-slate-900 dark:text-white">{afterReport.rows}</span>
                           </div>
-                          <span className="text-[9.5px] text-slate-550 dark:text-zinc-500 font-semibold mt-1 block">
+                          <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-extrabold mt-2 block uppercase tracking-wider">
                             {beforeReport.rows - afterReport.rows} rows removed
                           </span>
                         </div>
 
-                        <div className="p-4 rounded-xl border border-slate-100 dark:border-zinc-800 bg-[#fafafa]/50 dark:bg-zinc-950/20">
-                          <span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Columns Count</span>
-                          <div className="flex items-center gap-3 mt-1.5">
-                            <span className="text-slate-500 line-through font-bold text-xs">{beforeReport.columns}</span>
-                            <span className="text-lg font-black text-black dark:text-white">{afterReport.columns}</span>
+                        <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-zinc-400 block mb-2">Columns Count</span>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-slate-400 dark:text-zinc-600 line-through font-bold text-sm">{beforeReport.columns}</span>
+                            <span className="text-2xl font-black text-slate-900 dark:text-white">{afterReport.columns}</span>
                           </div>
-                          <span className="text-[9.5px] text-slate-550 dark:text-zinc-500 font-semibold mt-1 block">
-                            {beforeReport.columns - afterReport.columns} columns removed
+                          <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-extrabold mt-2 block uppercase tracking-wider">
+                            {beforeReport.columns - afterReport.columns} cols removed
                           </span>
                         </div>
 
-                        <div className="p-4 rounded-xl border border-slate-100 dark:border-zinc-800 bg-[#fafafa]/50 dark:bg-zinc-950/20">
-                          <span className="text-[9px] uppercase font-bold text-slate-400 block mb-1">Missing Cells</span>
-                          <div className="flex items-center gap-3 mt-1.5">
-                            <span className="text-slate-500 line-through font-bold text-xs">{beforeReport.missing_summary?.total_missing}</span>
-                            <span className="text-lg font-black text-black dark:text-white">{afterReport.missing_summary?.total_missing}</span>
+                        <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-zinc-400 block mb-2">Missing Cells</span>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-slate-400 dark:text-zinc-600 line-through font-bold text-sm">{beforeReport.missing_summary?.total_missing}</span>
+                            <span className="text-2xl font-black text-slate-900 dark:text-white">{afterReport.missing_summary?.total_missing}</span>
                           </div>
-                          <span className="text-[9.5px] text-emerald-500 font-semibold mt-1 block">
-                            Cleaned {beforeReport.missing_summary?.total_missing - afterReport.missing_summary?.total_missing} null values
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-extrabold mt-2 block uppercase tracking-wider">
+                            ↓ {beforeReport.missing_summary?.total_missing - afterReport.missing_summary?.total_missing} nulls fixed
                           </span>
                         </div>
+
                       </div>
                     ) : (
-                      <div className="p-10 text-center border rounded-xl border-dashed border-slate-200 dark:border-zinc-800 bg-[#fafafa]/30 dark:bg-zinc-950/5">
-                        <Info className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                        <h4 className="text-xs font-bold text-black dark:text-white">No active comparison</h4>
-                        <p className="text-[11px] text-slate-550 dark:text-zinc-400 max-w-xs mx-auto mt-1">
+                      <div className="p-10 text-center border-2 rounded-2xl border-dashed border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-white/[0.02]">
+                        <Info className="w-8 h-8 text-slate-400 dark:text-zinc-600 mx-auto mb-3" />
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">No active comparison</h4>
+                        <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-sm mx-auto mt-2 leading-relaxed">
                           Configure cleaning parameters in the sidebar and trigger a clean operation to view before & after reports.
                         </p>
                       </div>
@@ -1866,16 +1774,41 @@ export default function CleanView({
                   </div>
                 )}
 
-                {/* CLEANING LOGS */}
-                {activeReportTab === "logs" && cleanLogs.length > 0 && (
-                  <div className="space-y-3 animate-fade-in">
-                    <h3 className="text-xs font-bold text-black dark:text-white uppercase tracking-wider flex items-center gap-1.5"><FileText className="w-4.5 h-4.5 text-primary" /> Active Job Pipeline Execution Logs</h3>
-                    <div className="p-4 rounded-xl border border-slate-100 dark:border-zinc-800 bg-slate-50/20 dark:bg-zinc-900/10 font-mono text-[10px] text-slate-700 dark:text-zinc-350 space-y-1.5 max-h-60 overflow-y-auto">
-                      {cleanLogs.map((log, idx) => (
-                        <div key={idx} className="flex items-start gap-1.5 px-2 py-1 rounded transition-colors duration-150 cursor-default text-slate-700 dark:text-zinc-300 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black">
-                          <span className="font-mono text-sm break-all">{log}</span>
+              {/* CLEANING LOGS - Terminal Style */}
+              {activeReportTab === "logs" && cleanLogs.length > 0 && (
+                  <div className="space-y-3 animate-fade-in h-full">
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-purple-600 dark:text-purple-400" /> Pipeline Execution Logs
+                    </h3>
+                    
+                    {/* TERMINAL UI */}
+                    <div className="rounded-xl bg-[#0d1117] border border-slate-800 overflow-hidden shadow-inner flex flex-col">
+                      <div className="bg-[#161b22] border-b border-slate-800 px-4 py-2 flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                        <span className="ml-2 text-[10px] font-mono text-slate-400 uppercase tracking-widest">stdout / pipeline_log.sh</span>
+                      </div>
+                      
+                      <div className="p-5 font-mono text-[11px] sm:text-xs text-slate-300 space-y-2 max-h-80 overflow-y-auto">
+                        {cleanLogs.map((log, idx) => {
+                          const isSuccess = log.toLowerCase().includes("success") || log.toLowerCase().includes("completed") || log.toLowerCase().includes("done");
+                          const isRemoved = log.toLowerCase().includes("removed") || log.toLowerCase().includes("dropped");
+                          
+                          return (
+                            <div key={idx} className="flex items-start gap-3 leading-relaxed hover:bg-white/5 px-2 py-0.5 rounded transition-colors">
+                              <span className="text-purple-400 font-bold shrink-0 mt-0.5">➜</span>
+                              <span className={`break-all ${isSuccess ? "text-emerald-400 font-semibold" : isRemoved ? "text-amber-400 font-semibold" : "text-slate-300"}`}>
+                                {log}
+                              </span>
+                            </div>
+                          )
+                        })}
+                        <div className="flex items-center gap-3 pt-2 opacity-50">
+                          <span className="text-emerald-500 font-bold shrink-0">➜</span>
+                          <span className="animate-pulse block w-2 h-4 bg-slate-400"></span>
                         </div>
-                      ))}
+                      </div>
                     </div>
                   </div>
                 )}

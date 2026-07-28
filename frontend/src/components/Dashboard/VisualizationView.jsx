@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import api from "../../services/api";
 import FileUpload from "./FileUpload";
 import GraphCanvas from "./GraphCanvas";
+import { AnimatedSelect } from "../ui/AnimatedSelect";
 import visualizationImg from "../../assets/icons/Visualization.png";
 import RecentDatasetPanel from "../ui/RecentDatasetPanel";
 import RefreshButton from "../ui/RefreshButton";
@@ -1117,41 +1118,41 @@ export default function VisualizationView({
       )}
 
       {/* Main Studio layout: properties (left) + canvas (middle) + options (right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Sidebar: Data mappings, specific chart settings, and color customizations */}
-        <div className="lg:col-span-1 p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex flex-col gap-4 max-w-full overflow-hidden">
+        <div className="lg:col-span-4 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex flex-col gap-4 max-w-full overflow-hidden lg:sticky lg:top-4 z-10 max-h-[calc(100vh-60px)] overflow-y-auto">
           <div className="space-y-4">
-            {/* Side sub tab header */}
-            <div className="grid grid-cols-3 border-b border-slate-200 dark:border-zinc-800 pb-2 text-center text-[10px] font-bold uppercase tracking-wider">
+            {/* Side sub tab header (iOS Segmented Pill Switch) */}
+            <div className="grid grid-cols-3 p-1 rounded-full bg-[#e3e3e8] dark:bg-[#1c1c1e] border border-slate-200/60 dark:border-zinc-800/80 shadow-inner text-center text-xs font-semibold">
               <button
                 onClick={() => setActiveSubTab("data")}
-                className={`pb-2 transition cursor-pointer flex items-center justify-center gap-1 ${
+                className={`py-1.5 px-2 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
                   activeSubTab === "data"
-                    ? "text-[#673ab7] border-b-2 border-[#673ab7] dark:text-[#a855f7] dark:border-[#a855f7]"
-                    : "text-slate-400 dark:text-zinc-500"
+                    ? "bg-white dark:bg-[#3a3a3c] text-[#1c1c1e] dark:text-white shadow-sm font-bold border border-slate-200/60 dark:border-zinc-700/60"
+                    : "text-[#8e8e93] dark:text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white"
                 }`}
               >
-                <Layers className="w-3 h-3" /> Data
+                <Layers className={`w-3.5 h-3.5 ${activeSubTab === "data" ? "text-purple-600 dark:text-purple-400" : ""}`} /> Data
               </button>
               <button
                 onClick={() => setActiveSubTab("properties")}
-                className={`pb-2 transition cursor-pointer flex items-center justify-center gap-1 ${
+                className={`py-1.5 px-2 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
                   activeSubTab === "properties"
-                    ? "text-[#673ab7] border-b-2 border-[#673ab7] dark:text-[#a855f7] dark:border-[#a855f7]"
-                    : "text-slate-400 dark:text-zinc-500"
+                    ? "bg-white dark:bg-[#3a3a3c] text-[#1c1c1e] dark:text-white shadow-sm font-bold border border-slate-200/60 dark:border-zinc-700/60"
+                    : "text-[#8e8e93] dark:text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white"
                 }`}
               >
-                <SlidersHorizontal className="w-3 h-3" /> Config
+                <SlidersHorizontal className={`w-3.5 h-3.5 ${activeSubTab === "properties" ? "text-purple-600 dark:text-purple-400" : ""}`} /> Config
               </button>
               <button
                 onClick={() => setActiveSubTab("customization")}
-                className={`pb-2 transition cursor-pointer flex items-center justify-center gap-1 ${
+                className={`py-1.5 px-2 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
                   activeSubTab === "customization"
-                    ? "text-[#673ab7] border-b-2 border-[#673ab7] dark:text-[#a855f7] dark:border-[#a855f7]"
-                    : "text-slate-400 dark:text-zinc-500"
+                    ? "bg-white dark:bg-[#3a3a3c] text-[#1c1c1e] dark:text-white shadow-sm font-bold border border-slate-200/60 dark:border-zinc-700/60"
+                    : "text-[#8e8e93] dark:text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white"
                 }`}
               >
-                <PaletteIcon className="w-3 h-3" /> Style
+                <PaletteIcon className={`w-3.5 h-3.5 ${activeSubTab === "customization" ? "text-purple-600 dark:text-purple-400" : ""}`} /> Style
               </button>
             </div>
 
@@ -1163,10 +1164,10 @@ export default function VisualizationView({
                   <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                     Engine Engine
                   </label>
-                  <select
+                  <AnimatedSelect
                     value={config.library}
-                    onChange={(e) => {
-                      const lib = e.target.value.toLowerCase();
+                    onChange={(val) => {
+                      const lib = String(val).toLowerCase();
                       let defGraph = "Bar Chart";
                       if (lib === "plotly") defGraph = "Bar Chart";
                       else if (lib === "seaborn") defGraph = "Heatmap";
@@ -1186,13 +1187,14 @@ export default function VisualizationView({
                         target_column: "",
                       });
                     }}
-                    className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-[#673ab7] focus:outline-none"
-                  >
-                    <option value="plotly">Plotly</option>
-                    <option value="seaborn">Seaborn</option>
-                    <option value="matplotlib">Matplotlib</option>
-                    <option value="network">NetworkX</option>
-                  </select>
+                    options={[
+                      { value: "plotly", label: "Plotly" },
+                      { value: "seaborn", label: "Seaborn" },
+                      { value: "matplotlib", label: "Matplotlib" },
+                      { value: "network", label: "NetworkX" },
+                    ]}
+                    className="w-full mt-1.5"
+                  />
                 </div>
 
                 {/* Filtered Graph Selection */}
@@ -1200,12 +1202,12 @@ export default function VisualizationView({
                   <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                     Visualization Type
                   </label>
-                  <select
+                  <AnimatedSelect
                     value={config.graph_type}
-                    onChange={(e) => {
+                    onChange={(val) => {
                       updateConfig({
                         ...config,
-                        graph_type: e.target.value,
+                        graph_type: val,
                         x_column: "",
                         y_column: "",
                         z_column: "",
@@ -1215,42 +1217,28 @@ export default function VisualizationView({
                         target_column: "",
                       });
                     }}
-                    className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-[#673ab7] focus:outline-none"
-                  >
-                    {config.library === "plotly" && (
-                      <>
-                        <option>Bar Chart</option>
-                        <option>Line Chart</option>
-                        <option>Pie Chart</option>
-                        <option>Scatter Plot</option>
-                        <option>Histogram</option>
-                        <option>Bubble Chart</option>
-                        <option>3D Scatter Plot</option>
-                        <option>Scatter Matrix</option>
-                      </>
-                    )}
-                    {config.library === "seaborn" && (
-                      <>
-                        <option>Heatmap</option>
-                        <option>Scatter Plot</option>
-                        <option>Box Plot</option>
-                      </>
-                    )}
-                    {config.library === "matplotlib" && (
-                      <>
-                        <option>Line Chart</option>
-                        <option>Bar Chart</option>
-                        <option>Scatter Plot</option>
-                        <option>Histogram</option>
-                        <option>Pie Chart</option>
-                      </>
-                    )}
-                    {config.library === "network" && (
-                      <>
-                        <option>Network Graph</option>
-                      </>
-                    )}
-                  </select>
+                    options={
+                      config.library === "plotly"
+                        ? [
+                            "Bar Chart",
+                            "Line Chart",
+                            "Pie Chart",
+                            "Scatter Plot",
+                            "Histogram",
+                            "Bubble Chart",
+                            "3D Scatter Plot",
+                            "Scatter Matrix",
+                          ]
+                        : config.library === "seaborn"
+                        ? ["Heatmap", "Scatter Plot", "Box Plot"]
+                        : config.library === "matplotlib"
+                        ? ["Line Chart", "Bar Chart", "Scatter Plot", "Histogram", "Pie Chart"]
+                        : config.library === "network"
+                        ? ["Network Graph"]
+                        : ["Bar Chart"]
+                    }
+                    className="w-full mt-1.5"
+                  />
                 </div>
 
                 {/* Mappings */}
@@ -1260,47 +1248,37 @@ export default function VisualizationView({
                       <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                         Source Node Column
                       </label>
-                      <select
+                      <AnimatedSelect
                         value={config.source_column}
-                        onChange={(e) =>
-                          handleColumnSelection("source_column", e.target.value)
-                        }
-                        className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-[#673ab7] focus:outline-none"
-                      >
-                        <option value="">-- None --</option>
-                        {[
-                          ...profile.categorical_columns,
-                          ...profile.numeric_columns,
-                          ...profile.text_columns,
-                        ].map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => handleColumnSelection("source_column", val)}
+                        options={[
+                          { value: "", label: "-- None --" },
+                          ...[
+                            ...profile.categorical_columns,
+                            ...profile.numeric_columns,
+                            ...profile.text_columns,
+                          ].map((c) => ({ value: c, label: c })),
+                        ]}
+                        className="w-full mt-1.5"
+                      />
                     </div>
                     <div>
                       <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                         Target Node Column
                       </label>
-                      <select
+                      <AnimatedSelect
                         value={config.target_column}
-                        onChange={(e) =>
-                          handleColumnSelection("target_column", e.target.value)
-                        }
-                        className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-[#673ab7] focus:outline-none"
-                      >
-                        <option value="">-- None --</option>
-                        {[
-                          ...profile.categorical_columns,
-                          ...profile.numeric_columns,
-                          ...profile.text_columns,
-                        ].map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => handleColumnSelection("target_column", val)}
+                        options={[
+                          { value: "", label: "-- None --" },
+                          ...[
+                            ...profile.categorical_columns,
+                            ...profile.numeric_columns,
+                            ...profile.text_columns,
+                          ].map((c) => ({ value: c, label: c })),
+                        ]}
+                        className="w-full mt-1.5"
+                      />
                     </div>
                   </>
                 ) : (
@@ -1313,20 +1291,15 @@ export default function VisualizationView({
                             ? "Labels Column"
                             : "X Axis Column"}
                         </label>
-                        <select
+                        <AnimatedSelect
                           value={config.x_column}
-                          onChange={(e) =>
-                            handleColumnSelection("x_column", e.target.value)
-                          }
-                          className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-[#673ab7] focus:outline-none"
-                        >
-                          <option value="">-- None --</option>
-                          {getFilteredXColumns().map((c) => (
-                            <option key={c} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(val) => handleColumnSelection("x_column", val)}
+                          options={[
+                            { value: "", label: "-- None --" },
+                            ...getFilteredXColumns().map((c) => ({ value: c, label: c })),
+                          ]}
+                          className="w-full mt-1.5"
+                        />
                       </div>
                     )}
 
@@ -1346,20 +1319,15 @@ export default function VisualizationView({
                             ? "Values Column"
                             : "Y Axis Column"}
                         </label>
-                        <select
+                        <AnimatedSelect
                           value={config.y_column}
-                          onChange={(e) =>
-                            handleColumnSelection("y_column", e.target.value)
-                          }
-                          className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-[#673ab7] focus:outline-none"
-                        >
-                          <option value="">-- None --</option>
-                          {getFilteredYColumns().map((c) => (
-                            <option key={c} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(val) => handleColumnSelection("y_column", val)}
+                          options={[
+                            { value: "", label: "-- None --" },
+                            ...getFilteredYColumns().map((c) => ({ value: c, label: c })),
+                          ]}
+                          className="w-full mt-1.5"
+                        />
                       </div>
                     )}
 
@@ -1369,23 +1337,15 @@ export default function VisualizationView({
                         <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                           Z Axis Column
                         </label>
-                        <select
+                        <AnimatedSelect
                           value={config.z_column}
-                          onChange={(e) =>
-                            updateConfig({
-                              ...config,
-                              z_column: e.target.value,
-                            })
-                          }
-                          className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-[#673ab7] focus:outline-none"
-                        >
-                          <option value="">-- None --</option>
-                          {profile.numeric_columns.map((c) => (
-                            <option key={c} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(val) => updateConfig({ ...config, z_column: val })}
+                          options={[
+                            { value: "", label: "-- None --" },
+                            ...profile.numeric_columns.map((c) => ({ value: c, label: c })),
+                          ]}
+                          className="w-full mt-1.5"
+                        />
                       </div>
                     )}
 
@@ -1395,23 +1355,15 @@ export default function VisualizationView({
                         <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                           Bubble Size Column
                         </label>
-                        <select
+                        <AnimatedSelect
                           value={config.size_column}
-                          onChange={(e) =>
-                            updateConfig({
-                              ...config,
-                              size_column: e.target.value,
-                            })
-                          }
-                          className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-[#673ab7] focus:outline-none"
-                        >
-                          <option value="">-- None --</option>
-                          {profile.numeric_columns.map((c) => (
-                            <option key={c} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(val) => updateConfig({ ...config, size_column: val })}
+                          options={[
+                            { value: "", label: "-- None --" },
+                            ...profile.numeric_columns.map((c) => ({ value: c, label: c })),
+                          ]}
+                          className="w-full mt-1.5"
+                        />
                       </div>
                     )}
 
@@ -1428,26 +1380,18 @@ export default function VisualizationView({
                         <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                           Color Group Column
                         </label>
-                        <select
+                        <AnimatedSelect
                           value={config.color_column}
-                          onChange={(e) =>
-                            updateConfig({
-                              ...config,
-                              color_column: e.target.value,
-                            })
-                          }
-                          className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:ring-1 focus:ring-[#673ab7] focus:outline-none"
-                        >
-                          <option value="">-- None --</option>
-                          {[
-                            ...profile.categorical_columns,
-                            ...profile.numeric_columns,
-                          ].map((c) => (
-                            <option key={c} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(val) => updateConfig({ ...config, color_column: val })}
+                          options={[
+                            { value: "", label: "-- None --" },
+                            ...[
+                              ...profile.categorical_columns,
+                              ...profile.numeric_columns,
+                            ].map((c) => ({ value: c, label: c })),
+                          ]}
+                          className="w-full mt-1.5"
+                        />
                       </div>
                     )}
 
@@ -1569,17 +1513,16 @@ export default function VisualizationView({
                       <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                         Bar Layout Mode
                       </label>
-                      <select
+                      <AnimatedSelect
                         value={config.barmode}
-                        onChange={(e) =>
-                          updateConfig({ ...config, barmode: e.target.value })
-                        }
-                        className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:outline-none"
-                      >
-                        <option value="group">Side-by-side (Group)</option>
-                        <option value="stack">Stacked</option>
-                        <option value="relative">Relative</option>
-                      </select>
+                        onChange={(val) => updateConfig({ ...config, barmode: val })}
+                        options={[
+                          { value: "group", label: "Side-by-side (Group)" },
+                          { value: "stack", label: "Stacked" },
+                          { value: "relative", label: "Relative" },
+                        ]}
+                        className="w-full mt-1.5"
+                      />
                     </div>
 
                     <div>
@@ -1609,37 +1552,32 @@ export default function VisualizationView({
                       <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                         Duplicate Aggregation
                       </label>
-                      <select
+                      <AnimatedSelect
                         value={config.aggregation}
-                        onChange={(e) =>
-                          updateConfig({
-                            ...config,
-                            aggregation: e.target.value,
-                          })
-                        }
-                        className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:outline-none"
-                      >
-                        <option value="sum">Sum values</option>
-                        <option value="mean">Mean (Average)</option>
-                        <option value="count">Count Occurrences</option>
-                      </select>
+                        onChange={(val) => updateConfig({ ...config, aggregation: val })}
+                        options={[
+                          { value: "sum", label: "Sum values" },
+                          { value: "mean", label: "Mean (Average)" },
+                          { value: "count", label: "Count Occurrences" },
+                        ]}
+                        className="w-full mt-1.5"
+                      />
                     </div>
 
                     <div>
                       <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                         Sorting Order
                       </label>
-                      <select
+                      <AnimatedSelect
                         value={config.sorting}
-                        onChange={(e) =>
-                          updateConfig({ ...config, sorting: e.target.value })
-                        }
-                        className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:outline-none"
-                      >
-                        <option value="none">Default Order</option>
-                        <option value="ascending">Ascending Values</option>
-                        <option value="descending">Descending Values</option>
-                      </select>
+                        onChange={(val) => updateConfig({ ...config, sorting: val })}
+                        options={[
+                          { value: "none", label: "Default Order" },
+                          { value: "ascending", label: "Ascending Values" },
+                          { value: "descending", label: "Descending Values" },
+                        ]}
+                        className="w-full mt-1.5"
+                      />
                     </div>
                   </div>
                 )}
@@ -1720,18 +1658,17 @@ export default function VisualizationView({
                       <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                         Normalize Type
                       </label>
-                      <select
+                      <AnimatedSelect
                         value={config.histnorm}
-                        onChange={(e) =>
-                          updateConfig({ ...config, histnorm: e.target.value })
-                        }
-                        className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:outline-none"
-                      >
-                        <option value="count">Count Frequency</option>
-                        <option value="percent">Percentage %</option>
-                        <option value="probability">Probability [0-1]</option>
-                        <option value="density">Density</option>
-                      </select>
+                        onChange={(val) => updateConfig({ ...config, histnorm: val })}
+                        options={[
+                          { value: "count", label: "Count Frequency" },
+                          { value: "percent", label: "Percentage %" },
+                          { value: "probability", label: "Probability [0-1]" },
+                          { value: "density", label: "Density" },
+                        ]}
+                        className="w-full mt-1.5"
+                      />
                     </div>
 
                     <div>
@@ -1999,20 +1936,17 @@ export default function VisualizationView({
                       <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                         Layout Topology
                       </label>
-                      <select
+                      <AnimatedSelect
                         value={config.layout}
-                        onChange={(e) =>
-                          updateConfig({ ...config, layout: e.target.value })
-                        }
-                        className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-xs font-medium focus:outline-none"
-                      >
-                        <option value="spring">Spring-Force layout</option>
-                        <option value="kamada-kawai">
-                          Kamada-Kawai layout
-                        </option>
-                        <option value="circular">Circular layout</option>
-                        <option value="random">Random layout</option>
-                      </select>
+                        onChange={(val) => updateConfig({ ...config, layout: val })}
+                        options={[
+                          { value: "spring", label: "Spring-Force layout" },
+                          { value: "kamada-kawai", label: "Kamada-Kawai layout" },
+                          { value: "circular", label: "Circular layout" },
+                          { value: "random", label: "Random layout" },
+                        ]}
+                        className="w-full mt-1.5"
+                      />
                     </div>
 
                     <div>
@@ -2242,25 +2176,21 @@ export default function VisualizationView({
                     <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                       Color Palette
                     </label>
-                    <select
+                    <AnimatedSelect
                       value={config.color_palette}
-                      onChange={(e) =>
-                        updateConfig({
-                          ...config,
-                          color_palette: e.target.value,
-                        })
-                      }
-                      className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 focus:outline-none"
-                    >
-                      <option value="deep">Deep</option>
-                      <option value="muted">Muted</option>
-                      <option value="bright">Bright</option>
-                      <option value="dark">Dark</option>
-                      <option value="colorblind">Colorblind</option>
-                      <option value="viridis">Viridis</option>
-                      <option value="magma">Magma</option>
-                      <option value="coolwarm">Coolwarm</option>
-                    </select>
+                      onChange={(val) => updateConfig({ ...config, color_palette: val })}
+                      options={[
+                        { value: "deep", label: "Deep" },
+                        { value: "muted", label: "Muted" },
+                        { value: "bright", label: "Bright" },
+                        { value: "dark", label: "Dark" },
+                        { value: "colorblind", label: "Colorblind" },
+                        { value: "viridis", label: "Viridis" },
+                        { value: "magma", label: "Magma" },
+                        { value: "coolwarm", label: "Coolwarm" },
+                      ]}
+                      className="w-full mt-1.5"
+                    />
                   </div>
                 )}
 
@@ -2269,19 +2199,18 @@ export default function VisualizationView({
                   <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                     Font Family
                   </label>
-                  <select
+                  <AnimatedSelect
                     value={config.font_family}
-                    onChange={(e) =>
-                      updateConfig({ ...config, font_family: e.target.value })
-                    }
-                    className="w-full mt-1.5 p-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 focus:outline-none"
-                  >
-                    <option value="sans-serif">Modern Sans-Serif</option>
-                    <option value="serif">Classic Serif</option>
-                    <option value="monospace">Developer Monospace</option>
-                    <option value="Inter">Inter (Premium)</option>
-                    <option value="Outfit">Outfit (Design)</option>
-                  </select>
+                    onChange={(val) => updateConfig({ ...config, font_family: val })}
+                    options={[
+                      { value: "sans-serif", label: "Modern Sans-Serif" },
+                      { value: "serif", label: "Classic Serif" },
+                      { value: "monospace", label: "Developer Monospace" },
+                      { value: "Inter", label: "Inter (Premium)" },
+                      { value: "Outfit", label: "Outfit (Design)" },
+                    ]}
+                    className="w-full mt-1.5"
+                  />
                 </div>
 
                 <div>
@@ -2484,7 +2413,7 @@ export default function VisualizationView({
         </div>
 
         {/* Center Canvas Area: Toolbar + canvas display + smart notes list */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className="lg:col-span-8 space-y-6 min-w-0">
           <div className="bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden flex flex-col">
             {/* Horizontal Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30">
@@ -2707,28 +2636,32 @@ export default function VisualizationView({
               </p>
             </div>
 
-            {/* Content Body: Ring Loader / Checkmark vs Form Inputs */}
+            {/* Content Body: Animated Checkmark / Spinner vs Form Inputs */}
             {saveLoading || savedSuccess ? (
-              <div className="py-6 flex flex-col items-center justify-center gap-4">
-                <div className="relative flex items-center justify-center">
-                  {/* Uiverse Concentric Ring Loader SVG */}
-                  <svg className="pl" viewBox="0 0 160 160" width="128" height="128">
-                    <circle className="pl__ring1" cx="80" cy="80" r="60" fill="none" stroke="#673ab7" strokeWidth="8" strokeDasharray="377" strokeLinecap="round"></circle>
-                    <circle className="pl__ring2" cx="80" cy="80" r="52.5" fill="none" stroke="#7c3aed" strokeWidth="7" strokeDasharray="330" strokeLinecap="round"></circle>
-                    <circle className="pl__ring3" cx="80" cy="80" r="46" fill="none" stroke="#8b5cf6" strokeWidth="6" strokeDasharray="288" strokeLinecap="round"></circle>
-                    <circle className="pl__ring4" cx="80" cy="80" r="40.5" fill="none" stroke="#a855f7" strokeWidth="5" strokeDasharray="254" strokeLinecap="round"></circle>
-                    <circle className="pl__ring5" cx="80" cy="80" r="36" fill="none" stroke="#c084fc" strokeWidth="4" strokeDasharray="226" strokeLinecap="round"></circle>
-                    <circle className="pl__ring6" cx="80" cy="80" r="32.5" fill="none" stroke="#e9d5ff" strokeWidth="3" strokeDasharray="204" strokeLinecap="round"></circle>
-                  </svg>
-
-                  {/* Center Checkmark Icon */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Check className={`w-8 h-8 text-[#673ab7] dark:text-[#a855f7] transition-all duration-300 ${savedSuccess ? "scale-110 opacity-100" : "scale-90 opacity-40 animate-pulse"}`} />
+              <div className="py-6 flex flex-col items-center justify-center gap-4 animate-fade-in">
+                {saveLoading ? (
+                  <div className="relative w-20 h-20 flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-zinc-800" />
+                    <div className="absolute inset-0 rounded-full border-4 border-purple-600 dark:border-purple-400 border-t-transparent animate-spin" />
+                    <Sparkles className="w-7 h-7 text-purple-600 dark:text-purple-400 animate-pulse" />
                   </div>
-                </div>
+                ) : (
+                  <div className="relative w-20 h-20 rounded-full bg-purple-500/15 dark:bg-purple-500/25 border-2 border-purple-600 dark:border-purple-400 flex items-center justify-center shadow-lg shadow-purple-500/20 scale-100 transition-all duration-500">
+                    <svg className="w-10 h-10 text-purple-600 dark:text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <path
+                        d="M20 6L9 17l-5-5"
+                        style={{
+                          strokeDasharray: 50,
+                          strokeDashoffset: 0,
+                          animation: "checkDraw 0.6s ease-out forwards",
+                        }}
+                      />
+                    </svg>
+                  </div>
+                )}
 
-                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">
-                  {savedSuccess ? "Archived to History" : "Processing Chart Data..."}
+                <span className="text-xs font-bold text-slate-800 dark:text-zinc-100 tracking-wide">
+                  {savedSuccess ? "Successfully Saved to History!" : "Archiving Graph Data..."}
                 </span>
               </div>
             ) : (

@@ -177,10 +177,10 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
                 {/* --- PILL SWITCHER --- */}
                 {(isLogin || isSignup) && (
                   <div className="mb-5 flex justify-center">
-                    <div className="relative flex w-full items-center rounded-full border border-zinc-300 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 p-1">
+                    <div className="relative flex w-full items-center rounded-full border border-slate-200/60 dark:border-zinc-800/80 bg-[#e3e3e8] dark:bg-[#1c1c1e] p-1 shadow-inner">
                       {/* Animated Capsule Indicator */}
                       <motion.div
-                        className="absolute inset-y-1 rounded-full bg-white dark:bg-zinc-900 shadow-sm"
+                        className="absolute inset-y-1 rounded-full bg-white dark:bg-[#3a3a3c] shadow-sm border border-slate-200/60 dark:border-zinc-700/60"
                         initial={false}
                         animate={{
                           left: isLogin ? "4px" : "50%",
@@ -193,10 +193,10 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
                       <button
                         type="button"
                         onClick={() => handleTabSwitch("/login")}
-                        className={`relative z-10 w-1/2 py-1.5 text-center text-xs font-semibold transition-colors duration-200 ${
+                        className={`relative z-10 w-1/2 py-1.5 text-center text-xs transition-colors duration-200 cursor-pointer ${
                           isLogin
-                            ? "text-slate-900 dark:text-white"
-                            : "text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200"
+                            ? "text-[#1c1c1e] dark:text-white font-bold"
+                            : "text-[#8e8e93] dark:text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white font-semibold"
                         }`}
                       >
                         Log In
@@ -206,10 +206,10 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
                       <button
                         type="button"
                         onClick={() => handleTabSwitch("/signup")}
-                        className={`relative z-10 w-1/2 py-1.5 text-center text-xs font-semibold transition-colors duration-200 ${
+                        className={`relative z-10 w-1/2 py-1.5 text-center text-xs transition-colors duration-200 cursor-pointer ${
                           isSignup
-                            ? "text-slate-900 dark:text-white"
-                            : "text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200"
+                            ? "text-[#1c1c1e] dark:text-white font-bold"
+                            : "text-[#8e8e93] dark:text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white font-semibold"
                         }`}
                       >
                         Sign Up

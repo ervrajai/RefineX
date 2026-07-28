@@ -1,5 +1,6 @@
 import React from "react";
 import { Table, Search, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { AnimatedSelect } from "./AnimatedSelect";
 
 export default function DatasetTableViewer({
   preview,
@@ -47,27 +48,20 @@ export default function DatasetTableViewer({
             />
           </div>
 
-          <select
+          <AnimatedSelect
             value={rowsPerPage}
-            onChange={(e) => {
-              setRowsPerPage(Number(e.target.value));
+            onChange={(val) => {
+              setRowsPerPage(Number(val));
               setCurrentPage(1);
             }}
-            className="px-2 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:outline-none font-semibold cursor-pointer text-slate-800 dark:text-zinc-100 [&>option]:bg-white dark:[&>option]:bg-zinc-900 [&>option]:text-slate-800 dark:[&>option]:text-zinc-100"
-          >
-            <option value={10} className="bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-100">
-              10 rows
-            </option>
-            <option value={25} className="bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-100">
-              25 rows
-            </option>
-            <option value={50} className="bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-100">
-              50 rows
-            </option>
-            <option value={100} className="bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-100">
-              100 rows
-            </option>
-          </select>
+            options={[
+              { value: 10, label: "10 rows" },
+              { value: 25, label: "25 rows" },
+              { value: 50, label: "50 rows" },
+              { value: 100, label: "100 rows" },
+            ]}
+            className="w-28"
+          />
         </div>
       </div>
 

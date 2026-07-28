@@ -11,6 +11,7 @@ export function AnimatedSelect({
   className = "" 
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropDirection, setDropDirection] = useState("down");
   const dropdownRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -24,6 +25,25 @@ export function AnimatedSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Smart Positioning: Decide whether to drop UP or DOWN based on screen space
+  const handleToggle = () => {
+    if (disabled) return;
+    
+    if (!isOpen && dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      
+      // If there is less than 220px of space below, open upwards
+      if (spaceBelow < 220) {
+        setDropDirection("up");
+      } else {
+        setDropDirection("down");
+      }
+    }
+    
+    setIsOpen(!isOpen);
+  };
+
   // Normalize options to [{ value, label }] format
   const normalizedOptions = options.map((opt) => {
     if (typeof opt === "object" && opt !== null && "value" in opt) {
@@ -32,13 +52,11 @@ export function AnimatedSelect({
     return { value: String(opt), label: String(opt) };
   });
 
-  // Find the label for the currently selected value
   const selectedOption = normalizedOptions.find((opt) => String(opt.value) === String(value));
 
   const handleSelectOption = (optValue) => {
     setIsOpen(false);
     if (onChange) {
-      // Create synthetic event for backwards compatibility
       const syntheticEvent = {
         target: { value: optValue },
         currentTarget: { value: optValue },
@@ -49,11 +67,16 @@ export function AnimatedSelect({
     }
   };
 
+  // Dynamic animation values based on direction
+  const animationProps = dropDirection === "down" 
+    ? { initial: { opacity: 0, y: -8, scale: 0.96 }, exit: { opacity: 0, y: -8, scale: 0.96 } }
+    : { initial: { opacity: 0, y: 8, scale: 0.96 }, exit: { opacity: 0, y: 8, scale: 0.96 } };
+
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       {/* Trigger Button */}
       <div
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className={`flex items-center justify-between w-full px-3 py-2 text-xs rounded-lg border bg-white dark:bg-zinc-900 transition-all cursor-pointer font-semibold select-none ${
           disabled 
             ? "opacity-50 cursor-not-allowed border-slate-200 dark:border-zinc-800" 
@@ -66,7 +89,7 @@ export function AnimatedSelect({
         <ChevronDown 
           className={`w-4 h-4 shrink-0 transition-transform duration-200 ease-out ${
             isOpen 
-              ? "rotate-180 text-slate-900 dark:text-white" 
+              ? dropDirection === "down" ? "rotate-180 text-slate-900 dark:text-white" : "rotate-0 text-slate-900 dark:text-white" 
               : "text-slate-400 dark:text-zinc-500"
           }`} 
         />
@@ -76,11 +99,13 @@ export function AnimatedSelect({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            initial={animationProps.initial}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            exit={animationProps.exit}
             transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute z-[999] w-full mt-2 bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl overflow-hidden"
+            className={`absolute z-[999] w-full bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl overflow-hidden ${
+              dropDirection === "up" ? "bottom-full mb-2" : "top-full mt-2"
+            }`}
           >
             <div className="max-h-48 overflow-y-auto p-1.5 space-y-0.5">
               {normalizedOptions.map((option) => {

@@ -323,16 +323,26 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
                     "group relative flex items-center rounded-xl font-bold transition-all duration-200 ease-out cursor-pointer overflow-hidden transform-gpu",
                     isCollapsed ? "w-10 h-10 mx-auto justify-center" : "w-full px-3 py-2.5 gap-3 text-xs text-left",
                     isActive
-                      ? "bg-slate-200/40 dark:bg-zinc-900/40 text-black dark:text-white border border-primary/50"
-                      : "bg-transparent text-slate-600 dark:text-zinc-400 border border-transparent hover:border-primary/30 hover:text-black dark:hover:text-white hover:bg-slate-200/20 dark:hover:bg-zinc-900/20"
+                      ? "bg-transparent text-purple-600 dark:text-purple-400 border border-purple-600 dark:border-purple-400"
+                      : "bg-transparent text-slate-800 dark:text-white border border-transparent hover:border-purple-600/30 dark:hover:border-purple-400/30 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-slate-100/50 dark:hover:bg-zinc-800/40"
                   )}
                 >
                   <div className={cn(
                     "shrink-0 flex items-center justify-center transition-colors duration-150 ease-out",
                     !isCollapsed && "p-1.5 rounded-lg border",
-                    !isCollapsed && isActive ? "border-primary bg-white/40 dark:bg-zinc-950/20 text-primary" : (!isCollapsed && "border-slate-200 dark:border-zinc-800")
+                    isActive 
+                      ? "border-purple-600 dark:border-purple-400 bg-transparent text-purple-600 dark:text-purple-400" 
+                      : "border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400"
                   )}>
-                    <Icon className={cn("shrink-0", isCollapsed ? "w-5 h-5" : "w-4 h-4")} strokeWidth={2.2} shapeRendering="geometricPrecision" />
+                    <Icon 
+                      className={cn(
+                        "shrink-0 transition-colors duration-150", 
+                        isCollapsed ? "w-5 h-5" : "w-4 h-4",
+                        isActive ? "text-purple-600 dark:text-purple-400" : "text-slate-800 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400"
+                      )} 
+                      strokeWidth={2.2} 
+                      shapeRendering="geometricPrecision" 
+                    />
                   </div>
 
                   <span className={cn(
@@ -341,15 +351,6 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
                   )}>
                     {item.label}
                   </span>
-
-                  {item.id === "history" && !isCollapsed && (
-                    <span className={cn(
-                      "text-[9px] px-1.5 py-0.5 rounded-full font-bold ml-auto shrink-0 transition-all duration-150",
-                      isActive ? "bg-primary/20 text-primary dark:bg-white/20 dark:text-white" : "bg-primary/10 text-primary"
-                    )}>
-                      Live
-                    </span>
-                  )}
                 </button>
               );
             })}
@@ -395,9 +396,14 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
                 onClick={handleLogout}
                 disabled={loggingOut}
                 title="Log Out"
-                className="p-1.5 rounded-lg text-slate-400 dark:text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 transition duration-150 cursor-pointer disabled:opacity-50"
+                className="group relative flex items-center justify-start w-9 hover:w-28 h-9 rounded-full bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 hover:bg-slate-900 dark:hover:bg-white shadow-sm transition-all duration-300 ease-out cursor-pointer active:scale-95 active:translate-x-0.5 active:translate-y-0.5 overflow-hidden shrink-0 disabled:opacity-50 select-none ml-2"
               >
-                <LogOut className="w-4 h-4" />
+                <div className="w-9 h-9 shrink-0 flex items-center justify-center transition-all duration-300 group-hover:w-7 group-hover:pl-1">
+                  <LogOut className="w-4 h-4 text-slate-800 dark:text-white group-hover:text-white dark:group-hover:text-slate-900 transition-colors duration-300" />
+                </div>
+                <span className="opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto transition-all duration-300 text-xs font-bold text-white dark:text-slate-900 whitespace-nowrap overflow-hidden pr-3">
+                  Logout
+                </span>
               </button>
             )}
           </div>
@@ -410,10 +416,7 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
         isNavVisible ? "translate-y-0 bottom-5" : "translate-y-32 bottom-5"
       )}>
         
-        {/* Dark/White Spread (Glow) behind the bar */}
-        <div className="absolute -inset-[3px] rounded-full bg-black/20 dark:bg-white/10 blur-xl opacity-80 -z-10 pointer-events-none" />
-
-        <div className="relative flex items-center p-1.5 h-[64px] rounded-full bg-[#FFFFFF]/80 dark:bg-[#212121]/70 backdrop-blur-3xl border border-black/30 dark:border-white/30 shadow-[0_8px_30px_rgba(0,0,0,0.2)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.8)] touch-none select-none">
+        <div className="relative flex items-center p-1.5 h-[64px] rounded-full bg-[#FFFFFF]/80 dark:bg-[#212121]/70 backdrop-blur-3xl border border-slate-200 dark:border-zinc-800 shadow-md touch-none select-none">
           <div 
             ref={mobileNavRef}
             className="relative flex w-full h-full items-center"
@@ -422,9 +425,9 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
           >
-            {/* Draggable Active Pill Background */}
+            {/* Draggable Active Pill Outline */}
             <div 
-              className="absolute top-0 bottom-0 rounded-full border border-black/30 dark:border-white/30 bg-[#F1F5F9]/95 dark:bg-[#272727]/90 shadow-sm z-0 cursor-grab active:cursor-grabbing"
+              className="absolute top-0 bottom-0 rounded-full border border-purple-600 dark:border-purple-400 bg-transparent shadow-xs z-0 cursor-grab active:cursor-grabbing"
               style={getPillStyle()}
             />
 
@@ -453,7 +456,9 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
                     <Icon 
                       className={cn(
                         "w-[22px] h-[22px] transition-all duration-300 ease-out", 
-                        isActive ? "translate-y-0 scale-110" : "-translate-y-2 scale-105"
+                        isActive 
+                          ? "text-purple-600 dark:text-purple-400 translate-y-0 scale-110" 
+                          : "text-slate-800 dark:text-white -translate-y-2 scale-105"
                       )} 
                       strokeWidth={isActive ? 2.5 : 2.2} 
                     />

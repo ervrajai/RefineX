@@ -1433,198 +1433,207 @@ export default function ModelTrainingView({
                 );
               })}
             </div>
+            {/* Content Body: 2x2 Grid Layout with Depth Effect */}
+            <div className="flex-1 overflow-y-auto p-6 min-h-0">
+              {selectedModelForModal &&
+                trainingJobDetail.evaluation_metrics[selectedModelForModal] &&
+                (() => {
+                  const modelData =
+                    trainingJobDetail.evaluation_metrics[selectedModelForModal];
+                  const m = modelData.metrics;
+                  const isClassification = "accuracy" in m;
 
-            {/* Content Body: Split Left & Right */}
-            <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6 min-h-0">
-              {/* LEFT COLUMN: Metadata, config, params, correlation matrix */}
-              <div className="space-y-6">
-                {/* Meta details */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                    Job Configurations Summary
-                  </h4>
-                  <div className="grid grid-cols-2 gap-3 text-xs p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
-                    <div>
-                      <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
-                        Target (Y)
-                      </span>
-                      <strong className="text-slate-900 dark:text-white font-bold">
-                        {trainingJobDetail.target_column}
-                      </strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
-                        Features Count (X)
-                      </span>
-                      <strong className="text-slate-900 dark:text-white font-bold">
-                        {trainingJobDetail.selected_features.length} variables
-                      </strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
-                        Split Size
-                      </span>
-                      <strong className="text-slate-900 dark:text-white font-bold">
-                        {(trainingJobDetail.hyperparameters.test_size || 0.2) *
-                          100}
-                        % test
-                      </strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
-                        CV Folds
-                      </span>
-                      <strong className="text-slate-900 dark:text-white font-bold">
-                        {trainingJobDetail.hyperparameters.cv_folds || 5} Folds
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Preprocessing Summary */}
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                    Automated Preprocessing
-                  </h4>
-                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm text-xs leading-relaxed text-slate-600 dark:text-zinc-300 font-medium space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <Check className="w-3 h-3 text-emerald-500 shrink-0" />{" "}
-                      Imputed missing numeric fields using Median Strategy
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Check className="w-3 h-3 text-emerald-500 shrink-0" />{" "}
-                      Encoded categorical variables using sparse OneHotEncoder
-                    </div>
-                    {selectedModelForModal === "polynomial_regression" && (
-                      <div className="flex items-center gap-2">
-                        <Check className="w-3 h-3 text-emerald-500 shrink-0" />{" "}
-                        Generated Polynomial Features (degree=2)
-                      </div>
-                    )}
-                    {(selectedModelForModal === "knn_classifier" ||
-                      selectedModelForModal === "svm_classifier") && (
-                      <div className="flex items-center gap-2">
-                        <Check className="w-3 h-3 text-emerald-500 shrink-0" />{" "}
-                        Normalized numerical inputs using StandardScaler
-                      </div>
-                    )}
-                    {selectedModelForModal &&
-                      ![
-                        "knn_classifier",
-                        "svm_classifier",
-                        "polynomial_regression",
-                      ].includes(selectedModelForModal) && (
-                        <div className="flex items-center gap-2">
-                          <Check className="w-3 h-3 text-emerald-500 shrink-0" />{" "}
-                          Preserved original numeric scales (no scaling needed
-                          for trees/linear estimators)
-                        </div>
-                      )}
-                  </div>
-                </div>
-              </div>
-
-              {/* RIGHT COLUMN: Evaluation Metrics Details */}
-              <div className="space-y-6">
-                {selectedModelForModal &&
-                  trainingJobDetail.evaluation_metrics[selectedModelForModal] &&
-                  (() => {
-                    const modelData =
-                      trainingJobDetail.evaluation_metrics[
-                        selectedModelForModal
-                      ];
-                    const m = modelData.metrics;
-                    const isClassification = "accuracy" in m;
-
-                    return (
-                      <div className="space-y-6">
-                        {/* Metric Card Listings */}
-                        <div className="space-y-3">
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {/* CARD 1: Job Configurations Summary (Top Left) */}
+                      <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex flex-col justify-between overflow-hidden">
+                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-white/10">
+                          <Sliders className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
                           <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                            Evaluation Metrics
+                            Job Configurations Summary
                           </h4>
-                          <div className="grid grid-cols-2 gap-3 text-xs">
-                            {isClassification ? (
-                              <>
-                                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
-                                  <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
-                                    Accuracy
-                                  </span>
-                                  <strong className="text-sm font-black text-emerald-500">
-                                    {(m.accuracy * 100).toFixed(2)}%
-                                  </strong>
-                                </div>
-                                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
-                                  <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
-                                    Weighted F1-Score
-                                  </span>
-                                  <strong className="text-sm font-extrabold text-slate-900 dark:text-white">
-                                    {(m.f1_score * 100).toFixed(2)}%
-                                  </strong>
-                                </div>
-                                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
-                                  <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
-                                    Precision
-                                  </span>
-                                  <strong className="text-sm font-bold text-slate-700 dark:text-zinc-200">
-                                    {(m.precision * 100).toFixed(2)}%
-                                  </strong>
-                                </div>
-                                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
-                                  <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
-                                    Recall
-                                  </span>
-                                  <strong className="text-sm font-bold text-slate-700 dark:text-zinc-200">
-                                    {(m.recall * 100).toFixed(2)}%
-                                  </strong>
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
-                                  <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
-                                    R² Score
-                                  </span>
-                                  <strong className="text-sm font-black text-emerald-500">
-                                    {(m.r2 * 100).toFixed(2)}%
-                                  </strong>
-                                </div>
-                                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
-                                  <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
-                                    Adjusted R²
-                                  </span>
-                                  <strong className="text-sm font-extrabold text-slate-900 dark:text-white">
-                                    {(m.adjusted_r2 * 100).toFixed(2)}%
-                                  </strong>
-                                </div>
-                                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
-                                  <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
-                                    RMSE
-                                  </span>
-                                  <strong className="text-sm font-bold text-slate-700 dark:text-zinc-200">
-                                    {m.rmse.toFixed(4)}
-                                  </strong>
-                                </div>
-                                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
-                                  <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
-                                    MAE
-                                  </span>
-                                  <strong className="text-sm font-bold text-slate-700 dark:text-zinc-200">
-                                    {m.mae.toFixed(4)}
-                                  </strong>
-                                </div>
-                              </>
-                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 pt-3">
+                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                            <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                              Target (Y)
+                            </span>
+                            <strong className="text-xs font-extrabold text-slate-900 dark:text-white truncate block mt-0.5">
+                              {trainingJobDetail.target_column}
+                            </strong>
+                          </div>
+
+                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                            <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                              Features (X)
+                            </span>
+                            <strong className="text-xs font-extrabold text-slate-900 dark:text-white block mt-0.5">
+                              {trainingJobDetail.selected_features.length} variables
+                            </strong>
+                          </div>
+
+                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                            <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                              Test Split Size
+                            </span>
+                            <strong className="text-xs font-extrabold text-purple-600 dark:text-purple-400 block mt-0.5">
+                              {(trainingJobDetail.hyperparameters.test_size || 0.2) * 100}% test
+                            </strong>
+                          </div>
+
+                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                            <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                              CV Folds
+                            </span>
+                            <strong className="text-xs font-extrabold text-slate-900 dark:text-white block mt-0.5">
+                              {trainingJobDetail.hyperparameters.cv_folds || 5} Folds
+                            </strong>
                           </div>
                         </div>
+                      </div>
 
-                        {/* Confusion Matrix (Classification) */}
-                        {isClassification && m.confusion_matrix && (
-                          <div className="space-y-3">
-                            <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                              Confusion Matrix
-                            </h4>
-                            <div className="rounded-xl overflow-hidden p-4 border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
+                      {/* CARD 2: Evaluation Metrics (Top Right) */}
+                      <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex flex-col justify-between overflow-hidden">
+                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-white/10">
+                          <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                            Evaluation Metrics ({selectedModelForModal?.replace(/_/g, " ")})
+                          </h4>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 pt-3">
+                          {isClassification ? (
+                            <>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  Accuracy
+                                </span>
+                                <strong className="text-sm font-black text-emerald-500 block mt-0.5">
+                                  {(m.accuracy * 100).toFixed(2)}%
+                                </strong>
+                              </div>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  Weighted F1-Score
+                                </span>
+                                <strong className="text-sm font-extrabold text-purple-600 dark:text-purple-400 block mt-0.5">
+                                  {(m.f1_score * 100).toFixed(2)}%
+                                </strong>
+                              </div>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  Precision
+                                </span>
+                                <strong className="text-xs font-bold text-slate-700 dark:text-zinc-200 block mt-0.5">
+                                  {(m.precision * 100).toFixed(2)}%
+                                </strong>
+                              </div>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  Recall
+                                </span>
+                                <strong className="text-xs font-bold text-slate-700 dark:text-zinc-200 block mt-0.5">
+                                  {(m.recall * 100).toFixed(2)}%
+                                </strong>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  R² Score
+                                </span>
+                                <strong className="text-sm font-black text-emerald-500 block mt-0.5">
+                                  {(m.r2 * 100).toFixed(2)}%
+                                </strong>
+                              </div>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  Adjusted R²
+                                </span>
+                                <strong className="text-sm font-extrabold text-purple-600 dark:text-purple-400 block mt-0.5">
+                                  {(m.adjusted_r2 * 100).toFixed(2)}%
+                                </strong>
+                              </div>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  RMSE
+                                </span>
+                                <strong className="text-xs font-bold text-slate-700 dark:text-zinc-200 block mt-0.5">
+                                  {m.rmse.toFixed(4)}
+                                </strong>
+                              </div>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  MAE
+                                </span>
+                                <strong className="text-xs font-bold text-slate-700 dark:text-zinc-200 block mt-0.5">
+                                  {m.mae.toFixed(4)}
+                                </strong>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* CARD 3: Automated Preprocessing (Bottom Left) */}
+                      <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex flex-col justify-between overflow-hidden">
+                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-white/10">
+                          <Layers className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                            Automated Pipeline Preprocessing
+                          </h4>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm text-xs leading-relaxed text-slate-700 dark:text-zinc-200 font-medium space-y-2 mt-3 flex-1 flex flex-col justify-center">
+                          <div className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <span>Imputed missing numeric fields using Median Strategy</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <span>Encoded categorical variables using sparse OneHotEncoder</span>
+                          </div>
+                          {selectedModelForModal === "polynomial_regression" && (
+                            <div className="flex items-center gap-2">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                              <span>Generated Polynomial Features (degree=2)</span>
+                            </div>
+                          )}
+                          {(selectedModelForModal === "knn_classifier" ||
+                            selectedModelForModal === "svm_classifier") && (
+                            <div className="flex items-center gap-2">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                              <span>Normalized numerical inputs using StandardScaler</span>
+                            </div>
+                          )}
+                          {selectedModelForModal &&
+                            ![
+                              "knn_classifier",
+                              "svm_classifier",
+                              "polynomial_regression",
+                            ].includes(selectedModelForModal) && (
+                              <div className="flex items-center gap-2">
+                                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                <span>Preserved original numeric scales (no scaling needed for trees)</span>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+
+                      {/* CARD 4: Validation Performance Visuals (Bottom Right) */}
+                      <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex flex-col justify-between overflow-hidden">
+                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-white/10">
+                          <Activity className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                            {isClassification ? "Confusion Matrix Results" : "Actual vs Predicted Validation"}
+                          </h4>
+                        </div>
+
+                        <div className="pt-3 flex-1 flex flex-col justify-center">
+                          {isClassification && m.confusion_matrix ? (
+                            <div className="rounded-xl overflow-hidden p-3 border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
                               <div className="grid grid-cols-2 gap-2 text-center text-xs font-bold text-slate-700 dark:text-zinc-300">
                                 {m.confusion_matrix.map((row, rIdx) =>
                                   row.map((val, cIdx) => {
@@ -1632,9 +1641,9 @@ export default function ModelTrainingView({
                                     return (
                                       <div
                                         key={`${rIdx}-${cIdx}`}
-                                        className={`p-3 rounded-lg border ${
+                                        className={`p-2.5 rounded-lg border ${
                                           isDiag
-                                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-extrabold"
                                             : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
                                         }`}
                                       >
@@ -1644,59 +1653,41 @@ export default function ModelTrainingView({
                                   }),
                                 )}
                               </div>
-                              <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 mt-3 px-1">
+                              <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 mt-2 px-1">
                                 <span>Predicted Classes</span>
                                 <span>Target Splits</span>
                               </div>
                             </div>
-                          </div>
-                        )}
-
-                        {/* Actual vs Predicted Summary (Regression) */}
-                        {!isClassification && trainingJobDetail.predictions && (
-                          <div className="space-y-3">
-                            <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                              Actual vs Predicted (First 5 Rows)
-                            </h4>
-                            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-sm">
+                          ) : trainingJobDetail.predictions ? (
+                            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm max-h-44 overflow-y-auto">
                               <table className="w-full text-center text-xs">
-                                <thead className="bg-slate-100/70 dark:bg-zinc-900/80 font-bold uppercase tracking-wider text-[10px] text-slate-600 dark:text-zinc-400">
+                                <thead className="bg-slate-100/70 dark:bg-white/[0.06] font-bold uppercase tracking-wider text-[10px] text-slate-600 dark:text-zinc-400 sticky top-0">
                                   <tr>
-                                    <th className="px-3 py-2">Row</th>
-                                    <th className="px-3 py-2">Actual</th>
-                                    <th className="px-3 py-2">Predicted</th>
-                                    <th className="px-3 py-2">
-                                      Residual Error
-                                    </th>
+                                    <th className="px-3 py-1.5">Row</th>
+                                    <th className="px-3 py-1.5">Actual</th>
+                                    <th className="px-3 py-1.5">Predicted</th>
+                                    <th className="px-3 py-1.5">Residual</th>
                                   </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/60">
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06]">
                                   {trainingJobDetail.predictions.actual
                                     ?.slice(0, 5)
                                     .map((act, idx) => {
-                                      const pred =
-                                        trainingJobDetail.predictions.predicted[
-                                          idx
-                                        ];
+                                      const pred = trainingJobDetail.predictions.predicted[idx];
                                       const res = act - pred;
                                       return (
-                                        <tr
-                                          key={idx}
-                                          className="hover:bg-slate-50/60 dark:hover:bg-zinc-900/30"
-                                        >
-                                          <td className="px-3 py-2 font-bold text-slate-400 dark:text-zinc-500 text-[11px]">
+                                        <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-white/[0.02]">
+                                          <td className="px-3 py-1.5 font-bold text-slate-400 dark:text-zinc-500 text-[10px]">
                                             #{idx}
                                           </td>
-                                          <td className="px-3 py-2 font-medium text-slate-700 dark:text-zinc-200">
-                                            {act.toFixed(3)}
+                                          <td className="px-3 py-1.5 font-medium text-slate-700 dark:text-zinc-200">
+                                            {act.toFixed(2)}
                                           </td>
-                                          <td className="px-3 py-2 font-bold text-primary">
-                                            {pred.toFixed(3)}
+                                          <td className="px-3 py-1.5 font-bold text-purple-600 dark:text-purple-400">
+                                            {pred.toFixed(2)}
                                           </td>
-                                          <td
-                                            className={`px-3 py-2 font-bold ${res < 0 ? "text-rose-500" : "text-emerald-500"}`}
-                                          >
-                                            {res.toFixed(3)}
+                                          <td className={`px-3 py-1.5 font-bold text-[11px] ${res < 0 ? "text-rose-500" : "text-emerald-500"}`}>
+                                            {res.toFixed(2)}
                                           </td>
                                         </tr>
                                       );
@@ -1704,14 +1695,13 @@ export default function ModelTrainingView({
                                 </tbody>
                               </table>
                             </div>
-                          </div>
-                        )}
+                          ) : null}
+                        </div>
                       </div>
-                    );
-                  })()}
-              </div>
+                    </div>
+                  );
+                })()}
             </div>
-
           </div>
         </div>
       )}
@@ -1724,94 +1714,84 @@ export default function ModelTrainingView({
             onClick={() => setIsPredictModalOpen(false)}
           />
 
-          <div className="relative w-full max-w-xl max-h-[85vh] bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-in font-sans">
+          <div className="relative w-full max-w-xl max-h-[88vh] bg-white/95 dark:bg-zinc-900/95 border border-zinc-300 dark:border-zinc-700 rounded-3xl shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden animate-fade-in font-sans">
             {/* Modal Header */}
-            <div className="p-4 px-6 border-b border-slate-100 dark:border-zinc-800/80 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-900/30">
-              <div className="flex items-center gap-2.5">
-                <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight capitalize">
-                    Test Model (Predict Live): {predictAlgo.replace(/_/g, " ")}
-                  </h3>
-                  <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-semibold uppercase tracking-wider">
-                    Target Output: {trainingJobDetail.target_column}
-                  </span>
-                </div>
+            <div className="p-4 px-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-900/50">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight capitalize">
+                  Test Model: {predictAlgo.replace(/_/g, " ")}
+                </h3>
+                <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-semibold uppercase tracking-wider block mt-0.5">
+                  Target Output (Y): {trainingJobDetail.target_column}
+                </span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsPredictModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer transition"
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Content Body: Inputs inside card with field validation */}
+            {/* Modal Content Body: Auth-styled Form Inputs */}
             <form onSubmit={handlePredictSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
-              <div className="space-y-3 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/50">
-                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 block mb-1">
-                  Enter Feature Field Values:
-                </span>
-                
+              <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
                 {trainingJobDetail.selected_features?.map((feat) => {
                   const hasError = !!predictValidationErrors[feat];
                   return (
-                    <div key={feat} className="space-y-1">
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300">
+                    <label key={feat} className="block text-left space-y-1.5">
+                      <span className="block text-xs font-semibold text-slate-800 dark:text-zinc-200 pl-3">
                         {feat}
-                      </label>
-                      <input
-                        type="text"
-                        value={predictFormInputs[feat] !== undefined ? predictFormInputs[feat] : ""}
-                        onChange={(e) => {
-                          setPredictFormInputs({
-                            ...predictFormInputs,
-                            [feat]: e.target.value,
-                          });
-                          if (predictValidationErrors[feat]) {
-                            setPredictValidationErrors({
-                              ...predictValidationErrors,
-                              [feat]: null,
+                      </span>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={predictFormInputs[feat] !== undefined ? predictFormInputs[feat] : ""}
+                          onChange={(e) => {
+                            setPredictFormInputs({
+                              ...predictFormInputs,
+                              [feat]: e.target.value,
                             });
-                          }
-                        }}
-                        placeholder={`Enter value for ${feat}...`}
-                        className={`w-full px-3 py-2 text-xs rounded-xl border bg-white dark:bg-zinc-900 text-slate-900 dark:text-white transition focus:outline-none ${
-                          hasError
-                            ? "border-rose-500 ring-2 ring-rose-500/20"
-                            : "border-slate-200 dark:border-zinc-800 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
-                        }`}
-                      />
+                            if (predictValidationErrors[feat]) {
+                              setPredictValidationErrors({
+                                ...predictValidationErrors,
+                                [feat]: null,
+                              });
+                            }
+                          }}
+                          placeholder={`Enter value for ${feat}...`}
+                          className={`w-full rounded-full bg-white dark:bg-zinc-900/60 px-5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 outline-none transition-all duration-200 py-2.5 shadow-sm ${
+                            hasError
+                              ? "border-2 border-rose-500 focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10"
+                              : "border border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500 focus:border-[#673AB7] dark:focus:border-[#8b5cf6] focus:ring-4 focus:ring-[#673AB7]/15 dark:focus:ring-[#8b5cf6]/20"
+                          }`}
+                        />
+                      </div>
                       {hasError && (
-                        <span className="text-[10px] font-semibold text-rose-500 flex items-center gap-1 mt-0.5">
-                          <AlertTriangle className="w-3 h-3" /> {predictValidationErrors[feat]}
-                        </span>
+                        <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-rose-500 dark:text-rose-400 pl-3">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 dark:bg-rose-400 inline-block shrink-0" />
+                          <span>{predictValidationErrors[feat]}</span>
+                        </p>
                       )}
-                    </div>
+                    </label>
                   );
                 })}
               </div>
 
-              {/* Submit Predict Button */}
+              {/* Submit Predict Button (Auth pill style, no sparkles icon) */}
               <button
                 type="submit"
                 disabled={predictingState}
-                className="w-full py-2.5 px-4 text-xs font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white dark:bg-purple-500 dark:hover:bg-purple-600 transition cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                className="w-full rounded-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 border border-slate-900 dark:border-white py-2.5 text-xs font-bold transition-all duration-200 shadow-xs active:scale-95 cursor-pointer flex items-center justify-center gap-2 select-none disabled:opacity-50"
               >
-                {predictingState ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4" />
-                )}
-                <span>{predictingState ? "Generating Live Prediction..." : "Run Prediction Test"}</span>
+                {predictingState && <RefreshCw className="w-4 h-4 animate-spin text-white dark:text-slate-900" />}
+                <span>{predictingState ? "Generating Prediction..." : "Run Prediction Test"}</span>
               </button>
 
               {/* Prediction Result Display */}
               {predictOutputResult && (
-                <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 space-y-2 animate-fade-in">
+                <div className="p-4 rounded-2xl border border-purple-500/30 bg-purple-500/10 dark:bg-purple-500/10 space-y-2 animate-fade-in text-left">
                   <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider block">
                     Prediction Output Result
                   </span>

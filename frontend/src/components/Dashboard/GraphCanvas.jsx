@@ -113,17 +113,7 @@ function GraphCanvas({
       }`}
     >
       {/* Quick Controls Toolbar */}
-      <div className="flex justify-between items-center px-4 py-2.5 border-b border-purple-200/60 dark:border-purple-900/40 bg-white/80 dark:bg-purple-950/40 backdrop-blur-md z-10">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-600 dark:bg-purple-400"></span>
-          </span>
-          <span className="text-xs text-purple-900/70 dark:text-purple-300/70 font-medium tracking-wide">
-            {isInteractive ? "Interactive Preview" : "Static Output"}
-          </span>
-        </div>
-
+      <div className="flex justify-end items-center px-4 py-2.5 border-b border-purple-200/60 dark:border-purple-900/40 bg-white/80 dark:bg-purple-950/40 backdrop-blur-md z-10">
         <div className="flex items-center gap-1 bg-purple-100/50 dark:bg-purple-900/30 p-1 rounded-xl border border-purple-200/50 dark:border-purple-800/40">
           <button
             onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}

@@ -1017,7 +1017,7 @@ export default function VisualizationView({
       {/* Dataset Profile Auto-Analysis Info Summary */}
       {profile && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#212121] shadow-sm">
             <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
               Total Rows
             </span>
@@ -1025,7 +1025,7 @@ export default function VisualizationView({
               {profile.total_rows?.toLocaleString()}
             </span>
           </div>
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#212121] shadow-sm">
             <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
               Total Columns
             </span>
@@ -1033,7 +1033,7 @@ export default function VisualizationView({
               {profile.total_columns}
             </span>
           </div>
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#212121] shadow-sm">
             <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
               File Size
             </span>
@@ -1041,7 +1041,7 @@ export default function VisualizationView({
               {(profile.file_size / 1024).toFixed(1)} KB
             </span>
           </div>
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#212121] shadow-sm">
             <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
               Numeric Columns
             </span>
@@ -1049,7 +1049,7 @@ export default function VisualizationView({
               {profile.numeric_columns?.length || 0}
             </span>
           </div>
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#212121] shadow-sm">
             <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
               Categorical Columns
             </span>
@@ -1057,7 +1057,7 @@ export default function VisualizationView({
               {profile.categorical_columns?.length || 0}
             </span>
           </div>
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#212121] shadow-sm">
             <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
               Duplicate Rows
             </span>
@@ -1068,13 +1068,11 @@ export default function VisualizationView({
         </div>
       )}
 
-
-
       {/* Auto Graph Recommendation Carousel Row */}
       {recommendations.length > 0 && (
-        <div className="p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+        <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#212121] shadow-sm">
           <h2 className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-3.5 flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-[#673ab7] dark:text-[#a855f7]" />{" "}
+            <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />{" "}
             Recommended Visualizations
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -1082,7 +1080,7 @@ export default function VisualizationView({
               <div
                 key={idx}
                 onClick={() => handleApplyRecommendation(rec)}
-                className="p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/40 hover:border-[#673ab7]/40 hover:bg-purple-50/20 dark:hover:bg-purple-950/10 cursor-pointer shadow-sm flex flex-col justify-between transition-colors"
+                className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#212121] hover:border-black dark:hover:border-white transition-all duration-300 ease-out cursor-pointer select-none active:scale-[0.98] shadow-sm flex flex-col justify-between"
               >
                 <div>
                   <div className="flex justify-between items-center">
@@ -1103,11 +1101,11 @@ export default function VisualizationView({
                     {rec.business_use_case}
                   </p>
                 </div>
-                <div className="flex justify-between items-center border-t border-slate-200/60 dark:border-zinc-800 pt-2.5 mt-3">
+                <div className="flex justify-between items-center border-t border-slate-200 dark:border-white/10 pt-2.5 mt-3">
                   <span className="text-[10px] font-medium text-slate-400">
                     Level: {rec.difficulty_level}
                   </span>
-                  <span className="text-xs font-semibold text-[#673ab7] dark:text-[#a855f7] flex items-center gap-1">
+                  <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1">
                     Apply Plot <Plus className="w-3 h-3" />
                   </span>
                 </div>
@@ -1120,7 +1118,7 @@ export default function VisualizationView({
       {/* Main Studio layout: properties (left) + canvas (middle) + options (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Sidebar: Data mappings, specific chart settings, and color customizations */}
-        <div className="lg:col-span-4 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex flex-col gap-4 max-w-full overflow-hidden lg:sticky lg:top-4 z-10 max-h-[calc(100vh-60px)] overflow-y-auto">
+        <div className="lg:col-span-4 p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#212121] shadow-sm flex flex-col gap-4 max-w-full overflow-hidden lg:sticky lg:top-4 z-10 max-h-[calc(100vh-60px)] overflow-y-auto">
           <div className="space-y-4">
             {/* Side sub tab header (iOS Segmented Pill Switch) */}
             <div className="grid grid-cols-3 p-1 rounded-full bg-[#e3e3e8] dark:bg-[#1c1c1e] border border-slate-200/60 dark:border-zinc-800/80 shadow-inner text-center text-xs font-semibold">
@@ -2414,9 +2412,9 @@ export default function VisualizationView({
 
         {/* Center Canvas Area: Toolbar + canvas display + smart notes list */}
         <div className="lg:col-span-8 space-y-6 min-w-0">
-          <div className="bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+          <div className="bg-white dark:bg-[#212121] border border-slate-200 dark:border-white/10 rounded-2xl shadow-sm overflow-hidden flex flex-col">
             {/* Horizontal Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-zinc-900/30">
               {/* Undo / Redo */}
               <div className="flex items-center gap-1">
                 <button
@@ -2568,8 +2566,8 @@ export default function VisualizationView({
               </div>
 
               {/* Stats Panel */}
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm text-xs space-y-2">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block pb-1 border-b border-slate-100 dark:border-zinc-800">
+              <div className="p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#212121] shadow-sm text-xs space-y-2">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block pb-1 border-b border-slate-100 dark:border-white/10">
                   Dataset Diagnostics
                 </span>
                 <div className="grid grid-cols-2 gap-4 pt-1 text-slate-600 dark:text-zinc-300">

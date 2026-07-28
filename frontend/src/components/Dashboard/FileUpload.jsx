@@ -583,8 +583,8 @@ const FileUpload = ({
                     {successMsg || "Dataset uploaded and profiled successfully!"}
                   </span>
                 </div>
-                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 flex items-center gap-1 shrink-0">
-                  <Check className="w-3 h-3" /> Ready
+                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 shrink-0">
+                  Ready
                 </span>
               </div>
             )}

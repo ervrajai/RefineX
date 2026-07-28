@@ -17,8 +17,7 @@ import {
   Sparkles,
   BrainCircuit,
   LineChart,
-  History,
-  Bell
+  History
 } from "lucide-react";
 
 function Dashboard() {
@@ -147,17 +146,7 @@ function Dashboard() {
       {/* Workspace Panel */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         
-        {/* Floating Notification Bell (Only shown at the top, fades out on scroll) */}
-        <div className={`absolute top-4 right-6 z-40 transition-all duration-300 ${
-          isScrolled ? "opacity-0 pointer-events-none -translate-y-2" : "opacity-100 translate-y-0"
-        }`}>
-          <button className="relative p-2.5 rounded-xl text-slate-500 dark:text-zinc-400 bg-[#FFFFFF]/80 dark:bg-[#212121]/80 border border-slate-200/50 dark:border-zinc-800 backdrop-blur shadow-sm hover:bg-[#F1F5F9] dark:hover:bg-[#272727] hover:text-slate-900 dark:hover:text-white transition duration-200 cursor-pointer">
-            <Bell className="w-4.5 h-4.5" />
-            <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-primary ring-1 ring-white dark:ring-zinc-900" />
-          </button>
-        </div>
-
-        {/* Dynamic content area - listens for scroll to hide/show bell */}
+        {/* Dynamic content area - listens for scroll */}
         <main id="main-scroll-container" onScroll={handleScroll} className="flex-1 overflow-y-auto p-6 space-y-6 pt-16">
           
           {/* Main Error Banner */}

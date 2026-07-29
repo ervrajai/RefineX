@@ -223,7 +223,6 @@ const FileUpload = ({
 
   return (
     <>
-      {/* Embedded CSS Keyframes & Animations (Ensures single-file drag-and-drop usability) */}
       <style>{`
         @keyframes shimmerGlow {
           0% { left: -100%; }
@@ -242,9 +241,123 @@ const FileUpload = ({
           );
           animation: shimmerGlow 1.6s infinite ease-in-out;
         }
+
+        .folder-container {
+          --transition: 350ms;
+          --folder-W: 110px;
+          --folder-H: 75px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-end;
+          padding: 12px;
+          background: linear-gradient(135deg, #7c3aed, #4f46e5);
+          border-radius: 20px;
+          box-shadow: 0 12px 28px rgba(124, 58, 237, 0.35);
+          height: calc(var(--folder-H) * 1.65);
+          width: 210px;
+          position: relative;
+          user-select: none;
+        }
+
+        .folder-element {
+          position: absolute;
+          top: -18px;
+          left: calc(50% - 55px);
+          animation: floatFolder 2.5s infinite ease-in-out;
+          transition: transform var(--transition) ease;
+        }
+
+        .folder-element:hover {
+          transform: scale(1.05);
+        }
+
+        .folder-element .front-side,
+        .folder-element .back-side {
+          position: absolute;
+          transition: transform var(--transition);
+          transform-origin: bottom center;
+        }
+
+        .folder-element .back-side::before,
+        .folder-element .back-side::after {
+          content: "";
+          display: block;
+          background-color: rgba(255, 255, 255, 0.6);
+          z-index: 0;
+          width: var(--folder-W);
+          height: var(--folder-H);
+          position: absolute;
+          transform-origin: bottom center;
+          border-radius: 12px;
+          transition: transform 350ms;
+        }
+
+        .group:hover .back-side::before {
+          transform: rotateX(-5deg) skewX(5deg);
+        }
+        .group:hover .back-side::after {
+          transform: rotateX(-15deg) skewX(12deg);
+        }
+
+        .folder-element .front-side {
+          z-index: 1;
+        }
+
+        .group:hover .front-side {
+          transform: rotateX(-40deg) skewX(15deg);
+        }
+
+        .folder-element .tip {
+          background: linear-gradient(135deg, #a855f7, #7c3aed);
+          width: 70px;
+          height: 18px;
+          border-radius: 10px 10px 0 0;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+          position: absolute;
+          top: -9px;
+          z-index: 2;
+        }
+
+        .folder-element .cover {
+          background: linear-gradient(135deg, #c084fc, #9333ea);
+          width: var(--folder-W);
+          height: var(--folder-H);
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+          border-radius: 10px;
+        }
+
+        .custom-file-upload-btn {
+          font-size: 0.9em;
+          font-weight: 700;
+          color: #ffffff;
+          text-align: center;
+          background: rgba(255, 255, 255, 0.25);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 12px;
+          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+          cursor: pointer;
+          transition: all var(--transition) ease;
+          display: inline-block;
+          width: 100%;
+          padding: 8px 20px;
+          position: relative;
+          backdrop-filter: blur(4px);
+        }
+
+        .group:hover .custom-file-upload-btn {
+          background: rgba(255, 255, 255, 0.4);
+          transform: translateY(-1px);
+        }
+
+        @keyframes floatFolder {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-12px); }
+          100% { transform: translateY(0px); }
+        }
       `}</style>
 
-      <div className="w-full max-w-4xl mx-auto space-y-4 font-sans">
+      <div className="w-full h-full font-sans">
         {/* Hidden File Input */}
         <input
           type="file"
@@ -263,74 +376,51 @@ const FileUpload = ({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            tabIndex={0}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 fileInputRef.current?.click();
               }
             }}
-            className={`relative group cursor-pointer w-full min-h-[340px] rounded-3xl p-8 flex flex-col items-center justify-center text-center transition-all duration-300 border-2 border-dashed outline-none overflow-hidden ${
+            tabIndex={0}
+            className={`relative group cursor-pointer w-full min-h-[380px] h-full rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center transition-all duration-300 border-2 border-dashed outline-none overflow-hidden ${
               isDragging
-                ? "border-[#673ab7] bg-[#673ab7]/10 dark:bg-[#673ab7]/15 ring-4 ring-[#673ab7]/20 shadow-xl"
-                : "border-slate-300 dark:border-zinc-800 bg-slate-50/50 dark:bg-[#212121]/60 hover:border-[#673ab7]/70 hover:bg-slate-100/60 dark:hover:bg-zinc-900/60"
+                ? "border-purple-600 bg-purple-500/10 ring-4 ring-purple-500/20 shadow-xl"
+                : "border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-md dark:shadow-black/40 hover:border-slate-400 dark:hover:border-zinc-700"
             }`}
           >
-            {/* Ambient Dynamic Background Blur ("Goo" Glow) */}
-            <div
-              className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-[#673ab7]/20 rounded-full blur-3xl pointer-events-none transition-all duration-500 ${
-                isDragging ? "opacity-100 scale-125" : "opacity-0 group-hover:opacity-45"
-              }`}
-            />
 
-            {/* Top Badge */}
-            <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-200/60 dark:bg-zinc-800/60 text-slate-700 dark:text-zinc-300 text-[11px] font-semibold border border-slate-300/40 dark:border-zinc-700/50 backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-[#673ab7]" />
-              <span>Fast Profiler</span>
-            </div>
-
-            {/* Upload Image Icon */}
-            <div className="mb-5 relative flex items-center justify-center">
-              <img
-                src={fileUploadImg}
-                alt="File Upload"
-                className={`w-24 h-24 sm:w-28 sm:h-28 object-contain select-none transition-all duration-300 ${
-                  isDragging ? "opacity-100 scale-105" : "opacity-85 group-hover:opacity-100"
-                }`}
-              />
+            {/* 3D Folder Upload Animation */}
+            <div className="mb-3 select-none my-2 pointer-events-none">
+              <div className="folder-container">
+                <div className="folder-element">
+                  <div className="front-side">
+                    <div className="tip" />
+                    <div className="cover" />
+                  </div>
+                  <div className="back-side cover" />
+                </div>
+                <span className="custom-file-upload-btn">
+                  Browse File
+                </span>
+              </div>
             </div>
 
             {/* Title & Instructions */}
-            <h3 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">
-              {isDragging ? "Drop dataset here to begin" : "Drag & Drop dataset file"}
+            <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight mt-2 mb-1">
+              {isDragging ? "Drop dataset here to begin" : "Drag and drop dataset here"}
             </h3>
-            <p className="text-xs md:text-sm text-slate-500 dark:text-zinc-400 max-w-md mb-6 leading-relaxed">
-              Drag your file here or click to browse. Supports{" "}
-              <span className="font-semibold text-slate-700 dark:text-zinc-200">
-                CSV, Excel (.xlsx, .xls) & JSON
-              </span>{" "}
-              up to {maxSizeMB}MB.
+
+            <p className="text-xs text-slate-500 dark:text-zinc-400 font-medium mb-3">
+              Supports <strong className="text-slate-800 dark:text-zinc-200">CSV, XLSX, XLS, JSON</strong> • Up to <strong className="text-purple-600 dark:text-purple-400 font-bold">{maxSizeMB}MB</strong>
             </p>
 
-            {/* CTA Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                fileInputRef.current?.click();
-              }}
-              className="px-6 py-2.5 rounded-full bg-[#673ab7] hover:bg-[#522e93] active:bg-[#43237e] text-white text-xs font-bold shadow-lg shadow-[#673ab7]/25 hover:shadow-[#673ab7]/40 transition-all duration-200 flex items-center gap-2 cursor-pointer"
-            >
-              <ArrowUpFromLine className="w-4 h-4" />
-              <span>Browse Computer</span>
-            </button>
-
             {/* Accepted Formats Badges */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 mt-1">
               {acceptedFormats.map((fmt) => (
                 <span
                   key={fmt}
-                  className="px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase bg-slate-200/60 dark:bg-zinc-800/60 text-slate-600 dark:text-zinc-400 border border-slate-300/50 dark:border-zinc-700/50"
+                  className="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider uppercase bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700/80"
                 >
                   {fmt.replace(".", "")}
                 </span>
@@ -339,7 +429,7 @@ const FileUpload = ({
 
             {/* Validation Error */}
             {validationError && (
-              <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs flex items-center gap-2 max-w-md shadow-sm">
+              <div className="mt-3 p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs flex items-center gap-2 max-w-md shadow-sm">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{validationError}</span>
               </div>
@@ -493,8 +583,8 @@ const FileUpload = ({
                     {successMsg || "Dataset uploaded and profiled successfully!"}
                   </span>
                 </div>
-                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 flex items-center gap-1 shrink-0">
-                  <Check className="w-3 h-3" /> Ready
+                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 shrink-0">
+                  Ready
                 </span>
               </div>
             )}

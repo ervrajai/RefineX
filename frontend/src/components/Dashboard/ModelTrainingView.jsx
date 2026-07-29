@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import api from "../../services/api";
 import FileUpload from "./FileUpload";
+import RecentDatasetPanel from "../ui/RecentDatasetPanel";
+import RefreshButton from "../ui/RefreshButton";
+import DatasetTableViewer from "../ui/DatasetTableViewer";
+import { AnimatedSelect } from "../ui/AnimatedSelect";
+import { AnimatedCheckbox } from "../ui/AnimatedCheckbox";
+import { BouncyAccordion } from "../ui/BouncyAccordion";
 import {
   BrainCircuit,
   UploadCloud,
@@ -32,7 +38,10 @@ import {
   RotateCcw,
   SlidersHorizontal,
   Check,
-  Cpu
+  Cpu,
+  BrushCleaning,
+  Download,
+  ChevronDown,
 } from "lucide-react";
 
 export default function ModelTrainingView({
@@ -63,11 +72,16 @@ export default function ModelTrainingView({
   trainingJobDetail,
   setTrainingJobDetail,
   onLoadWorkspace, // callback to clean tab
-  setActiveTab     // function to toggle active tabs in Dashboard
+  setActiveTab, // function to toggle active tabs in Dashboard
 }) {
   // Dataset states (lifted to parent)
   const [isClean, setIsClean] = useState(true);
   const [warnings, setWarnings] = useState(null);
+
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
   // Loading states
   const [uploading, setUploading] = useState(false);
@@ -87,20 +101,150 @@ export default function ModelTrainingView({
   // Active training results and modals
   const [selectedModelForModal, setSelectedModelForModal] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Live prediction states
-  const [testInputs, setTestInputs] = useState({});
-  const [predictionResult, setPredictionResult] = useState(null);
-  const [predicting, setPredicting] = useState(false);
-  const [predictErrorMsg, setPredictErrorMsg] = useState("");
+  const [openDownloadDropdownId, setOpenDownloadDropdownId] = useState(null);
+  
+  // Dedicated Predict Modal State
+  const [isPredictModalOpen, setIsPredictModalOpen] = useState(false);
+  const [predictAlgo, setPredictAlgo] = useState("");
+  const [predictFormInputs, setPredictFormInputs] = useState({});
+  const [predictValidationErrors, setPredictValidationErrors] = useState({});
+  const [predictOutputResult, setPredictOutputResult] = useState(null);
+  const [predictingState, setPredictingState] = useState(false);
+
+  const handleResetSetup = () => {
+    setTrainingMode("decide");
+    setTargetColumn("");
+    setSelectedFeatures([]);
+    setModelChoice("all");
+    setSelectedAlgorithms([]);
+    setTestSize(0.2);
+    setCvFolds(5);
+    setTrainingJobDetail(null);
+    setSuccessMsg("Configuration parameters reset. Ready for new setup.");
+  };
+
+  const handleOpenPredictModal = (algorithm) => {
+    setPredictAlgo(algorithm);
+    const initialInputs = {};
+    if (trainingJobDetail?.selected_features) {
+      trainingJobDetail.selected_features.forEach((feat) => {
+        initialInputs[feat] = "";
+      });
+    }
+    setPredictFormInputs(initialInputs);
+    setPredictValidationErrors({});
+    setPredictOutputResult(null);
+    setIsPredictModalOpen(true);
+  };
+
+  const handlePredictSubmit = async (e) => {
+    e.preventDefault();
+    const errors = {};
+    if (trainingJobDetail?.selected_features) {
+      trainingJobDetail.selected_features.forEach((feat) => {
+        const val = predictFormInputs[feat];
+        if (val === undefined || val === null || String(val).trim() === "") {
+          errors[feat] = "This field is required";
+        } else if (isNaN(Number(val))) {
+          errors[feat] = "Must be a valid number";
+        }
+      });
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setPredictValidationErrors(errors);
+      return;
+    }
+
+    setPredictValidationErrors({});
+    setPredictingState(true);
+    try {
+      const formattedData = {};
+      Object.keys(predictFormInputs).forEach((k) => {
+        formattedData[k] = Number(predictFormInputs[k]);
+      });
+
+      const res = await api.post(
+        `model-training/jobs/${trainingJobDetail.id}/predict/`,
+        {
+          data: formattedData,
+          model_name: predictAlgo,
+        }
+      );
+      setPredictOutputResult(res.data);
+    } catch (err) {
+      setErrorMsg(err.response?.data?.error || "Failed to make prediction.");
+    } finally {
+      setPredictingState(false);
+    }
+  };
 
   const fileInputRef = useRef(null);
+
+  const handleTableScroll = () => {};
+
+  const handleSort = (key) => {
+    const direction =
+      sortConfig.key === key && sortConfig.direction === "asc" ? "desc" : "asc";
+    setSortConfig({ key, direction });
+  };
+
+  const getProcessedRows = () => {
+    if (!preview?.rows) return [];
+    let items = [...preview.rows];
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      items = items.filter((row) =>
+        preview.columns.some((col) =>
+          String(row[col] ?? "")
+            .toLowerCase()
+            .includes(query),
+        ),
+      );
+    }
+
+    if (sortConfig.key) {
+      items.sort((a, b) => {
+        const valA = a[sortConfig.key];
+        const valB = b[sortConfig.key];
+
+        if (valA === null || valA === undefined) return 1;
+        if (valB === null || valB === undefined) return -1;
+
+        if (typeof valA === "number" && typeof valB === "number") {
+          return sortConfig.direction === "asc" ? valA - valB : valB - valA;
+        }
+
+        const strA = String(valA).toLowerCase();
+        const strB = String(valB).toLowerCase();
+
+        if (strA < strB) return sortConfig.direction === "asc" ? -1 : 1;
+        if (strA > strB) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return items;
+  };
+
+  const processedRows = getProcessedRows();
+  const totalPages = Math.max(1, Math.ceil(processedRows.length / rowsPerPage));
+  const paginatedRows = processedRows.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage,
+  );
 
   // Check inferred problem type based on target column
   const getInferredTaskType = () => {
     if (!preview || !preview.rows || !targetColumn) return "unknown";
-    const uniqueVals = new Set(preview.rows.map(r => r[targetColumn]).filter(v => v !== null));
+    const uniqueVals = new Set(
+      preview.rows.map((r) => r[targetColumn]).filter((v) => v !== null),
+    );
     const uniqueCount = uniqueVals.size;
-    const firstVal = preview.rows.find(r => r[targetColumn] !== null)?.[targetColumn];
+    const firstVal = preview.rows.find((r) => r[targetColumn] !== null)?.[
+      targetColumn
+    ];
     if (typeof firstVal === "boolean") return "classification";
     if (typeof firstVal === "string") return "classification";
     if (uniqueCount <= 10) return "classification";
@@ -124,7 +268,7 @@ export default function ModelTrainingView({
     try {
       const res = await api.get("history/");
       const seen = new Set();
-      const uniqueCleanJobs = res.data.filter(job => {
+      const uniqueCleanJobs = res.data.filter((job) => {
         if (seen.has(job.dataset_id)) return false;
         seen.add(job.dataset_id);
         return true;
@@ -142,9 +286,11 @@ export default function ModelTrainingView({
     setErrorMsg("");
     setSuccessMsg("");
     try {
-      const res = await api.get(`cleaning/${job.dataset_id}/preview/?offset=0&limit=100`);
+      const res = await api.get(
+        `cleaning/${job.dataset_id}/preview/?offset=0&limit=100`,
+      );
       const data = res.data;
-      
+
       setDatasetId(job.dataset_id);
       setMetadata(data.metadata);
       setPreview(data);
@@ -155,33 +301,22 @@ export default function ModelTrainingView({
       if (cols.length >= 2) {
         const lastCol = cols[cols.length - 1];
         setTargetColumn(lastCol);
-        setSelectedFeatures(cols.filter(c => c !== lastCol));
+        setSelectedFeatures(cols.filter((c) => c !== lastCol));
       }
 
-      setSuccessMsg(`Loaded cleaned dataset "${job.dataset_name}" from history!`);
+      setSuccessMsg(
+        `Loaded cleaned dataset "${job.dataset_name}" from history!`,
+      );
     } catch (err) {
-      setErrorMsg("Failed to load historical dataset details. The file might have been deleted.");
+      setErrorMsg(
+        "Failed to load historical dataset details. The file might have been deleted.",
+      );
     } finally {
       setUploading(false);
     }
   };
 
-  const handleTestPredict = async () => {
-    if (!trainingJobDetail) return;
-    setPredicting(true);
-    setPredictionResult(null);
-    setPredictErrorMsg("");
-    try {
-      const res = await api.post(`model-training/jobs/${trainingJobDetail.id}/predict/`, {
-        inputs: testInputs
-      });
-      setPredictionResult(res.data.prediction);
-    } catch (err) {
-      setPredictErrorMsg(err.response?.data?.error || "Prediction failed. Check feature formats.");
-    } finally {
-      setPredicting(false);
-    }
-  };
+
 
   // Automatically clear success messages
   useEffect(() => {
@@ -198,7 +333,7 @@ export default function ModelTrainingView({
       const lastCol = cols[cols.length - 1];
       if (!targetColumn || !cols.includes(targetColumn)) {
         setTargetColumn(lastCol);
-        setSelectedFeatures(cols.filter(c => c !== lastCol));
+        setSelectedFeatures(cols.filter((c) => c !== lastCol));
       }
     }
   }, [preview, targetColumn]);
@@ -206,9 +341,18 @@ export default function ModelTrainingView({
   // Pre-select compatible algorithms by default based on inferred task type
   useEffect(() => {
     if (inferredTaskType === "classification") {
-      setSelectedAlgorithms(["knn_classifier", "decision_tree_classifier", "random_forest_classifier", "svm_classifier"]);
+      setSelectedAlgorithms([
+        "knn_classifier",
+        "decision_tree_classifier",
+        "random_forest_classifier",
+        "svm_classifier",
+      ]);
     } else if (inferredTaskType === "regression") {
-      setSelectedAlgorithms(["linear", "multiple_linear", "polynomial_regression"]);
+      setSelectedAlgorithms([
+        "linear",
+        "multiple_linear",
+        "polynomial_regression",
+      ]);
     }
   }, [inferredTaskType]);
 
@@ -218,14 +362,18 @@ export default function ModelTrainingView({
     if (activeJobId && training) {
       interval = setInterval(async () => {
         try {
-          const res = await api.get(`model-training/jobs/${activeJobId}/status/`);
+          const res = await api.get(
+            `model-training/jobs/${activeJobId}/status/`,
+          );
           setJobStatus(res.data);
           if (res.data.status === "completed") {
             setTraining(false);
             setActiveJobId(null);
             setSuccessMsg("Training completed successfully!");
             // Load job details
-            const detailRes = await api.get(`model-training/jobs/${activeJobId}/`);
+            const detailRes = await api.get(
+              `model-training/jobs/${activeJobId}/`,
+            );
             setTrainingJobDetail(detailRes.data);
           } else if (res.data.status === "failed") {
             setTraining(false);
@@ -307,7 +455,7 @@ export default function ModelTrainingView({
           if (elapsed > 0) {
             setUploadSpeed(Math.round(loaded / elapsed));
           }
-        }
+        },
       });
       setUploadProgress(100);
       const data = res.data;
@@ -322,15 +470,21 @@ export default function ModelTrainingView({
       if (cols.length >= 2) {
         const lastCol = cols[cols.length - 1];
         setTargetColumn(lastCol);
-        setSelectedFeatures(cols.filter(c => c !== lastCol));
+        setSelectedFeatures(cols.filter((c) => c !== lastCol));
       }
 
       setSuccessMsg("Dataset uploaded and inspected successfully!");
     } catch (err) {
-      if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || (err.message && err.message.includes("canceled"))) {
+      if (
+        err.name === "CanceledError" ||
+        err.code === "ERR_CANCELED" ||
+        (err.message && err.message.includes("canceled"))
+      ) {
         setErrorMsg("Upload canceled.");
       } else {
-        setErrorMsg(err.response?.data?.error || "Upload failed. Verify CSV integrity.");
+        setErrorMsg(
+          err.response?.data?.error || "Upload failed. Verify CSV integrity.",
+        );
       }
     } finally {
       setUploading(false);
@@ -350,8 +504,8 @@ export default function ModelTrainingView({
           metadata,
           res.data.report,
           null, // before report
-          [],   // logs
-          preview
+          [], // logs
+          preview,
         );
       }
       if (setActiveTab) {
@@ -368,12 +522,24 @@ export default function ModelTrainingView({
     const isClassification = inferredTaskType === "classification";
     const isRegression = inferredTaskType === "regression";
 
-    const classificationAlgos = ["knn_classifier", "decision_tree_classifier", "random_forest_classifier", "svm_classifier"];
-    const regressionAlgos = ["linear", "multiple_linear", "polynomial_regression"];
+    const classificationAlgos = [
+      "knn_classifier",
+      "decision_tree_classifier",
+      "random_forest_classifier",
+      "svm_classifier",
+    ];
+    const regressionAlgos = [
+      "linear",
+      "multiple_linear",
+      "polynomial_regression",
+    ];
 
-    const selected = modelChoice === "all" 
-      ? (isClassification ? classificationAlgos : regressionAlgos) 
-      : selectedAlgorithms;
+    const selected =
+      modelChoice === "all"
+        ? isClassification
+          ? classificationAlgos
+          : regressionAlgos
+        : selectedAlgorithms;
 
     for (let algo of selected) {
       if (isClassification && regressionAlgos.includes(algo)) {
@@ -402,12 +568,24 @@ export default function ModelTrainingView({
     setSuccessMsg("");
 
     const isClassification = inferredTaskType === "classification";
-    const classificationAlgos = ["knn_classifier", "decision_tree_classifier", "random_forest_classifier", "svm_classifier"];
-    const regressionAlgos = ["linear", "multiple_linear", "polynomial_regression"];
+    const classificationAlgos = [
+      "knn_classifier",
+      "decision_tree_classifier",
+      "random_forest_classifier",
+      "svm_classifier",
+    ];
+    const regressionAlgos = [
+      "linear",
+      "multiple_linear",
+      "polynomial_regression",
+    ];
 
-    const selectedModels = modelChoice === "all" 
-      ? (isClassification ? classificationAlgos : regressionAlgos) 
-      : selectedAlgorithms;
+    const selectedModels =
+      modelChoice === "all"
+        ? isClassification
+          ? classificationAlgos
+          : regressionAlgos
+        : selectedAlgorithms;
 
     const payload = {
       target_column: targetColumn,
@@ -418,8 +596,8 @@ export default function ModelTrainingView({
         test_size: parseFloat(testSize),
         random_state: parseInt(randomState),
         shuffle: shuffle,
-        cv_folds: parseInt(cvFolds)
-      }
+        cv_folds: parseInt(cvFolds),
+      },
     };
 
     try {
@@ -428,10 +606,12 @@ export default function ModelTrainingView({
       setJobStatus({
         status: "training",
         progress_stage: "loading_dataset",
-        progress_percent: 10
+        progress_percent: 10,
       });
     } catch (err) {
-      setErrorMsg(err.response?.data?.error || "Failed to initiate training session.");
+      setErrorMsg(
+        err.response?.data?.error || "Failed to initiate training session.",
+      );
       setTraining(false);
     }
   };
@@ -448,49 +628,94 @@ export default function ModelTrainingView({
     }
   };
 
-  const handleDownload = (jobId, type) => {
-    const url = `http://localhost:8000/api/model-training/jobs/${jobId}/download/?type=${type}`;
-    window.open(url, "_blank");
+  // Direct background download handler without page redirect
+  const handleDownload = async (jobId, type) => {
+    if (!jobId) return;
+    try {
+      const res = await api.get(`model-training/jobs/${jobId}/download/?type=${type}`, {
+        responseType: "blob",
+      });
+      const ext = type === "model" || type === "pkl" ? "pkl" : type === "predictions" ? "csv" : type === "report" ? "pdf" : "zip";
+      const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.setAttribute("download", `model_training_${type}_${jobId}.${ext}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      setErrorMsg("Failed to download file. Please try again.");
+    }
   };
 
   return (
-    <div className="space-y-6 text-slate-800 dark:text-zinc-100 max-w-full pb-10 animate-fade-in font-sans">
-      
+    <div
+      className={`space-y-6 text-slate-800 dark:text-zinc-100 pb-10 animate-fade-in font-sans ${!datasetId ? "max-w-7xl mx-auto" : "max-w-full"}`}
+    >
       {/* Toast Notifications */}
       {successMsg && (
         <div className="fixed top-6 right-6 z-[9999] flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-white/90 dark:bg-zinc-900/90 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400 shadow-2xl backdrop-blur-md animate-fade-in max-w-md">
           <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
-          <span className="flex-1 font-semibold text-xs tracking-tight">{successMsg}</span>
+          <span className="flex-1 font-semibold text-xs tracking-tight">
+            {successMsg}
+          </span>
         </div>
       )}
       {errorMsg && (
         <div className="fixed top-6 right-6 z-[9999] flex items-center gap-3 rounded-2xl border border-rose-500/20 bg-white/90 dark:bg-zinc-900/90 px-4 py-3 text-sm text-rose-600 dark:text-rose-400 shadow-2xl backdrop-blur-md animate-fade-in max-w-md">
           <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />
-          <span className="flex-1 font-semibold text-xs tracking-tight text-left">{errorMsg}</span>
+          <span className="flex-1 font-semibold text-xs tracking-tight text-left">
+            {errorMsg}
+          </span>
         </div>
       )}
 
       {/* TABS HEADER */}
-      <div className="p-5 md:p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-primary/10 text-primary">
-              <BrainCircuit className="w-5 h-5" />
-            </div>
-            ML Model Training Console
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-0 py-1 mb-6">
+        <div className="flex flex-col">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Model Training
           </h1>
-          <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 pl-0.5">
-            Build, evaluate, tune, and download scikit-learn preprocessing pipelines and estimators.
+          <p className="text-[11px] sm:text-xs font-medium text-slate-400 dark:text-zinc-400 mt-0.5">
+            Build, evaluate, tune, and download scikit-learn preprocessing
+            pipelines and estimators
           </p>
         </div>
+
+        {datasetId && (
+          <div className="flex items-center gap-2">
+            <RefreshButton
+              label="Switch Dataset"
+              title="Switch to another dataset"
+              onClick={() => {
+                setDatasetId(null);
+                setMetadata(null);
+                setPreview(null);
+                setErrorMsg("");
+                setSuccessMsg("");
+              }}
+            />
+            <button 
+              type="button"
+              onClick={handleResetSetup}
+              disabled={training}
+              className="group inline-flex items-center justify-center gap-2 px-4 py-2 h-9 text-xs font-bold rounded-full bg-transparent text-slate-800 dark:text-zinc-200 border border-slate-300 dark:border-zinc-700 hover:text-rose-500 dark:hover:text-rose-400 hover:border-rose-500 dark:hover:border-rose-400 focus:text-rose-500 focus:border-rose-500 transition-all duration-300 ease-in-out cursor-pointer text-center shadow-xs whitespace-nowrap select-none active:scale-95 disabled:opacity-50"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors duration-300" />
+              <span>Reset Setup</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* CONSOLE PANEL */}
       <div className="space-y-6">
-          
-          {/* UPLOADER STATE */}
-          {!datasetId ? (
-            <div className="space-y-6">
+        {/* UPLOADER STATE */}
+        {!datasetId ? (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            {/* 70% Left: Upload Dropzone */}
+            <div className="lg:col-span-8 w-full">
               <FileUpload
                 onFileUpload={uploadFile}
                 uploading={uploading}
@@ -511,81 +736,55 @@ export default function ModelTrainingView({
                   setSuccessMsg("");
                 }}
               />
-
-              {!uploading && cleanHistoryList.length > 0 && (
-                <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-4">
-                  <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-zinc-800/80 pb-3.5">
-                    <History className="w-4.5 h-4.5 text-primary" />
-                    <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Or Select From Clean History</h3>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-zinc-400">
-                    Skip uploading by choosing a dataset you've previously cleaned on RefineX.
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
-                    {cleanHistoryList.map(job => (
-                      <div 
-                        key={job.id}
-                        onClick={() => handleUseFromHistory(job)}
-                        className="p-3.5 rounded-xl border border-slate-200/70 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30 hover:border-primary dark:hover:border-primary/60 hover:bg-slate-50 dark:hover:bg-zinc-900/60 cursor-pointer transition duration-150 flex items-center justify-between group"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="p-2 rounded-lg bg-slate-200/60 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 group-hover:bg-primary/10 group-hover:text-primary transition shrink-0">
-                            <FileSpreadsheet className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <span className="text-xs font-semibold text-slate-800 dark:text-zinc-200 block truncate">{job.dataset_name}</span>
-                            <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider mt-0.5">
-                              Cleaned: {(() => {
-                                const dt = job.created_at || job.cleaned_at || job.updated_at;
-                                if (!dt) return "Recently";
-                                try {
-                                  const d = new Date(dt);
-                                  return isNaN(d.getTime()) ? "Recently" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-                                } catch {
-                                  return "Recently";
-                                }
-                              })()}
-                            </span>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-primary group-hover:translate-x-0.5 transition shrink-0" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
-          ) : (
-            /* CONSOLE LAYOUT */
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-              
-              {/* CONFIGURATION SIDEBAR (LEFT 25%) */}
-              <div className="lg:col-span-1 p-5 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-5">
-                <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-zinc-800/80">
-                  <SlidersHorizontal className="w-4 h-4 text-primary" /> Training Parameters
+
+            {/* 30% Right: History Card Panel */}
+            {!uploading && cleanHistoryList.length > 0 && (
+              <div className="lg:col-span-4 w-full">
+                <RecentDatasetPanel
+                  items={cleanHistoryList}
+                  onSelect={(item) => handleUseFromHistory(item)}
+                  onViewAll={() => setActiveTab("history")}
+                />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* CONFIGURATION SIDEBAR (LEFT) */}
+            <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-4 z-10 max-h-[calc(100vh-60px)] overflow-y-auto pr-0.5">
+              <div className="p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-4">
+                <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-3 pb-3 border-b border-slate-150 dark:border-zinc-800 mb-3.5">
+                  <SlidersHorizontal className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                  <span>Training Parameters</span>
                 </h2>
 
                 {/* Mode Select */}
                 <div className="space-y-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">Training Mode</label>
-                  <div className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-zinc-900/80 p-1 rounded-xl border border-slate-200/50 dark:border-zinc-800/50">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                    Training Mode
+                  </label>
+                  <div className="grid grid-cols-2 p-1 rounded-full bg-[#e3e3e8] dark:bg-[#1c1c1e] border border-slate-200/60 dark:border-zinc-800/80 shadow-inner">
                     <button
                       onClick={() => setTrainingMode("decide")}
-                      className={`py-1.5 px-2 text-[10px] font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                        trainingMode === "decide" ? "bg-white dark:bg-zinc-800 text-primary shadow-xs font-bold" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                      className={`py-1.5 px-3 text-xs font-semibold rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
+                        trainingMode === "decide"
+                          ? "bg-white dark:bg-[#3a3a3c] text-[#1c1c1e] dark:text-white shadow-sm font-bold border border-slate-200/60 dark:border-zinc-700/60"
+                          : "text-[#8e8e93] dark:text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white"
                       }`}
                     >
-                      <Sparkles className="w-3 h-3 text-primary" />
+                      <Sparkles className={`w-3.5 h-3.5 ${trainingMode === "decide" ? "text-purple-600 dark:text-purple-400" : "text-slate-400"}`} />
                       Auto-Decide
                     </button>
                     <button
                       onClick={() => setTrainingMode("manual")}
-                      className={`py-1.5 px-2 text-[10px] font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                        trainingMode === "manual" ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-xs font-bold" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                      className={`py-1.5 px-3 text-xs font-semibold rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
+                        trainingMode === "manual"
+                          ? "bg-white dark:bg-[#3a3a3c] text-[#1c1c1e] dark:text-white shadow-sm font-bold border border-slate-200/60 dark:border-zinc-700/60"
+                          : "text-[#8e8e93] dark:text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white"
                       }`}
                     >
-                      <Settings className="w-3 h-3 text-slate-400" />
+                      <Settings className={`w-3.5 h-3.5 ${trainingMode === "manual" ? "text-purple-600 dark:text-purple-400" : "text-slate-400"}`} />
                       Manual
                     </button>
                   </div>
@@ -593,23 +792,25 @@ export default function ModelTrainingView({
 
                 {/* Y Column */}
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">Target Variable (Y)</label>
-                  <select
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                    Target Variable (Y)
+                  </label>
+                  <AnimatedSelect
                     value={targetColumn}
-                    onChange={(e) => {
-                      setTargetColumn(e.target.value);
+                    onChange={(val) => {
+                      setTargetColumn(val);
                       if (preview?.columns) {
-                        setSelectedFeatures(preview.columns.filter(c => c !== e.target.value));
+                        setSelectedFeatures(
+                          preview.columns.filter((c) => c !== val),
+                        );
                       }
                     }}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition cursor-pointer font-semibold"
-                  >
-                    {preview?.columns?.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                  <div className="flex items-center gap-1 text-[10px] text-primary font-semibold capitalize pt-0.5">
-                    <Info className="w-3 h-3 shrink-0" />
+                    options={(preview?.columns || []).map((c) => ({ value: c, label: c }))}
+                    placeholder="Select Target Variable..."
+                    className="w-full"
+                  />
+                  <div className="flex items-center gap-1 text-[10px] text-purple-600 dark:text-purple-400 font-semibold capitalize pt-0.5">
+                    <Info className="w-3 h-3 shrink-0 text-purple-600 dark:text-purple-400" />
                     Inferred Type: {inferredTaskType}
                   </div>
                 </div>
@@ -617,23 +818,28 @@ export default function ModelTrainingView({
                 {/* X Columns Selection (Only Manual) */}
                 {trainingMode === "manual" && (
                   <div className="space-y-2">
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">Feature Variables (X)</label>
-                    <div className="max-h-40 overflow-y-auto border border-slate-200 dark:border-zinc-800 rounded-xl p-2.5 bg-slate-50/50 dark:bg-zinc-900/50 space-y-1.5">
-                      {preview?.columns?.filter(c => c !== targetColumn).map(c => (
-                        <label key={c} className="flex items-center gap-2 cursor-pointer font-medium text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition">
-                          <input
-                            type="checkbox"
-                            checked={selectedFeatures.includes(c)}
-                            onChange={() => {
-                              setSelectedFeatures(prev => 
-                                prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]
-                              );
-                            }}
-                            className="rounded border-slate-300 dark:border-zinc-700 text-primary focus:ring-primary/20 cursor-pointer w-3.5 h-3.5"
-                          />
-                          <span className="truncate">{c}</span>
-                        </label>
-                      ))}
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                      Feature Variables (X)
+                    </label>
+                    <div className="max-h-44 overflow-y-auto border border-slate-200 dark:border-zinc-800 rounded-xl p-2.5 bg-slate-50/50 dark:bg-zinc-900/50 space-y-2">
+                      {preview?.columns
+                        ?.filter((c) => c !== targetColumn)
+                        .map((c) => (
+                          <div key={c} className="flex items-center py-0.5">
+                            <AnimatedCheckbox
+                              checked={selectedFeatures.includes(c)}
+                              onChange={(e) => {
+                                setSelectedFeatures((prev) =>
+                                  prev.includes(c)
+                                    ? prev.filter((x) => x !== c)
+                                    : [...prev, c],
+                                );
+                              }}
+                              label={c}
+                              className="font-semibold text-xs text-slate-700 dark:text-zinc-300"
+                            />
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}
@@ -641,71 +847,94 @@ export default function ModelTrainingView({
                 {/* Algorithms selection (Only Manual) */}
                 {trainingMode === "manual" && (
                   <div className="space-y-2">
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">Model Algorithms</label>
-                    <div className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-zinc-900/80 p-1 rounded-xl border border-slate-200/50 dark:border-zinc-800/50">
-                      <button
-                        onClick={() => setModelChoice("all")}
-                        className={`py-1 text-[10px] font-semibold rounded-lg cursor-pointer text-center transition-all ${
-                          modelChoice === "all" ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-xs font-bold" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                        }`}
-                      >
-                        All Compatible
-                      </button>
-                      <button
-                        onClick={() => setModelChoice("selected")}
-                        className={`py-1 text-[10px] font-semibold rounded-lg cursor-pointer text-center transition-all ${
-                          modelChoice === "selected" ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-xs font-bold" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                        }`}
-                      >
-                        Choose Models
-                      </button>
-                    </div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                      Model Algorithms
+                    </label>
+                  <div className="grid grid-cols-2 p-1 rounded-full bg-[#e3e3e8] dark:bg-[#1c1c1e] border border-slate-200/60 dark:border-zinc-800/80 shadow-inner">
+                    <button
+                      onClick={() => setModelChoice("all")}
+                      className={`py-1.5 px-2 text-xs font-semibold rounded-full transition-all duration-200 cursor-pointer text-center ${
+                        modelChoice === "all"
+                          ? "bg-white dark:bg-[#3a3a3c] text-[#1c1c1e] dark:text-white shadow-sm font-bold border border-slate-200/60 dark:border-zinc-700/60"
+                          : "text-[#8e8e93] dark:text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white"
+                      }`}
+                    >
+                      All Compatible
+                    </button>
+                    <button
+                      onClick={() => setModelChoice("selected")}
+                      className={`py-1.5 px-2 text-xs font-semibold rounded-full transition-all duration-200 cursor-pointer text-center ${
+                        modelChoice === "selected"
+                          ? "bg-white dark:bg-[#3a3a3c] text-[#1c1c1e] dark:text-white shadow-sm font-bold border border-slate-200/60 dark:border-zinc-700/60"
+                          : "text-[#8e8e93] dark:text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white"
+                      }`}
+                    >
+                      Choose Models
+                    </button>
+                  </div>
 
                     {modelChoice === "selected" && (
-                      <div className="space-y-1.5 border border-slate-200 dark:border-zinc-800 p-2.5 rounded-xl bg-slate-50/50 dark:bg-zinc-900/50 max-h-40 overflow-y-auto">
+                      <div className="space-y-2 border border-slate-200 dark:border-zinc-800 p-2.5 rounded-xl bg-slate-50/50 dark:bg-zinc-900/50 max-h-44 overflow-y-auto">
                         {inferredTaskType === "classification" ? (
                           <>
                             {[
                               { id: "knn_classifier", label: "KNN Classifier" },
-                              { id: "decision_tree_classifier", label: "Decision Tree Classifier" },
-                              { id: "random_forest_classifier", label: "Random Forest Classifier" },
-                              { id: "svm_classifier", label: "Support Vector Machine" }
-                            ].map(m => (
-                              <label key={m.id} className="flex items-center gap-2 cursor-pointer font-medium text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition">
-                                <input
-                                  type="checkbox"
+                              {
+                                id: "decision_tree_classifier",
+                                label: "Decision Tree Classifier",
+                              },
+                              {
+                                id: "random_forest_classifier",
+                                label: "Random Forest Classifier",
+                              },
+                              {
+                                id: "svm_classifier",
+                                label: "Support Vector Machine",
+                              },
+                            ].map((m) => (
+                              <div key={m.id} className="flex items-center py-0.5">
+                                <AnimatedCheckbox
                                   checked={selectedAlgorithms.includes(m.id)}
-                                  onChange={() => {
-                                    setSelectedAlgorithms(prev => 
-                                      prev.includes(m.id) ? prev.filter(x => x !== m.id) : [...prev, m.id]
+                                  onChange={(e) => {
+                                    setSelectedAlgorithms((prev) =>
+                                      prev.includes(m.id)
+                                        ? prev.filter((x) => x !== m.id)
+                                        : [...prev, m.id],
                                     );
                                   }}
-                                  className="rounded border-slate-300 dark:border-zinc-700 text-primary cursor-pointer w-3.5 h-3.5"
+                                  label={m.label}
+                                  className="font-semibold text-xs text-slate-700 dark:text-zinc-300"
                                 />
-                                {m.label}
-                              </label>
+                              </div>
                             ))}
                           </>
                         ) : (
                           <>
                             {[
                               { id: "linear", label: "Linear Regression" },
-                              { id: "multiple_linear", label: "Multiple Linear" },
-                              { id: "polynomial_regression", label: "Polynomial Regression" }
-                            ].map(m => (
-                              <label key={m.id} className="flex items-center gap-2 cursor-pointer font-medium text-xs text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition">
-                                <input
-                                  type="checkbox"
+                              {
+                                id: "multiple_linear",
+                                label: "Multiple Linear",
+                              },
+                              {
+                                id: "polynomial_regression",
+                                label: "Polynomial Regression",
+                              },
+                            ].map((m) => (
+                              <div key={m.id} className="flex items-center py-0.5">
+                                <AnimatedCheckbox
                                   checked={selectedAlgorithms.includes(m.id)}
-                                  onChange={() => {
-                                    setSelectedAlgorithms(prev => 
-                                      prev.includes(m.id) ? prev.filter(x => x !== m.id) : [...prev, m.id]
+                                  onChange={(e) => {
+                                    setSelectedAlgorithms((prev) =>
+                                      prev.includes(m.id)
+                                        ? prev.filter((x) => x !== m.id)
+                                        : [...prev, m.id],
                                     );
                                   }}
-                                  className="rounded border-slate-300 dark:border-zinc-700 text-primary cursor-pointer w-3.5 h-3.5"
+                                  label={m.label}
+                                  className="font-semibold text-xs text-slate-700 dark:text-zinc-300"
                                 />
-                                {m.label}
-                              </label>
+                              </div>
                             ))}
                           </>
                         )}
@@ -716,64 +945,92 @@ export default function ModelTrainingView({
 
                 {/* Advanced parameters */}
                 <div className="pt-2 border-t border-slate-100 dark:border-zinc-800">
-                  <button
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="w-full flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-white cursor-pointer py-1"
-                  >
-                    <span>Advanced Configurations</span>
-                    <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${showAdvanced ? "rotate-90" : ""}`} />
-                  </button>
-                  {showAdvanced && (
-                    <div className="pt-3 space-y-3.5 text-xs animate-fade-in">
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between font-semibold text-slate-600 dark:text-zinc-400 text-[11px]">
-                          <span>Test Split Size</span>
-                          <span className="text-primary font-bold">{Math.round(testSize * 100)}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0.1"
-                          max="0.4"
-                          step="0.05"
-                          value={testSize}
-                          onChange={(e) => setTestSize(parseFloat(e.target.value))}
-                          className="w-full h-1.5 bg-slate-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-primary"
-                        />
-                      </div>
+                  <BouncyAccordion
+                    items={[
+                      {
+                        id: "advanced-config",
+                        title: (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                            Advanced Configurations
+                          </span>
+                        ),
+                        description: (
+                          <div className="pt-3 pb-2 space-y-3.5 text-xs animate-fade-in">
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between font-semibold text-slate-600 dark:text-zinc-400 text-[11px]">
+                                <span>Test Split Size</span>
+                                <span className="text-purple-600 dark:text-purple-400 font-bold">
+                                  {Math.round(testSize * 100)}%
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                min="0.1"
+                                max="0.4"
+                                step="0.05"
+                                value={testSize}
+                                onChange={(e) =>
+                                  setTestSize(parseFloat(e.target.value))
+                                }
+                                className="w-full h-1.5 bg-slate-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-purple-600 dark:accent-purple-400"
+                              />
+                            </div>
 
-                      <div className="space-y-1">
-                        <label className="block text-[11px] font-semibold text-slate-600 dark:text-zinc-400">Random State Seed</label>
-                        <input
-                          type="number"
-                          value={randomState}
-                          onChange={(e) => setRandomState(parseInt(e.target.value))}
-                          className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900 rounded-lg font-semibold text-xs text-slate-900 dark:text-white focus:outline-none focus:border-primary"
-                        />
-                      </div>
+                            <div className="space-y-1">
+                              <label className="block text-[11px] font-semibold text-slate-600 dark:text-zinc-400">
+                                Random State Seed
+                              </label>
+                              <input
+                                type="number"
+                                value={randomState}
+                                onChange={(e) =>
+                                  setRandomState(parseInt(e.target.value))
+                                }
+                                className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900 rounded-lg font-semibold text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-600 dark:focus:border-purple-400"
+                              />
+                            </div>
 
-                      <div className="space-y-1">
-                        <label className="block text-[11px] font-semibold text-slate-600 dark:text-zinc-400">Cross-Validation Folds</label>
-                        <input
-                          type="number"
-                          min="2"
-                          max="10"
-                          value={cvFolds}
-                          onChange={(e) => setCvFolds(parseInt(e.target.value))}
-                          className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900 rounded-lg font-semibold text-xs text-slate-900 dark:text-white focus:outline-none focus:border-primary"
-                        />
-                      </div>
+                            <div className="space-y-1">
+                              <label className="block text-[11px] font-semibold text-slate-600 dark:text-zinc-400">
+                                Cross-Validation Folds
+                              </label>
+                              <input
+                                type="number"
+                                min="2"
+                                max="10"
+                                value={cvFolds}
+                                onChange={(e) =>
+                                  setCvFolds(parseInt(e.target.value))
+                                }
+                                className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900 rounded-lg font-semibold text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-600 dark:focus:border-purple-400"
+                              />
+                            </div>
 
-                      <label className="flex items-center gap-2 cursor-pointer font-semibold text-xs text-slate-700 dark:text-zinc-300">
-                        <input
-                          type="checkbox"
-                          checked={shuffle}
-                          onChange={(e) => setShuffle(e.target.checked)}
-                          className="rounded border-slate-300 dark:border-zinc-700 text-primary cursor-pointer w-3.5 h-3.5"
-                        />
-                        Shuffle Dataset
-                      </label>
-                    </div>
-                  )}
+                            <div className="pt-1 pb-1">
+                              <AnimatedCheckbox
+                                checked={shuffle}
+                                onChange={(e) => setShuffle(e.target.checked)}
+                                label="Shuffle Dataset"
+                                className="font-semibold text-xs text-slate-700 dark:text-zinc-300"
+                              />
+                            </div>
+                          </div>
+                        ),
+                      },
+                    ]}
+                    value={showAdvanced ? "advanced-config" : null}
+                    onValueChange={(value) =>
+                      setShowAdvanced(value === "advanced-config")
+                    }
+                    collapsible={true}
+                    className="space-y-0"
+                    classNames={{
+                      item: "bg-transparent shadow-none border-none",
+                      trigger: "px-0 py-0 hover:bg-transparent",
+                      content: "border-t-0 bg-transparent overflow-visible",
+                      description: "p-0",
+                    }}
+                  />
                 </div>
 
                 {/* Action button */}
@@ -786,221 +1043,367 @@ export default function ModelTrainingView({
                     <button
                       onClick={handleTrain}
                       disabled={training || !targetColumn}
-                      className="w-full py-2.5 px-4 text-xs font-bold text-white bg-primary hover:bg-primary-dark active:scale-[0.98] rounded-xl transition duration-150 shadow-md shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                      className="group w-full px-4 py-3 text-sm font-bold rounded-xl bg-[#393e7f] dark:bg-[#a855f7] text-white dark:text-zinc-950 outline-2 outline-offset-[-2px] outline-[#393e7f] dark:outline-[#a855f7] border-none cursor-pointer transition-all duration-300 shadow-sm flex items-center justify-center gap-2 hover:bg-transparent dark:hover:bg-transparent hover:text-[#393e7f] dark:hover:text-[#c084fc] disabled:opacity-40 disabled:pointer-events-none"
                     >
-                      {training ? <RefreshCw className="w-4 h-4 animate-spin" /> : <BrainCircuit className="w-4 h-4" />}
-                      Start Model Training
+                      {training ? (
+                        <RefreshCw className="w-4 h-4 animate-spin stroke-[2.5]" />
+                      ) : (
+                        <BrainCircuit className="w-4 h-4 transition-colors duration-300 stroke-[2.5]" />
+                      )}
+                      <span>Start Model Training</span>
                     </button>
                   )}
-                  <button
-                    onClick={() => {
-                      if (setActiveTab) setActiveTab("visualization");
-                    }}
-                    className="w-full py-2 px-4 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] rounded-xl transition duration-150 shadow-sm flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <LineChart className="w-3.5 h-3.5" /> Visualize Dataset
-                  </button>
-                  <button
-                    onClick={() => {
-                      setDatasetId(null);
-                      setMetadata(null);
-                      setPreview(null);
-                      setTargetColumn("");
-                      setSelectedFeatures([]);
-                      setTrainingJobDetail(null);
-                    }}
-                    className="w-full py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl text-center cursor-pointer transition"
-                  >
-                    Clear Dataset
-                  </button>
                 </div>
-
               </div>
 
-              {/* MAIN CONTENT AREA (RIGHT 75%) */}
-              <div className="lg:col-span-3 space-y-6">
-                
-                {/* QUALITY INSPECTION NOTIFICATION */}
-                {!isClean && warnings && (
-                  <div className="p-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-slate-800 dark:text-zinc-100 space-y-3 animate-fade-in shadow-xs backdrop-blur-xs">
+              {/* MOVED FOOTER: Next Steps directly under the training sidebar */}
+              <div className="mt-4 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-[#212121]/50 shadow-sm flex flex-col gap-3">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest text-center">
+                  Next Steps in Data Workflow
+                </span>
+                <div className="flex flex-col gap-2 w-full">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (setActiveTab) setActiveTab("visualization");
+                    }} 
+                    className="w-full px-4 py-2.5 text-xs font-bold rounded-xl bg-violet-600 hover:bg-violet-700 text-white flex justify-center items-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all"
+                  >
+                    <LineChart className="w-4 h-4" /> Visualize Dataset
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (setActiveTab) setActiveTab("clean");
+                    }} 
+                    className="w-full px-4 py-2.5 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 border border-slate-900 dark:border-white flex justify-center items-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all"
+                  >
+                    <BrushCleaning className="w-4 h-4" /> Data Cleaning
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* MAIN CONTENT AREA (RIGHT) */}
+            <div className="lg:col-span-8 flex flex-col space-y-6 min-w-0">
+              {/* QUALITY INSPECTION NOTIFICATION */}
+              {!isClean && warnings && (
+                <div className="p-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-slate-800 dark:text-zinc-100 space-y-3 animate-fade-in shadow-xs backdrop-blur-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+                      Dataset Quality Warnings Detected
+                    </h3>
+                  </div>
+                  <p className="text-xs leading-relaxed text-slate-600 dark:text-zinc-300">
+                    We automatically scanned the uploaded dataset and found
+                    schema warnings. Missing values, constant/empty columns,
+                    duplicate records, or infinite floats will negatively impact
+                    model convergence, scale metrics, or crash the validation
+                    splits.
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-[10px] font-bold">
+                    {warnings.missing_values > 0 && (
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                        Missing values: {warnings.missing_values} cells
+                      </span>
+                    )}
+                    {warnings.duplicate_rows > 0 && (
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                        Duplicate rows: {warnings.duplicate_rows}
+                      </span>
+                    )}
+                    {warnings.duplicate_columns?.length > 0 && (
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                        Duplicate columns: {warnings.duplicate_columns.length}
+                      </span>
+                    )}
+                    {warnings.infinite_values > 0 && (
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                        Infinite values: {warnings.infinite_values}
+                      </span>
+                    )}
+                    {warnings.mixed_data_types?.length > 0 && (
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                        Mixed types: {warnings.mixed_data_types.length}
+                      </span>
+                    )}
+                    {warnings.constant_columns?.length > 0 && (
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                        Constant cols: {warnings.constant_columns.length}
+                      </span>
+                    )}
+                  </div>
+                  <div className="pt-1 flex flex-wrap gap-3">
+                    <button
+                      onClick={handleRedirectToClean}
+                      className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition duration-150 flex items-center gap-1.5"
+                    >
+                      <Zap className="w-3.5 h-3.5" /> Clean Dataset First
+                    </button>
+                    <button
+                      onClick={() => setIsClean(true)}
+                      className="px-4 py-2 border border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer transition"
+                    >
+                      Force Train Anyway
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* RUNNING TRAINING PROGRESS */}
+              {training && jobStatus && (
+                <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-4 animate-fade-in">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                        <AlertTriangle className="w-5 h-5" />
-                      </div>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">Dataset Quality Warnings Detected</h3>
+                      <Activity className="w-5 h-5 text-primary animate-pulse" />
+                      <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                        RefineX Training Pipeline Running
+                      </h3>
                     </div>
-                    <p className="text-xs leading-relaxed text-slate-600 dark:text-zinc-300">
-                      We automatically scanned the uploaded dataset and found schema warnings. Missing values, constant/empty columns, duplicate records, or infinite floats will negatively impact model convergence, scale metrics, or crash the validation splits. 
-                    </p>
-                    <div className="flex flex-wrap gap-2 text-[10px] font-bold">
-                      {warnings.missing_values > 0 && <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">Missing values: {warnings.missing_values} cells</span>}
-                      {warnings.duplicate_rows > 0 && <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">Duplicate rows: {warnings.duplicate_rows}</span>}
-                      {warnings.duplicate_columns?.length > 0 && <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">Duplicate columns: {warnings.duplicate_columns.length}</span>}
-                      {warnings.infinite_values > 0 && <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">Infinite values: {warnings.infinite_values}</span>}
-                      {warnings.mixed_data_types?.length > 0 && <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">Mixed types: {warnings.mixed_data_types.length}</span>}
-                      {warnings.constant_columns?.length > 0 && <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">Constant cols: {warnings.constant_columns.length}</span>}
-                    </div>
-                    <div className="pt-1 flex flex-wrap gap-3">
-                      <button
-                        onClick={handleRedirectToClean}
-                        className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition duration-150 flex items-center gap-1.5"
-                      >
-                        <Zap className="w-3.5 h-3.5" /> Clean Dataset First
-                      </button>
-                      <button
-                        onClick={() => setIsClean(true)}
-                        className="px-4 py-2 border border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer transition"
-                      >
-                        Force Train Anyway
-                      </button>
-                    </div>
+                    <span className="text-sm font-black text-primary">
+                      {jobStatus.progress_percent}%
+                    </span>
                   </div>
-                )}
 
-                {/* RUNNING TRAINING PROGRESS */}
-                {training && jobStatus && (
-                  <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-4 animate-fade-in">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <Activity className="w-5 h-5 text-primary animate-pulse" />
-                        <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">RefineX Training Pipeline Running</h3>
-                      </div>
-                      <span className="text-sm font-black text-primary">{jobStatus.progress_percent}%</span>
-                    </div>
-
-                    <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-zinc-800 overflow-hidden border border-slate-200/50 dark:border-zinc-800">
-                      <div 
-                        className="h-full rounded-full bg-gradient-to-r from-primary to-indigo-500 transition-all duration-300 ease-out" 
-                        style={{ width: `${jobStatus.progress_percent}%` }}
-                      />
-                    </div>
-
-                    <div className="flex justify-between items-center text-[10px] font-semibold text-slate-500 dark:text-zinc-400 tracking-wider">
-                      <span className="capitalize">Stage: <strong className="text-primary font-bold">{jobStatus.progress_stage.replace('_', ' ')}</strong></span>
-                      <span>Est. Remaining: ~{Math.max(5, 30 - Math.round(jobStatus.progress_percent * 0.25))} seconds</span>
-                    </div>
+                  <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-zinc-800 overflow-hidden border border-slate-200/50 dark:border-zinc-800">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-primary to-indigo-500 transition-all duration-300 ease-out"
+                      style={{ width: `${jobStatus.progress_percent}%` }}
+                    />
                   </div>
-                )}
 
-                {/* GRID RESULTS */}
-                {trainingJobDetail && (
-                  <div className="space-y-4 animate-fade-in">
-                    <div className="flex items-center gap-2 pb-2 border-b border-slate-200/80 dark:border-zinc-800">
-                      <Sparkles className="w-4 h-4 text-primary" />
-                      <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Trained Estimators Leaderboard</h2>
-                    </div>
+                  <div className="flex justify-between items-center text-[10px] font-semibold text-slate-500 dark:text-zinc-400 tracking-wider">
+                    <span className="capitalize">
+                      Stage:{" "}
+                      <strong className="text-primary font-bold">
+                        {jobStatus.progress_stage.replace("_", " ")}
+                      </strong>
+                    </span>
+                    <span>
+                      Est. Remaining: ~
+                      {Math.max(
+                        5,
+                        30 - Math.round(jobStatus.progress_percent * 0.25),
+                      )}{" "}
+                      seconds
+                    </span>
+                  </div>
+                </div>
+              )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {Object.values(trainingJobDetail.evaluation_metrics).map((model) => {
-                        const isBest = model.algorithm === trainingJobDetail.best_model_name;
-                        const scoreType = "r2" in model.metrics ? "R²" : "Accuracy";
-                        const displayScore = "r2" in model.metrics ? model.metrics.r2 : model.metrics.accuracy;
+              {/* GRID RESULTS */}
+              {trainingJobDetail && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="flex items-center gap-2 pb-2 border-b border-slate-200/80 dark:border-zinc-800">
+                    <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                      Trained Estimators Leaderboard
+                    </h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+                    {Object.values(trainingJobDetail.evaluation_metrics).map(
+                      (model) => {
+                        const isBest =
+                          model.algorithm === trainingJobDetail.best_model_name;
+                        const scoreType =
+                          "r2" in model.metrics ? "R²" : "Accuracy";
+                        const displayScore =
+                          "r2" in model.metrics
+                            ? model.metrics.r2
+                            : model.metrics.accuracy;
 
                         return (
-                          <div 
+                          <div
                             key={model.algorithm}
-                            onClick={() => loadJobDetail(trainingJobDetail.id).then(() => setSelectedModelForModal(model.algorithm))}
-                            className={`p-5 rounded-2xl border bg-white dark:bg-[#212121] shadow-sm hover:shadow-md cursor-pointer transition duration-200 relative group flex flex-col justify-between h-48 ${
-                              isBest 
-                                ? "border-primary/80 ring-2 ring-primary/20" 
-                                : "border-slate-200/80 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700"
-                            }`}
+                            onClick={() =>
+                              loadJobDetail(trainingJobDetail.id).then(() =>
+                                setSelectedModelForModal(model.algorithm),
+                              )
+                            }
+                            className="p-5 rounded-[17px] cursor-pointer select-none transition-all duration-300 ease-out relative group flex flex-col justify-between min-h-[220px] border border-slate-200 dark:border-zinc-800 hover:border-black dark:hover:border-white bg-white dark:bg-[#212121]"
                           >
                             <div>
                               {isBest && (
-                                <span className="absolute top-4 right-4 px-2.5 py-1 rounded-lg bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold tracking-wider flex items-center gap-1">
-                                  <Crown className="w-3 h-3" /> Champion
+                                <span className="absolute top-4 right-4 px-2.5 py-1 rounded-lg bg-purple-600 dark:bg-purple-500 text-white border border-purple-400/30 text-[10px] font-extrabold tracking-wider flex items-center gap-1 shadow-xs">
+                                  <Crown className="w-3.5 h-3.5 text-amber-300 fill-amber-300" /> Champion
                                 </span>
                               )}
-                              <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight pr-20 group-hover:text-primary transition duration-150 capitalize">
-                                {model.algorithm.replace(/_/g, ' ')}
+                              <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight pr-24 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition duration-150 capitalize">
+                                {model.algorithm.replace(/_/g, " ")}
                               </h3>
-                              <span className="text-[10px] text-slate-400 dark:text-zinc-500 uppercase font-bold tracking-wider mt-1 block">
-                                Task: {trainingJobDetail.evaluation_metrics ? ("r2" in model.metrics ? "Regression" : "Classification") : ""}
+                              <span className="text-[10px] text-slate-500 dark:text-zinc-400 uppercase font-bold tracking-wider mt-1 block">
+                                Task:{" "}
+                                {trainingJobDetail.evaluation_metrics
+                                  ? "r2" in model.metrics
+                                    ? "Regression"
+                                    : "Classification"
+                                  : ""}
                               </span>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-2 border-t border-slate-100 dark:border-zinc-800/80 pt-3">
+                            <div className="grid grid-cols-3 gap-2 border-t border-slate-200 dark:border-zinc-800/80 pt-3 my-2">
                               <div>
-                                <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-zinc-500 block">{scoreType} Score</span>
-                                <span className="text-xs font-extrabold text-slate-900 dark:text-white">{(displayScore * 100).toFixed(2)}%</span>
+                                <span className="text-[9px] uppercase font-bold text-slate-500 dark:text-zinc-400 block">
+                                  {scoreType} Score
+                                </span>
+                                <span className="text-xs font-extrabold text-purple-600 dark:text-purple-400">
+                                  {(displayScore * 100).toFixed(2)}%
+                                </span>
                               </div>
                               <div>
-                                <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-zinc-500 block">CV Score</span>
-                                <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">{(model.metrics.cv_score * 100).toFixed(2)}%</span>
+                                <span className="text-[9px] uppercase font-bold text-slate-500 dark:text-zinc-400 block">
+                                  CV Score
+                                </span>
+                                <span className="text-xs font-bold text-slate-900 dark:text-white">
+                                  {(model.metrics.cv_score * 100).toFixed(2)}%
+                                </span>
                               </div>
                               <div>
-                                <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-zinc-500 block">Train Time</span>
-                                <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">{model.training_time.toFixed(3)}s</span>
+                                <span className="text-[9px] uppercase font-bold text-slate-500 dark:text-zinc-400 block">
+                                  Train Time
+                                </span>
+                                <span className="text-xs font-bold text-slate-900 dark:text-white">
+                                  {model.training_time.toFixed(3)}s
+                                </span>
                               </div>
+                            </div>
+
+                              {/* Card Action Buttons (Download Dropdown & Test Model) */}
+                              <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-zinc-800/60 justify-between">
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenDownloadDropdownId(
+                                        openDownloadDropdownId === model.algorithm ? null : model.algorithm,
+                                      );
+                                    }}
+                                    className="group relative inline-flex items-center justify-center gap-2 px-4 py-2 h-9 text-xs font-bold rounded-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 border border-slate-900 dark:border-white cursor-pointer transition-all duration-200 shadow-xs active:scale-95 select-none"
+                                  >
+                                    <Download className="w-3.5 h-3.5 text-white dark:text-slate-900" />
+                                    <span>Download</span>
+                                    <ChevronDown
+                                      className={`w-3 h-3 text-white dark:text-slate-900 transition-transform duration-200 ${
+                                        openDownloadDropdownId === model.algorithm ? "rotate-180" : ""
+                                      }`}
+                                    />
+                                  </button>
+
+                                  {openDownloadDropdownId === model.algorithm && (
+                                    <div
+                                      className="absolute left-0 bottom-11 z-[100] w-48 py-1.5 bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-700 rounded-2xl shadow-xl animate-fade-in flex flex-col text-xs font-semibold overflow-hidden"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleDownload(trainingJobDetail.id, "model");
+                                          setOpenDownloadDropdownId(null);
+                                        }}
+                                        className="w-full px-3.5 py-2 text-left hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200 flex items-center gap-2 transition"
+                                      >
+                                        <FileDown className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                                        <span>Model PKL / Joblib</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleDownload(trainingJobDetail.id, "predictions");
+                                          setOpenDownloadDropdownId(null);
+                                        }}
+                                        className="w-full px-3.5 py-2 text-left hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200 flex items-center gap-2 transition"
+                                      >
+                                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                        <span>Predictions CSV</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleDownload(trainingJobDetail.id, "report");
+                                          setOpenDownloadDropdownId(null);
+                                        }}
+                                        className="w-full px-3.5 py-2 text-left hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200 flex items-center gap-2 transition"
+                                      >
+                                        <FileDown className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                                        <span>PDF Summary</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenPredictModal(model.algorithm);
+                                }}
+                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 h-9 text-xs font-bold rounded-full border border-purple-600 dark:border-purple-400 text-purple-600 dark:text-purple-400 hover:bg-purple-600 hover:text-white dark:hover:bg-purple-500 dark:hover:text-white transition-all duration-200 cursor-pointer shadow-xs active:scale-95 select-none"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>Test Model</span>
+                              </button>
                             </div>
                           </div>
                         );
-                      })}
-                    </div>
+                      },
+                    )}
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* DATASHEET PREVIEW TAB */}
-                {!trainingJobDetail && preview && (
-                  <div className="rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm overflow-hidden flex flex-col">
-                    <div className="p-4 border-b border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-900/40 flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 flex items-center gap-2">
-                        <Eye className="w-4 h-4 text-slate-400" />
-                        Dataset Verification Preview 
-                        <span className="font-semibold text-slate-400">({preview.rows.length} rows loaded)</span>
-                      </span>
-                    </div>
-                    <div className="overflow-x-auto max-h-72">
-                      <table className="w-full text-xs">
-                        <thead className="sticky top-0 bg-slate-100/90 dark:bg-zinc-900/90 font-bold uppercase tracking-wider text-[10px] text-slate-600 dark:text-zinc-400 backdrop-blur-xs">
-                          <tr>
-                            {preview.columns.map(c => (
-                              <th key={c} className="px-3.5 py-2.5 text-left font-bold">{c}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/60">
-                          {preview.rows.map((row, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-zinc-900/40 transition">
-                              {preview.columns.map(c => (
-                                <td key={c} className="px-3.5 py-2 truncate max-w-[150px] font-medium text-slate-700 dark:text-zinc-300 text-[11px]">
-                                  {row[c] === null || row[c] === undefined ? <span className="text-rose-500 font-bold text-[10px]">null</span> : String(row[c])}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-              </div>
-
+              {/* DATASHEET PREVIEW TAB */}
+              {!trainingJobDetail && preview && (
+                <DatasetTableViewer
+                  preview={preview}
+                  metadata={metadata}
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  rowsPerPage={rowsPerPage}
+                  setRowsPerPage={setRowsPerPage}
+                  currentPage={currentPage}
+                  setCurrentPage={setCurrentPage}
+                  handleTableScroll={handleTableScroll}
+                  handleSort={handleSort}
+                  paginatedRows={paginatedRows}
+                  processedRows={processedRows}
+                  totalPages={totalPages}
+                />
+              )}
             </div>
-          )}
-
-        </div>
+          </div>
+        )}
+      </div>
 
       {/* CENTERED DETAILED EVALUATION MODAL */}
       {isModalOpen && trainingJobDetail && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           {/* Blurred overlay */}
-          <div className="absolute inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-          
+          <div
+            className="absolute inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm"
+            onClick={() => setIsModalOpen(false)}
+          />
+
           <div className="relative w-full max-w-5xl h-[85vh] bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-in font-sans">
-            
             {/* Header */}
             <div className="p-4 px-6 border-b border-slate-100 dark:border-zinc-800/80 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-900/30">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight capitalize flex items-center gap-2">
-                  <Cpu className="w-4 h-4 text-primary" /> Training Details: {trainingJobDetail.dataset_name}
+                  <Cpu className="w-4 h-4 text-purple-600 dark:text-purple-400" /> Training Details:{" "}
+                  {trainingJobDetail.dataset_name}
                 </h3>
-                <span className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5 block font-semibold uppercase tracking-wider">Trained with {trainingJobDetail.training_mode} mode</span>
+                <span className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5 block font-semibold uppercase tracking-wider">
+                  Trained with {trainingJobDetail.training_mode} mode
+                </span>
               </div>
-              <button 
-                onClick={() => setIsModalOpen(false)} 
+              <button
+                onClick={() => setIsModalOpen(false)}
                 className="p-1.5 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer transition"
               >
                 <X className="w-5 h-5" />
@@ -1009,7 +1412,7 @@ export default function ModelTrainingView({
 
             {/* Modal Sub-navigation for Algorithms */}
             <div className="px-6 py-2.5 bg-slate-100/50 dark:bg-zinc-900/50 border-b border-slate-100 dark:border-zinc-800/80 flex gap-2 overflow-x-auto">
-              {Object.keys(trainingJobDetail.evaluation_metrics).map(algo => {
+              {Object.keys(trainingJobDetail.evaluation_metrics).map((algo) => {
                 const isBest = algo === trainingJobDetail.best_model_name;
                 const isActive = algo === selectedModelForModal;
                 return (
@@ -1017,310 +1420,397 @@ export default function ModelTrainingView({
                     key={algo}
                     onClick={() => setSelectedModelForModal(algo)}
                     className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all cursor-pointer shrink-0 capitalize flex items-center gap-1.5 ${
-                      isActive 
-                        ? "bg-primary text-white shadow-xs" 
-                        : "bg-white dark:bg-zinc-800/80 border border-slate-200/80 dark:border-zinc-700/80 text-slate-600 dark:text-zinc-300 hover:text-primary dark:hover:text-primary"
+                      isActive
+                        ? "bg-purple-600 dark:bg-purple-500 text-white shadow-xs"
+                        : "bg-white dark:bg-zinc-800/80 border border-slate-200/80 dark:border-zinc-700/80 text-slate-600 dark:text-zinc-300 hover:text-purple-600 dark:hover:text-purple-400"
                     }`}
                   >
-                    {algo.replace(/_/g, ' ')} {isBest && <Crown className="w-3 h-3 text-amber-300 fill-amber-300" />}
+                    {algo.replace(/_/g, " ")}{" "}
+                    {isBest && (
+                      <Crown className="w-3 h-3 text-amber-300 fill-amber-300" />
+                    )}
                   </button>
                 );
               })}
             </div>
-
-            {/* Content Body: Split Left & Right */}
-            <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6 min-h-0">
-              
-              {/* LEFT COLUMN: Metadata, config, params, correlation matrix */}
-              <div className="space-y-6">
-                
-                {/* Meta details */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Job Configurations Summary</h4>
-                  <div className="grid grid-cols-2 gap-3 text-xs border p-4 rounded-xl border-slate-200/70 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/20">
-                    <div>
-                      <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Target (Y)</span>
-                      <strong className="text-slate-900 dark:text-white font-bold">{trainingJobDetail.target_column}</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Features Count (X)</span>
-                      <strong className="text-slate-900 dark:text-white font-bold">{trainingJobDetail.selected_features.length} variables</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Split Size</span>
-                      <strong className="text-slate-900 dark:text-white font-bold">{(trainingJobDetail.hyperparameters.test_size || 0.2) * 100}% test</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">CV Folds</span>
-                      <strong className="text-slate-900 dark:text-white font-bold">{trainingJobDetail.hyperparameters.cv_folds || 5} Folds</strong>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Preprocessing Summary */}
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Automated Preprocessing</h4>
-                  <div className="p-3.5 border rounded-xl border-slate-200/70 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/20 text-xs leading-relaxed text-slate-600 dark:text-zinc-300 font-medium space-y-1.5">
-                    <div className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500 shrink-0" /> Imputed missing numeric fields using Median Strategy</div>
-                    <div className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500 shrink-0" /> Encoded categorical variables using sparse OneHotEncoder</div>
-                    {selectedModelForModal === "polynomial_regression" && <div className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500 shrink-0" /> Generated Polynomial Features (degree=2)</div>}
-                    {(selectedModelForModal === "knn_classifier" || selectedModelForModal === "svm_classifier") && <div className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500 shrink-0" /> Normalized numerical inputs using StandardScaler</div>}
-                    {selectedModelForModal && !["knn_classifier", "svm_classifier", "polynomial_regression"].includes(selectedModelForModal) && <div className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500 shrink-0" /> Preserved original numeric scales (no scaling needed for trees/linear estimators)</div>}
-                  </div>
-                </div>
-
-                {/* Live Model Testing Panel */}
-                <div className="space-y-3 p-4 rounded-2xl border border-primary/20 bg-primary/5 dark:bg-primary/5">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                    <BrainCircuit className="w-4 h-4 text-primary animate-pulse" /> Test Model (Predict Live)
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-zinc-400 leading-normal">
-                    Provide mock feature values below to test the champion model pipeline on single-row inference.
-                  </p>
-                  
-                  <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
-                    {trainingJobDetail.selected_features.map((feature) => (
-                      <div key={feature} className="space-y-1">
-                        <label className="block text-[10px] font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider">{feature}</label>
-                        <input
-                          type="text"
-                          placeholder={`Enter value for ${feature}...`}
-                          value={testInputs[feature] || ""}
-                          onChange={(e) => {
-                            setTestInputs(prev => ({
-                              ...prev,
-                              [feature]: e.target.value
-                            }));
-                          }}
-                          className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-900 dark:text-white focus:outline-none focus:border-primary transition font-medium"
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  {predictErrorMsg && (
-                    <div className="p-2.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-xs font-medium text-rose-600 dark:text-rose-400 flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 shrink-0" />
-                      <span>{predictErrorMsg}</span>
-                    </div>
-                  )}
-
-                  <div className="pt-2 flex items-center justify-between border-t border-slate-200/60 dark:border-zinc-800/80 gap-3">
-                    <button
-                      onClick={handleTestPredict}
-                      disabled={predicting}
-                      className="px-4 py-2 bg-primary hover:bg-primary-dark text-white font-bold text-xs rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
-                    >
-                      {predicting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <BrainCircuit className="w-3.5 h-3.5" />}
-                      Predict
-                    </button>
-
-                    {predictionResult !== null && (
-                      <div className="text-right">
-                        <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-zinc-500 block">Predicted Value (Y)</span>
-                        <span className="px-3 py-1 text-xs font-extrabold rounded-lg bg-primary/10 text-primary border border-primary/20 inline-block mt-0.5">
-                          {typeof predictionResult === "number" ? predictionResult.toFixed(4) : String(predictionResult)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-
-              {/* RIGHT COLUMN: Evaluation Metrics Details */}
-              <div className="space-y-6">
-                
-                {selectedModelForModal && trainingJobDetail.evaluation_metrics[selectedModelForModal] && (() => {
-                  const modelData = trainingJobDetail.evaluation_metrics[selectedModelForModal];
+            {/* Content Body: 2x2 Grid Layout with Depth Effect */}
+            <div className="flex-1 overflow-y-auto p-6 min-h-0">
+              {selectedModelForModal &&
+                trainingJobDetail.evaluation_metrics[selectedModelForModal] &&
+                (() => {
+                  const modelData =
+                    trainingJobDetail.evaluation_metrics[selectedModelForModal];
                   const m = modelData.metrics;
                   const isClassification = "accuracy" in m;
 
                   return (
-                    <div className="space-y-6">
-                      
-                      {/* Metric Card Listings */}
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Evaluation Metrics</h4>
-                        <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {/* CARD 1: Job Configurations Summary (Top Left) */}
+                      <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex flex-col justify-between overflow-hidden">
+                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-white/10">
+                          <Sliders className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                            Job Configurations Summary
+                          </h4>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 pt-3">
+                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                            <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                              Target (Y)
+                            </span>
+                            <strong className="text-xs font-extrabold text-slate-900 dark:text-white truncate block mt-0.5">
+                              {trainingJobDetail.target_column}
+                            </strong>
+                          </div>
+
+                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                            <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                              Features (X)
+                            </span>
+                            <strong className="text-xs font-extrabold text-slate-900 dark:text-white block mt-0.5">
+                              {trainingJobDetail.selected_features.length} variables
+                            </strong>
+                          </div>
+
+                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                            <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                              Test Split Size
+                            </span>
+                            <strong className="text-xs font-extrabold text-purple-600 dark:text-purple-400 block mt-0.5">
+                              {(trainingJobDetail.hyperparameters.test_size || 0.2) * 100}% test
+                            </strong>
+                          </div>
+
+                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                            <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                              CV Folds
+                            </span>
+                            <strong className="text-xs font-extrabold text-slate-900 dark:text-white block mt-0.5">
+                              {trainingJobDetail.hyperparameters.cv_folds || 5} Folds
+                            </strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CARD 2: Evaluation Metrics (Top Right) */}
+                      <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex flex-col justify-between overflow-hidden">
+                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-white/10">
+                          <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                            Evaluation Metrics ({selectedModelForModal?.replace(/_/g, " ")})
+                          </h4>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 pt-3">
                           {isClassification ? (
                             <>
-                              <div className="p-3.5 border rounded-xl border-slate-200/70 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/20">
-                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Accuracy</span>
-                                <strong className="text-sm font-black text-emerald-500">{(m.accuracy * 100).toFixed(2)}%</strong>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  Accuracy
+                                </span>
+                                <strong className="text-sm font-black text-emerald-500 block mt-0.5">
+                                  {(m.accuracy * 100).toFixed(2)}%
+                                </strong>
                               </div>
-                              <div className="p-3.5 border rounded-xl border-slate-200/70 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/20">
-                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Weighted F1-Score</span>
-                                <strong className="text-sm font-extrabold text-slate-900 dark:text-white">{(m.f1_score * 100).toFixed(2)}%</strong>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  Weighted F1-Score
+                                </span>
+                                <strong className="text-sm font-extrabold text-purple-600 dark:text-purple-400 block mt-0.5">
+                                  {(m.f1_score * 100).toFixed(2)}%
+                                </strong>
                               </div>
-                              <div className="p-3.5 border rounded-xl border-slate-200/70 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/20">
-                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Precision</span>
-                                <strong className="text-sm font-bold text-slate-700 dark:text-zinc-200">{(m.precision * 100).toFixed(2)}%</strong>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  Precision
+                                </span>
+                                <strong className="text-xs font-bold text-slate-700 dark:text-zinc-200 block mt-0.5">
+                                  {(m.precision * 100).toFixed(2)}%
+                                </strong>
                               </div>
-                              <div className="p-3.5 border rounded-xl border-slate-200/70 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/20">
-                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Recall</span>
-                                <strong className="text-sm font-bold text-slate-700 dark:text-zinc-200">{(m.recall * 100).toFixed(2)}%</strong>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  Recall
+                                </span>
+                                <strong className="text-xs font-bold text-slate-700 dark:text-zinc-200 block mt-0.5">
+                                  {(m.recall * 100).toFixed(2)}%
+                                </strong>
                               </div>
                             </>
                           ) : (
                             <>
-                              <div className="p-3.5 border rounded-xl border-slate-200/70 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/20">
-                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">R² Score</span>
-                                <strong className="text-sm font-black text-emerald-500">{(m.r2 * 100).toFixed(2)}%</strong>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  R² Score
+                                </span>
+                                <strong className="text-sm font-black text-emerald-500 block mt-0.5">
+                                  {(m.r2 * 100).toFixed(2)}%
+                                </strong>
                               </div>
-                              <div className="p-3.5 border rounded-xl border-slate-200/70 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/20">
-                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Adjusted R²</span>
-                                <strong className="text-sm font-extrabold text-slate-900 dark:text-white">{(m.adjusted_r2 * 100).toFixed(2)}%</strong>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  Adjusted R²
+                                </span>
+                                <strong className="text-sm font-extrabold text-purple-600 dark:text-purple-400 block mt-0.5">
+                                  {(m.adjusted_r2 * 100).toFixed(2)}%
+                                </strong>
                               </div>
-                              <div className="p-3.5 border rounded-xl border-slate-200/70 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/20">
-                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">RMSE</span>
-                                <strong className="text-sm font-bold text-slate-700 dark:text-zinc-200">{m.rmse.toFixed(4)}</strong>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  RMSE
+                                </span>
+                                <strong className="text-xs font-bold text-slate-700 dark:text-zinc-200 block mt-0.5">
+                                  {m.rmse.toFixed(4)}
+                                </strong>
                               </div>
-                              <div className="p-3.5 border rounded-xl border-slate-200/70 dark:border-zinc-800 bg-slate-50/40 dark:bg-zinc-900/20">
-                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">MAE</span>
-                                <strong className="text-sm font-bold text-slate-700 dark:text-zinc-200">{m.mae.toFixed(4)}</strong>
+                              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                                <span className="text-slate-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">
+                                  MAE
+                                </span>
+                                <strong className="text-xs font-bold text-slate-700 dark:text-zinc-200 block mt-0.5">
+                                  {m.mae.toFixed(4)}
+                                </strong>
                               </div>
                             </>
                           )}
                         </div>
                       </div>
 
-                      {/* Confusion Matrix (Classification) */}
-                      {isClassification && m.confusion_matrix && (
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Confusion Matrix</h4>
-                          <div className="border border-slate-200/70 dark:border-zinc-800 rounded-xl overflow-hidden p-4 bg-slate-50/40 dark:bg-zinc-900/20">
-                            <div className="grid grid-cols-2 gap-2 text-center text-xs font-bold text-slate-700 dark:text-zinc-300">
-                              {m.confusion_matrix.map((row, rIdx) => 
-                                row.map((val, cIdx) => {
-                                  const isDiag = rIdx === cIdx;
-                                  return (
-                                    <div 
-                                      key={`${rIdx}-${cIdx}`}
-                                      className={`p-3 rounded-lg border ${
-                                        isDiag 
-                                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400" 
-                                          : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
-                                      }`}
-                                    >
-                                      {val}
-                                    </div>
-                                  );
-                                })
-                              )}
-                            </div>
-                            <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 mt-3 px-1">
-                              <span>Predicted Classes</span>
-                              <span>Target Splits</span>
-                            </div>
-                          </div>
+                      {/* CARD 3: Automated Preprocessing (Bottom Left) */}
+                      <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex flex-col justify-between overflow-hidden">
+                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-white/10">
+                          <Layers className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                            Automated Pipeline Preprocessing
+                          </h4>
                         </div>
-                      )}
 
-                      {/* Actual vs Predicted Summary (Regression) */}
-                      {!isClassification && trainingJobDetail.predictions && (
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Actual vs Predicted (First 5 Rows)</h4>
-                          <div className="border border-slate-200/70 dark:border-zinc-800 rounded-xl overflow-hidden">
-                            <table className="w-full text-center text-xs">
-                              <thead className="bg-slate-100/70 dark:bg-zinc-900/80 font-bold uppercase tracking-wider text-[10px] text-slate-600 dark:text-zinc-400">
-                                <tr>
-                                  <th className="px-3 py-2">Row</th>
-                                  <th className="px-3 py-2">Actual</th>
-                                  <th className="px-3 py-2">Predicted</th>
-                                  <th className="px-3 py-2">Residual Error</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/60">
-                                {trainingJobDetail.predictions.actual?.slice(0, 5).map((act, idx) => {
-                                  const pred = trainingJobDetail.predictions.predicted[idx];
-                                  const res = act - pred;
-                                  return (
-                                    <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-zinc-900/30">
-                                      <td className="px-3 py-2 font-bold text-slate-400 dark:text-zinc-500 text-[11px]">#{idx}</td>
-                                      <td className="px-3 py-2 font-medium text-slate-700 dark:text-zinc-200">{act.toFixed(3)}</td>
-                                      <td className="px-3 py-2 font-bold text-primary">{pred.toFixed(3)}</td>
-                                      <td className={`px-3 py-2 font-bold ${res < 0 ? "text-rose-500" : "text-emerald-500"}`}>{res.toFixed(3)}</td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
+                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm text-xs leading-relaxed text-slate-700 dark:text-zinc-200 font-medium space-y-2 mt-3 flex-1 flex flex-col justify-center">
+                          <div className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <span>Imputed missing numeric fields using Median Strategy</span>
                           </div>
+                          <div className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <span>Encoded categorical variables using sparse OneHotEncoder</span>
+                          </div>
+                          {selectedModelForModal === "polynomial_regression" && (
+                            <div className="flex items-center gap-2">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                              <span>Generated Polynomial Features (degree=2)</span>
+                            </div>
+                          )}
+                          {(selectedModelForModal === "knn_classifier" ||
+                            selectedModelForModal === "svm_classifier") && (
+                            <div className="flex items-center gap-2">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                              <span>Normalized numerical inputs using StandardScaler</span>
+                            </div>
+                          )}
+                          {selectedModelForModal &&
+                            ![
+                              "knn_classifier",
+                              "svm_classifier",
+                              "polynomial_regression",
+                            ].includes(selectedModelForModal) && (
+                              <div className="flex items-center gap-2">
+                                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                <span>Preserved original numeric scales (no scaling needed for trees)</span>
+                              </div>
+                            )}
                         </div>
-                      )}
+                      </div>
 
+                      {/* CARD 4: Validation Performance Visuals (Bottom Right) */}
+                      <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex flex-col justify-between overflow-hidden">
+                        <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-white/10">
+                          <Activity className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                            {isClassification ? "Confusion Matrix Results" : "Actual vs Predicted Validation"}
+                          </h4>
+                        </div>
+
+                        <div className="pt-3 flex-1 flex flex-col justify-center">
+                          {isClassification && m.confusion_matrix ? (
+                            <div className="rounded-xl overflow-hidden p-3 border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                              <div className="grid grid-cols-2 gap-2 text-center text-xs font-bold text-slate-700 dark:text-zinc-300">
+                                {m.confusion_matrix.map((row, rIdx) =>
+                                  row.map((val, cIdx) => {
+                                    const isDiag = rIdx === cIdx;
+                                    return (
+                                      <div
+                                        key={`${rIdx}-${cIdx}`}
+                                        className={`p-2.5 rounded-lg border ${
+                                          isDiag
+                                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-extrabold"
+                                            : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
+                                        }`}
+                                      >
+                                        {val}
+                                      </div>
+                                    );
+                                  }),
+                                )}
+                              </div>
+                              <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 mt-2 px-1">
+                                <span>Predicted Classes</span>
+                                <span>Target Splits</span>
+                              </div>
+                            </div>
+                          ) : trainingJobDetail.predictions ? (
+                            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm max-h-44 overflow-y-auto">
+                              <table className="w-full text-center text-xs">
+                                <thead className="bg-slate-100/70 dark:bg-white/[0.06] font-bold uppercase tracking-wider text-[10px] text-slate-600 dark:text-zinc-400 sticky top-0">
+                                  <tr>
+                                    <th className="px-3 py-1.5">Row</th>
+                                    <th className="px-3 py-1.5">Actual</th>
+                                    <th className="px-3 py-1.5">Predicted</th>
+                                    <th className="px-3 py-1.5">Residual</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06]">
+                                  {trainingJobDetail.predictions.actual
+                                    ?.slice(0, 5)
+                                    .map((act, idx) => {
+                                      const pred = trainingJobDetail.predictions.predicted[idx];
+                                      const res = act - pred;
+                                      return (
+                                        <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-white/[0.02]">
+                                          <td className="px-3 py-1.5 font-bold text-slate-400 dark:text-zinc-500 text-[10px]">
+                                            #{idx}
+                                          </td>
+                                          <td className="px-3 py-1.5 font-medium text-slate-700 dark:text-zinc-200">
+                                            {act.toFixed(2)}
+                                          </td>
+                                          <td className="px-3 py-1.5 font-bold text-purple-600 dark:text-purple-400">
+                                            {pred.toFixed(2)}
+                                          </td>
+                                          <td className={`px-3 py-1.5 font-bold text-[11px] ${res < 0 ? "text-rose-500" : "text-emerald-500"}`}>
+                                            {res.toFixed(2)}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
                   );
                 })()}
-
-              </div>
-
             </div>
-
-            {/* Footer actions */}
-            <div className="p-4 px-6 border-t border-slate-100 dark:border-zinc-800/80 flex flex-wrap gap-2 justify-between items-center bg-slate-50/50 dark:bg-zinc-900/30">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleDownload(trainingJobDetail.id, "model")}
-                  className="px-3.5 py-2 text-xs font-bold rounded-xl bg-primary hover:bg-primary-dark text-white shadow-xs transition cursor-pointer flex items-center gap-1.5"
-                >
-                  <FileDown className="w-3.5 h-3.5" /> Download Joblib
-                </button>
-                <button
-                  onClick={() => handleDownload(trainingJobDetail.id, "predictions")}
-                  className="px-3.5 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200 transition cursor-pointer flex items-center gap-1.5"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5" /> Predictions CSV
-                </button>
-                <button
-                  onClick={() => handleDownload(trainingJobDetail.id, "report")}
-                  className="px-3.5 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200 transition cursor-pointer flex items-center gap-1.5"
-                >
-                  <FileDown className="w-3.5 h-3.5" /> PDF Summary
-                </button>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    // Populate configuration parameters in parent states
-                    setTargetColumn(trainingJobDetail.target_column);
-                    setSelectedFeatures(trainingJobDetail.selected_features);
-                    setTrainingMode(trainingJobDetail.training_mode);
-                    setTestSize(trainingJobDetail.hyperparameters.test_size || 0.2);
-                    setRandomState(trainingJobDetail.hyperparameters.random_state || 42);
-                    setShuffle(trainingJobDetail.hyperparameters.shuffle ?? true);
-                    setCvFolds(trainingJobDetail.hyperparameters.cv_folds || 5);
-                    setIsModalOpen(false);
-                    setSuccessMsg("Restored configuration parameters. Ready to retrain.");
-                  }}
-                  className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" /> Retrain Setup
-                </button>
-                <button
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    if (setActiveTab) setActiveTab("visualization");
-                  }}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
-                >
-                  <LineChart className="w-3.5 h-3.5" /> Visualize Dataset
-                </button>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer transition"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-
           </div>
         </div>
       )}
 
+      {/* TEST MODEL / PREDICT LIVE MODAL */}
+      {isPredictModalOpen && trainingJobDetail && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm"
+            onClick={() => setIsPredictModalOpen(false)}
+          />
+
+          <div className="relative w-full max-w-xl max-h-[88vh] bg-white/95 dark:bg-zinc-900/95 border border-zinc-300 dark:border-zinc-700 rounded-3xl shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden animate-fade-in font-sans">
+            {/* Modal Header */}
+            <div className="p-4 px-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-900/50">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight capitalize">
+                  Test Model: {predictAlgo.replace(/_/g, " ")}
+                </h3>
+                <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-semibold uppercase tracking-wider block mt-0.5">
+                  Target Output (Y): {trainingJobDetail.target_column}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPredictModalOpen(false)}
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content Body: Auth-styled Form Inputs */}
+            <form onSubmit={handlePredictSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+                {trainingJobDetail.selected_features?.map((feat) => {
+                  const hasError = !!predictValidationErrors[feat];
+                  return (
+                    <label key={feat} className="block text-left space-y-1.5">
+                      <span className="block text-xs font-semibold text-slate-800 dark:text-zinc-200 pl-3">
+                        {feat}
+                      </span>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={predictFormInputs[feat] !== undefined ? predictFormInputs[feat] : ""}
+                          onChange={(e) => {
+                            setPredictFormInputs({
+                              ...predictFormInputs,
+                              [feat]: e.target.value,
+                            });
+                            if (predictValidationErrors[feat]) {
+                              setPredictValidationErrors({
+                                ...predictValidationErrors,
+                                [feat]: null,
+                              });
+                            }
+                          }}
+                          placeholder={`Enter value for ${feat}...`}
+                          className={`w-full rounded-full bg-white dark:bg-zinc-900/60 px-5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 outline-none transition-all duration-200 py-2.5 shadow-sm ${
+                            hasError
+                              ? "border-2 border-rose-500 focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10"
+                              : "border border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500 focus:border-[#673AB7] dark:focus:border-[#8b5cf6] focus:ring-4 focus:ring-[#673AB7]/15 dark:focus:ring-[#8b5cf6]/20"
+                          }`}
+                        />
+                      </div>
+                      {hasError && (
+                        <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-rose-500 dark:text-rose-400 pl-3">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 dark:bg-rose-400 inline-block shrink-0" />
+                          <span>{predictValidationErrors[feat]}</span>
+                        </p>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+
+              {/* Submit Predict Button (Auth pill style, no sparkles icon) */}
+              <button
+                type="submit"
+                disabled={predictingState}
+                className="w-full rounded-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 border border-slate-900 dark:border-white py-2.5 text-xs font-bold transition-all duration-200 shadow-xs active:scale-95 cursor-pointer flex items-center justify-center gap-2 select-none disabled:opacity-50"
+              >
+                {predictingState && <RefreshCw className="w-4 h-4 animate-spin text-white dark:text-slate-900" />}
+                <span>{predictingState ? "Generating Prediction..." : "Run Prediction Test"}</span>
+              </button>
+
+              {/* Prediction Result Display */}
+              {predictOutputResult && (
+                <div className="p-4 rounded-2xl border border-purple-500/30 bg-purple-500/10 dark:bg-purple-500/10 space-y-2 animate-fade-in text-left">
+                  <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider block">
+                    Prediction Output Result
+                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-700 dark:text-zinc-300">
+                      Predicted {trainingJobDetail.target_column}:
+                    </span>
+                    <strong className="text-base font-extrabold text-purple-600 dark:text-purple-400">
+                      {typeof predictOutputResult.prediction === "number"
+                        ? predictOutputResult.prediction.toFixed(4)
+                        : String(predictOutputResult.prediction)}
+                    </strong>
+                  </div>
+                </div>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

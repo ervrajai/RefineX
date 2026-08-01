@@ -1586,7 +1586,7 @@ export default function ModelTrainingView({
                           </h4>
                         </div>
 
-                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm text-xs leading-relaxed text-slate-700 dark:text-zinc-200 font-medium space-y-2 mt-3 flex-1 flex flex-col justify-center">
+                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm text-xs leading-relaxed text-slate-700 dark:text-zinc-200 font-medium space-y-2 mt-3 flex-1 flex flex-col justify-start">
                           <div className="flex items-center gap-2">
                             <Check className="w-4 h-4 text-emerald-500 shrink-0" />
                             <span>Imputed missing numeric fields using Median Strategy</span>
@@ -1631,7 +1631,7 @@ export default function ModelTrainingView({
                           </h4>
                         </div>
 
-                        <div className="pt-3 flex-1 flex flex-col justify-center">
+                        <div className="pt-3 flex-1 flex flex-col justify-start">
                           {isClassification && m.confusion_matrix ? (
                             <div className="rounded-xl overflow-hidden p-3 border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
                               <div className="grid grid-cols-2 gap-2 text-center text-xs font-bold text-slate-700 dark:text-zinc-300">

@@ -723,7 +723,7 @@ def clean_dataset(df, config):
     # Step 6: Remove Duplicate Rows
     if config.get("remove_duplicate_rows", False):
         initial_len = len(cleaned_df)
-        cleaned_df = cleaned_df.drop_duplicates()
+        cleaned_df = cleaned_df.drop_duplicates().reset_index(drop=True)
         removed_dup_rows = initial_len - len(cleaned_df)
         if removed_dup_rows > 0:
             logs.append(f"✓ Removed {removed_dup_rows} duplicate rows")
@@ -906,6 +906,11 @@ def clean_dataset(df, config):
                         q1 = col_nonnull.quantile(0.25)
                         q3 = col_nonnull.quantile(0.75)
                         iqr = q3 - q1
+                        # Guard: skip zero-IQR columns (all values identical / near-constant)
+                        # Without this guard every value satisfies col==lower==upper and gets
+                        # incorrectly flagged, poisoning outlier_rows_to_drop.
+                        if iqr == 0:
+                            continue
                         lower = q1 - 1.5 * iqr
                         upper = q3 + 1.5 * iqr
                     else:  # Z-score
@@ -924,8 +929,9 @@ def clean_dataset(df, config):
                         if outlier_strat == "remove":
                             outlier_rows_to_drop.update(outliers_indices)
                         elif outlier_strat == "cap":
-                            cleaned_df.loc[col_series < lower, col] = lower
-                            cleaned_df.loc[col_series > upper, col] = upper
+                            # Use the already-computed outlier_mask to avoid stale series references
+                            cleaned_df.loc[outlier_mask & (col_series < lower), col] = lower
+                            cleaned_df.loc[outlier_mask & (col_series > upper), col] = upper
                             cap_count += len(outliers_indices)
                         elif outlier_strat == "replace_mean":
                             mean_val = col_nonnull.mean()

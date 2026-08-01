@@ -107,8 +107,14 @@ class DatasetMLTrainView(APIView):
         if not algorithms:
             return Response({"error": "At least one algorithm must be selected."}, status=status.HTTP_400_BAD_REQUEST)
 
-        file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
-        df, _ = read_dataframe(file_path, dataset.file_type, encoding=dataset.encoding)
+        if dataset.cleaned_file and os.path.exists(dataset.cleaned_file.path):
+            file_path = dataset.cleaned_file.path
+            # Cleaned files are always stored as parquet; use its actual type
+            actual_file_type = "parquet" if file_path.endswith(".parquet") else dataset.file_type
+        else:
+            file_path = dataset.original_file.path
+            actual_file_type = dataset.file_type
+        df, _ = read_dataframe(file_path, actual_file_type, encoding=dataset.encoding)
         
         # Check targets validity
         try:

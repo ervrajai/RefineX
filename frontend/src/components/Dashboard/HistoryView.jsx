@@ -427,24 +427,33 @@ export default function HistoryView({
 
       {/* Clear History Confirmation Modal */}
       {showClearModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 shadow-lg flex flex-col gap-5">
-            <div className="flex items-center gap-3 text-rose-500">
-              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
-                <AlertTriangle className="w-6 h-6 text-rose-500" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 dark:bg-black/75 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-white dark:bg-[#1c1c21] border border-slate-200 dark:border-zinc-800 shadow-xl flex flex-col gap-5 relative">
+            <div className="flex items-center gap-3 text-amber-500">
+              <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
               </div>
-              <h3 className="text-lg font-black text-slate-900 dark:text-white">Clear All History?</h3>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Move All to Recently Deleted?</h3>
+                <p className="text-[11px] text-slate-400 dark:text-zinc-400">10-Day Retention Period</p>
+              </div>
             </div>
 
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-300 leading-relaxed font-medium">
-              Are you sure you want to clear your history? <strong className="text-rose-500 font-bold">This action cannot be restored.</strong> All execution logs, dataset records, cleaned CSV files, and media files will be permanently deleted from your local PC storage and database.
-            </p>
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-100 dark:border-zinc-800 text-xs text-slate-600 dark:text-zinc-300 leading-relaxed space-y-2">
+              <p>
+                All history items will be moved to <strong className="text-slate-900 dark:text-white font-bold">Recently Deleted</strong> in Settings.
+              </p>
+              <div className="flex items-center gap-2 text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1.5 rounded-xl border border-amber-500/20">
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span>Items will be automatically purged permanently after 10 days.</span>
+              </div>
+            </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex items-center justify-end gap-2.5 pt-1">
               <button
                 disabled={clearing}
                 onClick={() => setShowClearModal(false)}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer active:scale-95"
               >
                 Cancel
               </button>
@@ -452,14 +461,14 @@ export default function HistoryView({
               <button
                 disabled={clearing}
                 onClick={handleClearHistory}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black transition cursor-pointer active:scale-95 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition cursor-pointer active:scale-95 disabled:opacity-50"
               >
                 {clearing ? (
-                  <span className="animate-pulse">Clearing Files...</span>
+                  <span className="animate-pulse">Moving to Recently Deleted...</span>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4" />
-                    Yes, Clear All History
+                    Move All to Recently Deleted
                   </>
                 )}
               </button>
@@ -470,24 +479,33 @@ export default function HistoryView({
 
       {/* Single History Item Deletion Modal */}
       {itemToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 shadow-lg flex flex-col gap-5">
-            <div className="flex items-center gap-3 text-rose-500">
-              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
-                <AlertTriangle className="w-6 h-6 text-rose-500" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 dark:bg-black/75 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-white dark:bg-[#1c1c21] border border-slate-200 dark:border-zinc-800 shadow-xl flex flex-col gap-5 relative">
+            <div className="flex items-center gap-3 text-amber-500">
+              <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
               </div>
-              <h3 className="text-lg font-black text-slate-900 dark:text-white">Delete History Record?</h3>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Move Item to Recently Deleted?</h3>
+                <p className="text-[11px] text-slate-400 dark:text-zinc-400">10-Day Retention Period</p>
+              </div>
             </div>
 
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-300 leading-relaxed font-medium">
-              Are you sure you want to delete <strong className="text-slate-900 dark:text-white">{itemToDelete.name}</strong>? <strong className="text-rose-500 font-bold">This action cannot be restored.</strong> The associated dataset, cleaned CSV files, and media will be permanently deleted from your local storage and database.
-            </p>
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-100 dark:border-zinc-800 text-xs text-slate-600 dark:text-zinc-300 leading-relaxed space-y-2">
+              <p>
+                Are you sure you want to remove <strong className="text-slate-900 dark:text-white font-bold">{itemToDelete.name}</strong>?
+              </p>
+              <div className="flex items-center gap-2 text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1.5 rounded-xl border border-amber-500/20">
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span>This item will stay in Settings &rarr; Recently Deleted for 10 days before auto-purging.</span>
+              </div>
+            </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex items-center justify-end gap-2.5 pt-1">
               <button
                 disabled={deletingItem}
                 onClick={() => setItemToDelete(null)}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-bold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer active:scale-95"
               >
                 Cancel
               </button>
@@ -495,14 +513,14 @@ export default function HistoryView({
               <button
                 disabled={deletingItem}
                 onClick={handleDeleteSingleItem}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black transition cursor-pointer active:scale-95 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition cursor-pointer active:scale-95 disabled:opacity-50"
               >
                 {deletingItem ? (
-                  <span className="animate-pulse">Deleting File...</span>
+                  <span className="animate-pulse">Moving Item...</span>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4" />
-                    Delete Record
+                    Move to Recently Deleted
                   </>
                 )}
               </button>

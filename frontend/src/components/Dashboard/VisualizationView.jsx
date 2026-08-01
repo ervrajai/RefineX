@@ -151,6 +151,82 @@ export default function VisualizationView({
   const [genNotes, setGenNotes] = useState([]);
   const [loadingDatasetId, setLoadingDatasetId] = useState(null);
 
+  // FileUpload States
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [loadedBytes, setLoadedBytes] = useState(0);
+  const [totalBytes, setTotalBytes] = useState(0);
+  const [uploadSpeed, setUploadSpeed] = useState(0);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const abortControllerRef = useRef(null);
+
+  const cancelUpload = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
+
+  const uploadFile = async (file) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setUploading(true);
+    setUploadProgress(0);
+    setLoadedBytes(0);
+    setTotalBytes(file?.size || 0);
+    setUploadSpeed(0);
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    const formData = new FormData();
+    formData.append("file", file);
+    const startTime = Date.now();
+
+    try {
+      const uploadRes = await api.post("cleaning/upload/", formData, {
+        signal: controller.signal,
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progressEvent) => {
+          const { loaded, total } = progressEvent;
+          setLoadedBytes(loaded);
+          if (total) {
+            setTotalBytes(total);
+            const percent = Math.round((loaded * 100) / total);
+            setUploadProgress(percent);
+          } else {
+            setUploadProgress(50);
+          }
+          const elapsed = (Date.now() - startTime) / 1000;
+          if (elapsed > 0) {
+            setUploadSpeed(Math.round(loaded / elapsed));
+          }
+        }
+      });
+      setUploadProgress(100);
+      const dsId = uploadRes.data.dataset_id;
+      const previewRes = await api.get(`cleaning/${dsId}/preview/?offset=0&limit=100`);
+      const analyzeRes = await api.get(`visualization/analyze/${dsId}/`);
+      setDatasetId(dsId);
+      setMetadata(previewRes.data.metadata);
+      setPreview(previewRes.data);
+      setReport(analyzeRes.data);
+      setSuccessMsg("✓ File uploaded successfully!");
+    } catch (err) {
+      if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || (err.message && err.message.includes("canceled"))) {
+        setErrorMsg("Upload canceled.");
+      } else {
+        setErrorMsg(err.response?.data?.error || "Failed to upload dataset for visualization.");
+      }
+    } finally {
+      setUploading(false);
+      abortControllerRef.current = null;
+    }
+  };
+
   const handleSelectHistoryDataset = async (ds) => {
     setLoadingDatasetId(ds.id);
     setProfileLoading(true);
@@ -835,26 +911,24 @@ export default function VisualizationView({
           {/* 70% Left: Upload Dropzone */}
           <div className="lg:col-span-8 w-full">
             <FileUpload
-              onFileUpload={async (file) => {
-                const formData = new FormData();
-                formData.append("file", file);
-                try {
-                  const uploadRes = await api.post("cleaning/upload/", formData, {
-                    headers: { "Content-Type": "multipart/form-data" }
-                  });
-                  const dsId = uploadRes.data.dataset_id;
-                  const previewRes = await api.get(`cleaning/${dsId}/preview/?offset=0&limit=100`);
-                  const analyzeRes = await api.get(`visualization/analyze/${dsId}/`);
-                  setDatasetId(dsId);
-                  setMetadata(previewRes.data.metadata);
-                  setPreview(previewRes.data);
-                  setReport(analyzeRes.data);
-                } catch (err) {
-                  console.error("Failed to upload dataset for visualization:", err);
-                }
-              }}
+              onFileUpload={uploadFile}
+              uploading={uploading}
+              progress={uploadProgress}
+              loadedBytes={loadedBytes}
+              totalBytes={totalBytes}
+              uploadSpeed={uploadSpeed}
+              errorMsg={errorMsg}
+              successMsg={successMsg}
               acceptedFormats={[".csv", ".xlsx", ".xls", ".json"]}
               maxSizeMB={100}
+              onCancel={cancelUpload}
+              onReset={() => {
+                setDatasetId(null);
+                setMetadata(null);
+                setPreview(null);
+                setErrorMsg("");
+                setSuccessMsg("");
+              }}
             />
           </div>
 

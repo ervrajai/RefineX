@@ -133,9 +133,9 @@ class DatasetAnalyzeView(APIView):
     def get(self, request, pk, *args, **kwargs):
         dataset = get_object_or_404(Dataset, pk=pk)
         
-        # Read the file
+        # Read the file (Check if cleaned_file is parquet for millisecond load)
         file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
-        file_type = dataset.file_type
+        file_type = "parquet" if (dataset.cleaned_file and dataset.cleaned_file.name.endswith(".parquet")) else dataset.file_type
         
         try:
             df, _ = read_dataframe(file_path, file_type, encoding=dataset.encoding)
@@ -168,20 +168,28 @@ class DatasetAnalyzeView(APIView):
 def perform_cleaning_operation(dataset, config, user=None):
     """
     Helper function that executes the cleaning pipeline and updates the Dataset model and CleaningJob.
+    Strictly branches: Auto-Decide mode (auto_clean_dataset) vs Manual mode (clean_dataset).
+    Stores cleaned binary artifact as fast .parquet format.
     """
-    df, _ = read_dataframe(dataset.original_file.path, dataset.file_type, encoding=dataset.encoding)
-    cleaned_df, logs, before_report, after_report = clean_dataset(df, config)
+    input_file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
+    input_file_type = "parquet" if (dataset.cleaned_file and dataset.cleaned_file.name.endswith(".parquet")) else dataset.file_type
     
-    cleaned_name = f"cleaned_{dataset.id}_{os.path.basename(dataset.original_file.name)}"
-    if not cleaned_name.endswith(f".{dataset.file_type}"):
-        cleaned_name += f".{dataset.file_type}"
-        
-    out_buffer = io.BytesIO()
-    if dataset.file_type == 'csv':
-        cleaned_df.to_csv(out_buffer, index=False, encoding=dataset.encoding)
+    df, _ = read_dataframe(input_file_path, input_file_type, encoding=dataset.encoding)
+    
+    if config.get("is_auto_decide", False):
+        cleaned_df, logs, before_report, after_report = auto_clean_dataset(df)
     else:
-        cleaned_df.to_excel(out_buffer, index=False)
+        cleaned_df, logs, before_report, after_report = clean_dataset(df, config)
     
+    out_buffer = io.BytesIO()
+    cleaned_name = f"cleaned_{dataset.id}.parquet"
+    try:
+        cleaned_df.to_parquet(out_buffer, index=False)
+    except Exception:
+        # Fallback to CSV if pyarrow engine is not present
+        cleaned_name = f"cleaned_{dataset.id}.csv"
+        cleaned_df.to_csv(out_buffer, index=False, encoding=dataset.encoding)
+        
     dataset.cleaned_file.save(cleaned_name, ContentFile(out_buffer.getvalue()), save=False)
     dataset.status = "cleaned"
     dataset.rows_count = len(cleaned_df)
@@ -301,38 +309,7 @@ class DatasetDecideView(APIView):
             return Response(err_resp, status=status.HTTP_403_FORBIDDEN)
         
         config = {
-            "standardize_column_names": True,
-            "standardize_trim": True,
-            "standardize_replace_spaces": True,
-            "standardize_lowercase": True,
-            "standardize_remove_special": True,
-            "standardize_replace_multiple_underscores": True,
-            "standardize_remove_outer_underscores": True,
-            "blank_value_detection": True,
-            "text_cleaning": True,
-            "text_trim": True,
-            "text_remove_multiple_spaces": True,
-            "text_remove_html": True,
-            "text_remove_emoji": True,
-            "text_remove_tabs_newlines": True,
-            "text_case_mode": "none",
-            "remove_duplicate_rows": True,
-            "remove_duplicate_columns": True,
-            "clean_numeric_values": True,
-            "data_type_conversion": True,
-            "type_conversion_mode": "auto",
-            "date_formatting": True,
-            "date_format": "YYYY-MM-DD",
-            "remove_constant_columns": True,
-            "remove_high_missing_columns": True,
-            "missing_threshold": 90,
-            "decimal_formatting": True,
-            "decimal_format": "2",
-            "reset_index": True,
-            "handle_missing_values": True,
-            "missing_strategy": "fill_median",
-            "remove_invalid_values": True,
-            "remove_low_variance_columns": True
+            "is_auto_decide": True
         }
         
         try:
@@ -413,15 +390,17 @@ class DatasetDownloadView(APIView):
             request=request
         )
 
-        # Determine path
+        # Determine path and type
         file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
+        file_type = "parquet" if (dataset.cleaned_file and dataset.cleaned_file.name.endswith(".parquet")) else dataset.file_type
+        
         if not os.path.exists(file_path):
             return Response({"error": "Dataset file not found on disk"}, status=status.HTTP_404_NOT_FOUND)
             
         if download_type == "csv":
-            # Serve CSV
+            # Serve CSV export
             try:
-                df, _ = read_dataframe(file_path, dataset.file_type, encoding=dataset.encoding)
+                df, _ = read_dataframe(file_path, file_type, encoding=dataset.encoding)
                 response = HttpResponse(content_type='text/csv')
                 filename = f"cleaned_{dataset.name}" if dataset.cleaned_file else dataset.name
                 if not filename.endswith('.csv'):
@@ -433,9 +412,9 @@ class DatasetDownloadView(APIView):
                 return Response({"error": f"Failed to export CSV: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
                 
         elif download_type == "excel":
-            # Serve Excel
+            # Serve Excel export
             try:
-                df, _ = read_dataframe(file_path, dataset.file_type, encoding=dataset.encoding)
+                df, _ = read_dataframe(file_path, file_type, encoding=dataset.encoding)
                 response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 filename = f"cleaned_{dataset.name}" if dataset.cleaned_file else dataset.name
                 filename = os.path.splitext(filename)[0] + '.xlsx'

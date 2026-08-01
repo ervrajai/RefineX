@@ -25,8 +25,13 @@ def read_dataframe(file_path, file_type, encoding='UTF-8'):
     """
     Safely reads a dataset into a Pandas DataFrame, handling common encoding formats and delimiter sniffing.
     """
-    if not os.path.exists(file_path):
-        raise FileNotFoundError("The dataset file does not exist on the server.")
+    if file_path.endswith('.parquet') or file_type.lower() == 'parquet':
+        try:
+            df = pd.read_parquet(file_path)
+            df.columns = make_columns_unique(df.columns)
+            return df, 'UTF-8'
+        except Exception as e:
+            raise ValueError(f"Could not read Parquet file: {str(e)}")
 
     if file_type.lower() == 'csv':
         detected_encoding = encoding
@@ -108,63 +113,76 @@ def make_json_safe(obj):
 
 
 
-def calculate_quality_score(df, report):
+def calculate_quality_score(df, report=None, original_row_count=None):
     """
-    Calculates a Quality Score (0-100) based on dataset issues:
-    - Missing cells proportion (up to -25 pts)
-    - Duplicate rows proportion (up to -25 pts)
-    - Constant columns (up to -15 pts)
-    - Low variance columns (up to -10 pts)
-    - Outliers cells proportion (up to -15 pts)
-    - Invalid cells proportion (up to -10 pts)
+    Calculates an objective Data Quality Score (0-100) applicable to both Auto and Manual modes.
+    
+    Penalties:
+    - Missing Values Ratio: Up to -35 pts
+    - Duplicate Rows Ratio: Up to -25 pts
+    - Mixed / Invalid Sentinel Data Types: Up to -15 pts
+    - Data/Row Loss Ratio: Up to -35 pts (penalizes aggressive row deletion to prevent vanity metrics)
+    - Outliers: 0 pts penalty (outliers do NOT reduce score)
     """
+    if df is None or len(df) == 0:
+        return 0
+
     score = 100.0
     rows = max(1, len(df))
     cols = max(1, len(df.columns))
     total_cells = rows * cols
 
-    # 1. Missing Values (max -25)
-    missing_cells = report.get("missing_summary", {}).get("total_missing", 0)
+    # 1. Missing Values Penalty (max -35 pts)
+    missing_cells = 0
+    if report and isinstance(report, dict) and "missing_summary" in report:
+        missing_cells = report["missing_summary"].get("total_missing", 0)
+    else:
+        try:
+            missing_cells = int(df.isna().sum().sum())
+        except Exception:
+            missing_cells = 0
+
     missing_ratio = missing_cells / total_cells
-    score -= (missing_ratio * 25)
+    score -= (missing_ratio * 35.0)
 
-    # 2. Duplicate Rows (max -25)
-    dup_rows = report.get("duplicate_summary", {}).get("duplicate_rows_count", 0)
+    # 2. Duplicate Rows Penalty (max -25 pts)
+    dup_rows = 0
+    if report and isinstance(report, dict) and "duplicate_summary" in report:
+        dup_rows = report["duplicate_summary"].get("duplicate_rows_count", 0)
+    else:
+        try:
+            dup_rows = int(df.duplicated().sum())
+        except Exception:
+            dup_rows = 0
+
     dup_ratio = dup_rows / rows
-    score -= (dup_ratio * 25)
+    score -= (dup_ratio * 25.0)
 
-    # 3. Constant Columns (max -15)
-    constant_cols = len(report.get("constant_columns", []))
-    constant_ratio = constant_cols / cols
-    score -= (constant_ratio * 15)
-
-    # 4. Low Variance Columns (max -10)
-    low_var_cols = len(report.get("low_variance_columns", []))
-    low_var_ratio = low_var_cols / cols
-    score -= (low_var_ratio * 10)
-
-    # 5. Outliers (max -15)
-    outlier_cells = sum(c.get("outlier_count", 0) for c in report.get("outlier_report", []))
-    numeric_cols = sum(1 for c in report.get("outlier_report", []))
-    if numeric_cols > 0:
-        total_numeric_cells = rows * numeric_cols
-        outlier_ratio = outlier_cells / total_numeric_cells
-        score -= (outlier_ratio * 15)
-
-    # 6. Invalid / Blank values (max -10)
-    # Estimate based on object columns having common blank strings (N/A, NULL, empty)
+    # 3. Mixed / Invalid Sentinel Values Penalty (max -15 pts)
     invalid_cells = 0
     blank_markers = {"", " ", "na", "n/a", "null", "none", "-", "--", "unknown"}
     for col in df.columns:
         if df[col].dtype == object:
             try:
-                invalid_cells += df[col].astype(str).str.strip().str.lower().isin(blank_markers).sum()
-            except:
+                invalid_cells += int(df[col].astype(str).str.strip().str.lower().isin(blank_markers).sum())
+            except Exception:
                 pass
-    invalid_ratio = invalid_cells / total_cells
-    score -= (invalid_ratio * 10)
 
-    # Ensure boundaries
+    invalid_ratio = invalid_cells / total_cells
+    score -= (invalid_ratio * 15.0)
+
+    # 4. Data Loss Penalty (max -35 pts)
+    orig_rows = original_row_count
+    if not orig_rows and report and isinstance(report, dict):
+        orig_rows = report.get("original_row_count") or report.get("overview", {}).get("rows")
+    
+    if orig_rows and orig_rows > rows:
+        row_loss_ratio = (orig_rows - rows) / orig_rows
+        score -= (row_loss_ratio * 35.0)
+
+    # Note: Outliers do NOT reduce the score.
+
+    # Enforce boundaries [0, 100]
     score = max(0.0, min(100.0, score))
     return int(round(score))
 
@@ -381,6 +399,168 @@ def profile_dataset(df):
     report["quality_score"] = calculate_quality_score(df, report)
     
     return make_json_safe(report)
+
+
+def auto_clean_dataset(df):
+    """
+    Executes the 3-Phase Heuristic Engine for 'Auto-Decide' mode ONLY.
+    
+    Phase 1 (Structural):
+      - Standardize header names to snake_case.
+      - Normalize sentinel blank strings ("N/A", "NULL", etc.) to NaN.
+      - Drop exact duplicate rows.
+      - Drop 0-variance constant columns.
+      
+    Phase 2 (Imputation):
+      - Drop columns with >60% missing values.
+      - Impute numeric nulls with column Median.
+      - Impute categorical nulls with column Mode.
+      
+    Phase 3 (Outlier Handling):
+      - Enforce non-destructive IQR capping (clipping) for numeric columns instead of dropping rows.
+      
+    Returns: (cleaned_df, logs_list, before_report, after_report)
+    """
+    logs = []
+    original_row_count = len(df)
+    before_report = profile_dataset(df)
+    cleaned_df = df.copy()
+
+    logs.append(f"⚡ RefineX Auto-Decide Engine initialized ({len(df)} rows, {len(df.columns)} columns)")
+
+    # -------------------------------------------------------------
+    # PHASE 1: STRUCTURAL CLEANUP
+    # -------------------------------------------------------------
+    # 1. Standardize Header Names
+    new_cols = []
+    changed_headers = 0
+    for col in cleaned_df.columns:
+        col_str = str(col).strip()
+        col_str = re.sub(r'[^\w\s-]', '', col_str)
+        col_str = re.sub(r'\s+', '_', col_str).lower()
+        col_str = re.sub(r'_+', '_', col_str).strip('_')
+        if col_str != str(col):
+            changed_headers += 1
+        new_cols.append(col_str)
+
+    # Ensure uniqueness of headers
+    unique_cols = []
+    for col in new_cols:
+        if col in unique_cols:
+            count = 1
+            candidate = f"{col}_{count}"
+            while candidate in unique_cols:
+                count += 1
+                candidate = f"{col}_{count}"
+            unique_cols.append(candidate)
+        else:
+            unique_cols.append(col)
+    cleaned_df.columns = unique_cols
+
+    if changed_headers > 0:
+        logs.append(f"✓ Phase 1: Standardized {changed_headers} column headers to clean snake_case")
+
+    # 2. Normalize Blank Sentinel Strings to NaN
+    blank_markers = {"", " ", "na", "n/a", "null", "none", "-", "--", "unknown"}
+    blank_count = 0
+    for col in cleaned_df.columns:
+        if cleaned_df[col].dtype == object:
+            try:
+                mask = cleaned_df[col].astype(str).str.strip().str.lower().isin(blank_markers)
+                if mask.any():
+                    blank_count += int(mask.sum())
+                    cleaned_df.loc[mask, col] = np.nan
+            except Exception:
+                pass
+    if blank_count > 0:
+        logs.append(f"✓ Phase 1: Normalized {blank_count} blank/sentinel strings to NaN")
+
+    # 3. Drop Exact Duplicate Rows
+    dups_count = int(cleaned_df.duplicated().sum())
+    if dups_count > 0:
+        cleaned_df = cleaned_df.drop_duplicates().reset_index(drop=True)
+        logs.append(f"✓ Phase 1: Removed {dups_count} exact duplicate rows")
+
+    # 4. Drop 0-Variance Constant Columns
+    constant_cols_dropped = []
+    for col in cleaned_df.columns:
+        if cleaned_df[col].nunique(dropna=False) <= 1:
+            constant_cols_dropped.append(col)
+
+    if constant_cols_dropped:
+        cleaned_df = cleaned_df.drop(columns=constant_cols_dropped)
+        logs.append(f"✓ Phase 1: Dropped {len(constant_cols_dropped)} zero-variance constant column(s): {', '.join(constant_cols_dropped)}")
+
+    # -------------------------------------------------------------
+    # PHASE 2: IMPUTATION (Threshold & Type-Specific)
+    # -------------------------------------------------------------
+    # 1. Drop Columns with >60% Nulls
+    high_null_cols_dropped = []
+    threshold = 0.60
+    for col in cleaned_df.columns:
+        null_ratio = cleaned_df[col].isna().mean()
+        if null_ratio > threshold:
+            high_null_cols_dropped.append((col, round(null_ratio * 100, 1)))
+
+    if high_null_cols_dropped:
+        cols_to_remove = [c[0] for c in high_null_cols_dropped]
+        cleaned_df = cleaned_df.drop(columns=cols_to_remove)
+        desc_list = [f"{c} ({r}%)" for c, r in high_null_cols_dropped]
+        logs.append(f"✓ Phase 2: Dropped {len(cols_to_remove)} column(s) exceeding 60% missing threshold: {', '.join(desc_list)}")
+
+    # 2. Impute Remaining Columns (Numeric -> Median, Categorical -> Mode)
+    num_imputed = 0
+    cat_imputed = 0
+    for col in cleaned_df.columns:
+        na_mask = cleaned_df[col].isna()
+        if na_mask.any():
+            null_count = int(na_mask.sum())
+            if pd.api.types.is_numeric_dtype(cleaned_df[col]):
+                median_val = cleaned_df[col].median()
+                cleaned_df[col] = cleaned_df[col].fillna(median_val)
+                num_imputed += null_count
+            else:
+                mode_series = cleaned_df[col].mode()
+                if not mode_series.empty:
+                    mode_val = mode_series.iloc[0]
+                    cleaned_df[col] = cleaned_df[col].fillna(mode_val)
+                    cat_imputed += null_count
+
+    if num_imputed > 0:
+        logs.append(f"✓ Phase 2: Imputed {num_imputed} numeric missing values using column Median")
+    if cat_imputed > 0:
+        logs.append(f"✓ Phase 2: Imputed {cat_imputed} categorical missing values using column Mode")
+
+    # -------------------------------------------------------------
+    # PHASE 3: NON-DESTRUCTIVE OUTLIER HANDLING (IQR Capping)
+    # -------------------------------------------------------------
+    total_capped = 0
+    for col in cleaned_df.columns:
+        if pd.api.types.is_numeric_dtype(cleaned_df[col]):
+            col_series = cleaned_df[col].dropna()
+            if len(col_series) > 4:
+                q1 = col_series.quantile(0.25)
+                q3 = col_series.quantile(0.75)
+                iqr = q3 - q1
+                if iqr > 0:
+                    lower_bound = q1 - 1.5 * iqr
+                    upper_bound = q3 + 1.5 * iqr
+                    
+                    outliers_mask = (cleaned_df[col] < lower_bound) | (cleaned_df[col] > upper_bound)
+                    c_count = int(outliers_mask.sum())
+                    if c_count > 0:
+                        cleaned_df[col] = cleaned_df[col].clip(lower=lower_bound, upper=upper_bound)
+                        total_capped += c_count
+
+    if total_capped > 0:
+        logs.append(f"✓ Phase 3: Non-destructively capped {total_capped} numeric outlier values using IQR bounds")
+
+    # Generate After Report & calculate Quality Score with data loss penalty check
+    after_report = profile_dataset(cleaned_df)
+    after_report["quality_score"] = calculate_quality_score(cleaned_df, report=after_report, original_row_count=original_row_count)
+    logs.append(f"✨ Auto-Decide Cleaning complete. Final Quality Score: {after_report['quality_score']}/100")
+
+    return cleaned_df, logs, before_report, after_report
 
 
 def clean_dataset(df, config):

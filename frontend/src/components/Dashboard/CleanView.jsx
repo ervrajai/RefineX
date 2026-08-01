@@ -1250,7 +1250,7 @@ export default function CleanView({
           </div>
 
           {/* 30% Right: History Card Panel */}
-          {!uploading && !isGuest && cleanHistoryList.length > 0 && (
+          {!isGuest && cleanHistoryList.length > 0 && (
             <div className="lg:col-span-4 w-full">
               <RecentDatasetPanel
                 items={cleanHistoryList}

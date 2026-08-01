@@ -757,11 +757,12 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
               Appearance
             </h3>
           </div>
-          <p className="text-[11px] sm:text-xs text-slate-400 dark:text-zinc-400 mb-3">
+          <p className="text-[11px] sm:text-xs text-slate-400 dark:text-zinc-400 mb-4">
             Select your preferred display theme
           </p>
 
-          <div className="grid grid-cols-3 gap-1 bg-slate-200/60 dark:bg-zinc-800/80 p-1 rounded-xl sm:rounded-2xl border border-slate-300/40 dark:border-zinc-700/50 w-full">
+          {/* Full width grid, slightly taller padding (p-1.5) */}
+          <div className="grid grid-cols-3 gap-1.5 bg-slate-200/60 dark:bg-[#1c1c1e] p-1.5 rounded-2xl border border-slate-300/40 dark:border-zinc-800/60 w-full">
             {[
               { id: "light", label: "Light", icon: Sun },
               { id: "dark", label: "Dark", icon: Moon },
@@ -769,32 +770,25 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
             ].map((mode) => {
               const Icon = mode.icon;
               const isSelected = themeMode === mode.id;
+              
               return (
                 <button
                   key={mode.id}
                   type="button"
                   onClick={() => changeTheme(mode.id)}
-                  className={`relative flex items-center justify-center gap-1.5 py-2 rounded-lg sm:rounded-xl text-xs font-semibold cursor-pointer ${
+                  /* Increased vertical padding to py-2.5 for a better height */
+                  className={`py-2.5 px-3 text-[11px] sm:text-xs rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 ${
                     isSelected
-                      ? "text-slate-950 dark:text-white"
-                      : "text-slate-400 dark:text-zinc-400"
+                      ? "bg-white dark:bg-[#3a3a3c] text-[#1c1c1e] dark:text-white shadow-sm font-bold border border-slate-200/60 dark:border-zinc-700/60"
+                      : "text-[#8e8e93] dark:text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white font-semibold border border-transparent"
                   }`}
                 >
-                  {isSelected && (
-                    <motion.div
-                      layoutId="theme-tab-responsive"
-                      className="absolute inset-0 bg-white dark:bg-zinc-700 rounded-lg sm:rounded-xl shadow-xs"
-                      transition={{
-                        type: "spring",
-                        bounce: 0.1,
-                        duration: 0.3,
-                      }}
-                    />
-                  )}
-                  <span className="relative z-10 flex items-center gap-1.5 text-[11px] sm:text-xs">
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{mode.label}</span>
-                  </span>
+                  <Icon 
+                    className={`w-4 h-4 shrink-0 ${
+                      isSelected ? "text-purple-600 dark:text-purple-400" : "text-slate-400"
+                    }`} 
+                  />
+                  <span>{mode.label}</span>
                 </button>
               );
             })}
@@ -1082,6 +1076,17 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
       </AnimatePresence>
 
       {/* Recently Deleted Bouncy Accordion */}
+      <div className="relative rounded-3xl bg-slate-100/70 dark:bg-zinc-900/70 border border-slate-200/80 dark:border-zinc-800/80 overflow-hidden accordion-theme-override">
+        <style>{`
+          /* Strip the hardcoded backgrounds from the global BouncyAccordion */
+          .accordion-theme-override > div,
+          .accordion-theme-override div[class*="bg-white"],
+          .accordion-theme-override div[class*="dark:bg-zinc"] {
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+        `}</style>
       <BouncyAccordion
         items={[
           {
@@ -1274,6 +1279,7 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
           },
         ]}
       />
+      </div>
 
       {/* Specific Item Permanent Delete Confirmation Modal */}
       {itemToPurge && (

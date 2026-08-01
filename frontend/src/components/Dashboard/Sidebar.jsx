@@ -32,45 +32,10 @@ const MOBILE_LABELS = {
   "settings": "Settings"
 };
 
-export function MenuToggleIcon({ open, className, fill = "none", stroke = "currentColor", strokeWidth = 2.2, strokeLinecap = "round", strokeLinejoin = "round", duration = 300, ...props }) {
-  return (
-    <svg
-      strokeWidth={strokeWidth}
-      fill={fill}
-      stroke={stroke}
-      viewBox="0 0 32 32"
-      strokeLinecap={strokeLinecap}
-      strokeLinejoin={strokeLinejoin}
-      shapeRendering="geometricPrecision"
-      className={cn(
-        "transition-transform ease-in-out transform-gpu",
-        open && "-rotate-45",
-        className
-      )}
-      style={{
-        transitionDuration: `${duration}ms`,
-      }}
-      {...props}
-    >
-      <path
-        className={cn(
-          "transition-all ease-in-out",
-          open
-            ? "[stroke-dasharray:20_300] [stroke-dashoffset:-32.42px]"
-            : "[stroke-dasharray:12_63]"
-        )}
-        style={{ transitionDuration: `${duration}ms` }}
-        d="M27 10 13 10C10.8 10 9 8.2 9 6 9 3.5 10.8 2 13 2 15.2 2 17 3.8 17 6L17 26C17 28.2 18.8 30 21 30 23.2 30 25 28.2 25 26 25 23.8 23.2 22 21 22L7 22"
-      />
-      <path d="M7 16 27 16" />
-    </svg>
-  );
-}
-
 function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingOut, isCollapsed, setIsCollapsed }) {
   // Sidebar Resizing Logic
-  const MIN_WIDTH = 76;
-  const MAX_WIDTH = 256;
+  const MIN_WIDTH = 90;
+  const MAX_WIDTH = 280;
   
   const sidebarRef = useRef(null);
   const [width, setWidth] = useState(isCollapsed ? MIN_WIDTH : MAX_WIDTH);
@@ -85,7 +50,7 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
         setWidth(MAX_WIDTH);
       }
     }
-  }, [isCollapsed]); 
+  }, [isCollapsed, isResizing, width]); 
 
   // Handle Dragging Desktop Sidebar
   useEffect(() => {
@@ -150,22 +115,19 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
   useEffect(() => {
     const handleScroll = (e) => {
       const target = e.target;
-      // Capture scroll events specifically from the main scroll container
       if (!target || target.id !== "main-scroll-container") return;
 
       const currentScrollY = target.scrollTop;
 
-      // Prevent negative scroll values (like iOS rubber-banding bounce) from hiding the nav bar
       if (currentScrollY < 0) {
         setIsNavVisible(true);
         return;
       }
       
-      // Hide on scroll down, show on scroll up 
       if (currentScrollY > lastScrollY.current && currentScrollY > 60) {
-        setIsNavVisible(false); // Scrolling down (hide)
+        setIsNavVisible(false); 
       } else {
-        setIsNavVisible(true); // Scrolling up (show)
+        setIsNavVisible(true); 
       }
       lastScrollY.current = currentScrollY;
     };
@@ -180,7 +142,6 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
   const [dragX, setDragX] = useState(null);
   const [isDraggingMenu, setIsDraggingMenu] = useState(false);
   
-  // Calculate index directly from array
   const activeIndex = Math.max(0, MENU_ITEMS.findIndex(item => item.id === activeTab));
 
   const handlePointerDown = (e) => {
@@ -191,7 +152,6 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
     const x = e.clientX - rect.left;
     const itemWidth = rect.width / MENU_ITEMS.length;
     
-    // Only start drag if interacting with the currently active pill
     const clickedIndex = Math.floor(x / itemWidth);
     if (clickedIndex === activeIndex) {
       setIsDraggingMenu(true);
@@ -260,13 +220,56 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
 
   return (
     <>
+      {/* --- INJECTED CSS FOR HAMBURGER ANIMATION & ORBITRON FONT --- */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .sidebar-refine {
+          font-family: "Orbitron", sans-serif;
+          font-optical-sizing: auto;
+          font-weight: 900;
+          font-style: normal;
+        }
+        .hamburger {
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .hamburger input {
+          display: none;
+        }
+        .hamburger svg {
+          height: 2.2em;
+          font-size: 12px;
+          transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .line {
+          fill: none;
+          stroke: currentColor;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          stroke-width: 3;
+          transition: stroke-dasharray 600ms cubic-bezier(0.4, 0, 0.2, 1),
+                      stroke-dashoffset 600ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .line-top-bottom {
+          stroke-dasharray: 12 63;
+        }
+        .hamburger input:checked + svg {
+          transform: rotate(-45deg);
+        }
+        .hamburger input:checked + svg .line-top-bottom {
+          stroke-dasharray: 20 300;
+          stroke-dashoffset: -32.42;
+        }
+      `}} />
+
       {/* --- DESKTOP SIDEBAR --- */}
       <aside 
         ref={sidebarRef}
         style={{ width: `${width}px` }}
         className={cn(
-          "hidden md:flex shrink-0 flex-col justify-between h-screen border-r bg-[#FFFFFF]/80 dark:bg-[#212121]/80 backdrop-blur-2xl border-slate-200/60 dark:border-zinc-800/60 font-sans select-none relative z-40 overflow-visible",
-          isResizing ? "" : "transition-all duration-300 ease-out"
+          "hidden md:flex shrink-0 flex-col justify-between h-screen border-r bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800/80 font-sans select-none relative z-40 overflow-hidden",
+          isResizing ? "" : "transition-[width] duration-300 ease-in-out"
         )}
       >
         <div
@@ -274,42 +277,47 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
           onDoubleClick={handleDoubleClick}
           className="absolute top-0 -right-1.5 w-3 h-full cursor-ew-resize z-50 flex items-center justify-center group"
         >
-          <div className="w-1 h-12 rounded-full bg-slate-300/0 dark:bg-zinc-700/0 group-hover:bg-slate-400/50 dark:group-hover:bg-zinc-600/50 transition-colors duration-200" />
+          <div className="w-1.5 h-16 rounded-full bg-slate-100 group-hover:bg-slate-300 dark:bg-zinc-800 dark:group-hover:bg-zinc-600 transition-colors duration-300 ease-in-out" />
         </div>
 
-        <div className="flex flex-col gap-6 pt-5 px-3 overflow-hidden">
-          <div className="flex items-center justify-between min-h-10 px-1 relative">
+        <div className="flex flex-col flex-1 px-3 pt-6 pb-4 overflow-y-auto overflow-x-hidden no-scrollbar">
+          {/* Header Section with Proper Alignment for Expanded & Collapsed States */}
+          <div className={cn(
+            "flex items-center mb-8 px-2 min-w-0",
+            isCollapsed ? "justify-center flex-col gap-4" : "justify-between"
+          )}>
             <div className={cn(
-              "flex items-center gap-2.5 shrink-0 transition-all duration-300",
-              isCollapsed ? "w-0 opacity-0 -translate-x-4" : "w-auto opacity-100 translate-x-0"
+              "flex items-center gap-3 shrink-0 transition-opacity duration-300 ease-in-out overflow-hidden",
+              isCollapsed ? "opacity-0 w-0 h-0 hidden" : "opacity-100 w-auto flex"
             )}>
               <img 
                 src={logoImg} 
                 alt="RefineX Logo" 
-                className="w-9 h-9 object-cover rounded-xl shadow-sm shrink-0 transform-gpu"
-                style={{ imageRendering: "auto" }}
+                className="w-[40px] h-[40px] object-cover rounded-lg shrink-0 shadow-sm"
               />
-              <span className="font-display text-xl font-black tracking-wider inline-flex items-center text-black dark:text-white whitespace-nowrap">
-                Refine<span className="font-sans text-[#673ab7] text-2xl ml-0.5 leading-none">X</span>
-              </span>
+              <span className="sidebar-refine text-xl tracking-wider inline-flex items-center text-slate-900 dark:text-white whitespace-nowrap">
+              Refine<span className="font-sans text-purple-600 dark:text-purple-400 text-2xl font-extrabold ml-0.5 inline-flex items-center justify-center leading-none">X</span>
+            </span>
             </div>
 
-            <button
-              onClick={handleDoubleClick}
-              className={cn(
-                "p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-[#F1F5F9]/60 dark:hover:bg-zinc-900/80 transition-all duration-150 ease-out cursor-pointer w-9 h-9 flex items-center justify-center shrink-0",
-                isCollapsed ? "mx-auto" : ""
-              )}
-              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              <MenuToggleIcon 
-                open={!isCollapsed} 
-                className="w-5.5 h-5.5 text-slate-600 dark:text-zinc-400"
-              />
-            </button>
+            <div className={cn(
+              "flex items-center justify-center shrink-0 transition-all duration-300 ease-in-out",
+              isCollapsed ? "mx-auto w-full" : ""
+            )}>
+              <label 
+                className="hamburger p-2 rounded-lg text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer" 
+                title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                <input type="checkbox" checked={!isCollapsed} onChange={handleDoubleClick} />
+                <svg viewBox="0 0 32 32">
+                  <path className="line line-top-bottom" d="M27 10 13 10C10.8 10 9 8.2 9 6 9 3.5 10.8 2 13 2 15.2 2 17 3.8 17 6L17 26C17 28.2 18.8 30 21 30 23.2 30 25 28.2 25 26 25 23.8 23.2 22 21 22L7 22" />
+                  <path className="line" d="M7 16 27 16" />
+                </svg>
+              </label>
+            </div>
           </div>
 
-          <nav className="flex flex-col gap-2 mt-2">
+          <nav className="flex flex-col gap-2.5 items-center w-full">
             {MENU_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -320,90 +328,90 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
                   onClick={() => onTabChange(item.id)}
                   title={item.label}
                   className={cn(
-                    "group relative flex items-center rounded-xl font-bold transition-all duration-200 ease-out cursor-pointer overflow-hidden transform-gpu",
-                    isCollapsed ? "w-10 h-10 mx-auto justify-center" : "w-full px-3 py-2.5 gap-3 text-xs text-left",
+                    "group flex items-center rounded-lg cursor-pointer transition-all duration-300 ease-in-out",
+                    isCollapsed ? "justify-center p-3 mx-auto w-11 h-11" : "px-3.5 py-3 gap-3.5 w-full text-left",
                     isActive
-                      ? "bg-transparent text-purple-600 dark:text-purple-400 border border-purple-600 dark:border-purple-400"
-                      : "bg-transparent text-slate-800 dark:text-white border border-transparent hover:border-purple-600/30 dark:hover:border-purple-400/30 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-slate-100/50 dark:hover:bg-zinc-800/40"
+                      ? "bg-slate-100 text-slate-900 dark:bg-zinc-800 dark:text-white shadow-sm"
+                      : "bg-transparent text-slate-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-800 hover:text-slate-900 dark:hover:text-zinc-100"
                   )}
                 >
-                  <div className={cn(
-                    "shrink-0 flex items-center justify-center transition-colors duration-150 ease-out",
-                    !isCollapsed && "p-1.5 rounded-lg border",
-                    isActive 
-                      ? "border-purple-600 dark:border-purple-400 bg-transparent text-purple-600 dark:text-purple-400" 
-                      : "border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400"
-                  )}>
-                    <Icon 
-                      className={cn(
-                        "shrink-0 transition-colors duration-150", 
-                        isCollapsed ? "w-5 h-5" : "w-4 h-4",
-                        isActive ? "text-purple-600 dark:text-purple-400" : "text-slate-800 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400"
-                      )} 
-                      strokeWidth={2.2} 
-                      shapeRendering="geometricPrecision" 
-                    />
-                  </div>
+                  <Icon 
+                    className={cn(
+                      "shrink-0 w-5 h-5 transition-colors duration-300 ease-in-out", 
+                      isActive 
+                        ? "text-purple-600 dark:text-purple-400" 
+                        : "text-slate-500 dark:text-zinc-500 group-hover:text-slate-800 dark:group-hover:text-zinc-200"
+                    )} 
+                    strokeWidth={isActive ? 2.5 : 2} 
+                  />
 
-                  <span className={cn(
-                    "truncate transition-opacity duration-200 min-w-0",
-                    isCollapsed ? "opacity-0 w-0 hidden" : "opacity-100 flex-1"
-                  )}>
-                    {item.label}
-                  </span>
+                  {!isCollapsed && (
+                    <span className={cn(
+                      "truncate min-w-0 flex-1 text-[14px] tracking-wide transition-all duration-300 ease-in-out",
+                      isActive ? "font-bold text-slate-900 dark:text-white" : "font-medium"
+                    )}>
+                      {item.label}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </nav>
         </div>
 
-        <div className="p-3 border-t border-slate-200/50 dark:border-zinc-800/50 bg-white/10 dark:bg-zinc-950/10">
+        <div className="p-4 border-t border-slate-200 dark:border-zinc-800/80 bg-slate-50 dark:bg-zinc-900 transition-colors duration-300 ease-in-out">
           <div className={cn(
-            "flex items-center justify-between p-1.5 rounded-xl transition-all duration-300",
-            isCollapsed 
-              ? "justify-center border-transparent bg-transparent" 
-              : "bg-slate-100/50 dark:bg-zinc-900/40 border border-slate-200/40 dark:border-zinc-800/30"
+            "flex items-center transition-all duration-300 ease-in-out w-full",
+            isCollapsed ? "justify-center" : "justify-between"
           )}>
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="relative shrink-0 w-8 h-8 rounded-lg overflow-hidden bg-slate-200 dark:bg-zinc-800 flex items-center justify-center border border-slate-300/40 dark:border-zinc-700/50">
+            <div className={cn(
+              "flex items-center gap-3 min-w-0 transition-opacity duration-300 ease-in-out overflow-hidden", 
+              isCollapsed ? "opacity-0 w-0 h-0 hidden" : "opacity-100 w-auto flex"
+            )}>
+              <div className="relative shrink-0 w-10 h-10 rounded-full overflow-hidden bg-slate-200 dark:bg-zinc-800 flex items-center justify-center border-2 border-slate-300 dark:border-zinc-700 shadow-sm transition-all duration-300 ease-in-out">
                 {loading ? (
-                  <div className="w-full h-full animate-pulse bg-slate-300 dark:bg-zinc-700" />
+                  <div className="w-full h-full animate-pulse bg-slate-300 dark:bg-zinc-700 transition-colors duration-300" />
                 ) : user?.profile_picture ? (
-                  <img src={user.profile_picture} alt="avatar" className="w-full h-full object-cover" />
+                  <img src={user.profile_picture} alt="avatar" className="w-full h-full object-cover transition-opacity duration-300" />
                 ) : (
-                  <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">
+                  <span className="text-xs font-bold text-slate-700 dark:text-zinc-300 transition-colors duration-300">
                     {user ? getInitials(user.first_name, user.last_name, user.email) : "?"}
                   </span>
                 )}
-                {!loading && <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-white dark:border-zinc-900" />}
               </div>
               
-              <div className={cn(
-                "flex flex-col text-left min-w-0 transition-opacity duration-300",
-                isCollapsed ? "w-0 opacity-0 hidden" : "flex-1 opacity-100"
-              )}>
-                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 truncate">
+              <div className="flex flex-col text-left min-w-0 flex-1">
+                <span className="text-[14px] font-bold text-slate-900 dark:text-zinc-100 truncate leading-tight mb-0.5 transition-colors duration-300">
                   {loading ? "Loading..." : (user?.first_name || user?.last_name ? `${user.first_name} ${user.last_name}` : "User")}
                 </span>
-                <span className="text-[10px] text-slate-400 dark:text-zinc-500 truncate">
+                <span className="text-[12px] font-medium text-slate-500 dark:text-zinc-400 truncate leading-tight transition-colors duration-300">
                   {loading ? "..." : user?.email}
                 </span>
               </div>
             </div>
+
+            {isCollapsed && (
+               <div className="relative shrink-0 w-10 h-10 rounded-full overflow-hidden bg-slate-200 dark:bg-zinc-800 flex items-center justify-center border-2 border-slate-300 dark:border-zinc-700 shadow-sm transition-all duration-300 ease-in-out mx-auto">
+                {loading ? (
+                  <div className="w-full h-full animate-pulse bg-slate-300 dark:bg-zinc-700 transition-colors duration-300" />
+                ) : user?.profile_picture ? (
+                  <img src={user.profile_picture} alt="avatar" className="w-full h-full object-cover transition-opacity duration-300" />
+                ) : (
+                  <span className="text-xs font-bold text-slate-700 dark:text-zinc-300 transition-colors duration-300">
+                    {user ? getInitials(user.first_name, user.last_name, user.email) : "?"}
+                  </span>
+                )}
+              </div>
+            )}
 
             {!isCollapsed && (
               <button
                 onClick={handleLogout}
                 disabled={loggingOut}
                 title="Log Out"
-                className="group relative flex items-center justify-start w-9 hover:w-28 h-9 rounded-full bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 hover:bg-slate-900 dark:hover:bg-white shadow-sm transition-all duration-300 ease-out cursor-pointer active:scale-95 active:translate-x-0.5 active:translate-y-0.5 overflow-hidden shrink-0 disabled:opacity-50 select-none ml-2"
+                className="group p-2 rounded-lg text-slate-500 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 ml-2 shrink-0 disabled:opacity-50 cursor-pointer shadow-sm transition-all duration-300 ease-in-out"
               >
-                <div className="w-9 h-9 shrink-0 flex items-center justify-center transition-all duration-300 group-hover:w-7 group-hover:pl-1">
-                  <LogOut className="w-4 h-4 text-slate-800 dark:text-white group-hover:text-white dark:group-hover:text-slate-900 transition-colors duration-300" />
-                </div>
-                <span className="opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto transition-all duration-300 text-xs font-bold text-white dark:text-slate-900 whitespace-nowrap overflow-hidden pr-3">
-                  Logout
-                </span>
+                <LogOut className="w-4 h-4 transition-colors duration-300 ease-in-out group-hover:text-red-600 dark:group-hover:text-red-500" />
               </button>
             )}
           </div>
@@ -415,7 +423,6 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
         "md:hidden fixed left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[380px] pointer-events-auto transition-transform duration-300 ease-in-out",
         isNavVisible ? "translate-y-0 bottom-5" : "translate-y-32 bottom-5"
       )}>
-        
         <div className="relative flex items-center p-1.5 h-[64px] rounded-full bg-[#FFFFFF]/80 dark:bg-[#212121]/70 backdrop-blur-3xl border border-slate-200 dark:border-zinc-800 shadow-md touch-none select-none">
           <div 
             ref={mobileNavRef}

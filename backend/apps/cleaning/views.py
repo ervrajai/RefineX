@@ -88,6 +88,12 @@ class DatasetUploadView(APIView):
 
             guest_id = request.data.get('guest_id') or request.headers.get('X-Guest-ID') or request.query_params.get('guest_id')
 
+            if not request.user or not request.user.is_authenticated:
+                purge_expired_guest_data()
+                allowed, err_resp = check_guest_usage_limit(request)
+                if not allowed:
+                    return Response(err_resp, status=status.HTTP_403_FORBIDDEN)
+
             # Save dataset model
             dataset = Dataset.objects.create(
                 user=request.user if request.user.is_authenticated else None,
@@ -305,6 +311,60 @@ def perform_cleaning_operation(dataset, config, user=None):
 
 
 
+def purge_expired_guest_data():
+    """
+    Purges guest datasets (where user is null) that are older than 24 hours.
+    Deletes original and cleaned physical files from disk and deletes DB records.
+    """
+    cutoff = timezone.now() - timedelta(hours=24)
+    expired_datasets = Dataset.objects.filter(user__isnull=True, created_at__lt=cutoff)
+    for ds in expired_datasets:
+        if ds.original_file:
+            try:
+                if os.path.isfile(ds.original_file.path):
+                    os.remove(ds.original_file.path)
+            except Exception:
+                pass
+        if ds.cleaned_file:
+            try:
+                if os.path.isfile(ds.cleaned_file.path):
+                    os.remove(ds.cleaned_file.path)
+            except Exception:
+                pass
+        ds.delete()
+
+
+def check_guest_usage_limit(request, dataset=None):
+    """
+    Checks if guest (by guest_id or IP address) has reached 3 cleans today without incrementing.
+    """
+    if (request.user and request.user.is_authenticated) or (dataset and dataset.user is not None):
+        return True, None
+
+    guest_id = request.data.get("guest_id") or request.headers.get("X-Guest-ID") or (dataset.guest_id if dataset else None)
+    ip_address = get_client_ip(request)
+    today = timezone.now().date()
+
+    if not guest_id:
+        guest_id = f"ip_{ip_address}"
+
+    usage = GuestUsage.objects.filter(guest_id=guest_id).first()
+    clean_count = 0
+    if usage and usage.last_clean_date == today:
+        clean_count = usage.clean_count
+
+    ip_usages = GuestUsage.objects.filter(ip_address=ip_address, last_clean_date=today)
+    max_ip_count = max([u.clean_count for u in ip_usages], default=0)
+    effective_count = max(clean_count, max_ip_count)
+
+    if effective_count >= 3:
+        return False, {
+            "limit_reached": True,
+            "message": "Daily guest limit reached. Maximum 3 dataset cleans allowed per 24 hours."
+        }
+    return True, None
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 def check_and_increment_guest_usage(request, dataset=None):
     # If user is authenticated OR dataset belongs to a registered user, bypass limit checks
@@ -312,25 +372,39 @@ def check_and_increment_guest_usage(request, dataset=None):
         return True, None
 
     guest_id = request.data.get("guest_id") or request.headers.get("X-Guest-ID") or (dataset.guest_id if dataset else None)
-    if guest_id:
-        ip_address = get_client_ip(request)
-        today = timezone.now().date()
-        usage, _ = GuestUsage.objects.get_or_create(
-            guest_id=guest_id,
-            defaults={"ip_address": ip_address, "clean_count": 0}
-        )
-        if usage.last_clean_date != today:
-            usage.clean_count = 0
-            usage.last_clean_date = today
-            usage.save()
+    ip_address = get_client_ip(request)
+    today = timezone.now().date()
 
-        if usage.clean_count >= 3:
-            return False, {
-                "limit_reached": True,
-                "message": "Daily guest limit reached. Maximum 3 dataset cleans allowed per calendar day."
-            }
-        usage.clean_count += 1
+    if not guest_id:
+        guest_id = f"ip_{ip_address}"
+
+    usage, _ = GuestUsage.objects.get_or_create(
+        guest_id=guest_id,
+        defaults={"ip_address": ip_address, "clean_count": 0}
+    )
+    if usage.last_clean_date != today:
+        usage.clean_count = 0
+        usage.last_clean_date = today
+        usage.ip_address = ip_address
         usage.save()
+
+    ip_usages = GuestUsage.objects.filter(ip_address=ip_address, last_clean_date=today)
+    max_ip_count = max([u.clean_count for u in ip_usages], default=0)
+    effective_count = max(usage.clean_count, max_ip_count)
+
+    if effective_count >= 3:
+        return False, {
+            "limit_reached": True,
+            "message": "Daily guest limit reached. Maximum 3 dataset cleans allowed per 24 hours."
+        }
+
+    new_count = effective_count + 1
+    for u in ip_usages:
+        u.clean_count = new_count
+        u.save(update_fields=["clean_count"])
+
+    usage.clean_count = new_count
+    usage.save(update_fields=["clean_count"])
     return True, None
 
 
@@ -557,6 +631,7 @@ class GuestSessionView(APIView):
     authentication_classes = [CsrfExemptSessionAuthentication]
 
     def get(self, request, *args, **kwargs):
+        purge_expired_guest_data()
         guest_id = request.query_params.get("guest_id") or request.headers.get("X-Guest-ID")
         
         # 1. If user is authenticated, bypass limit completely and auto-migrate
@@ -575,8 +650,10 @@ class GuestSessionView(APIView):
         ip_address = get_client_ip(request)
         today = timezone.now().date()
 
-
         clean_count = 0
+        ip_usages = GuestUsage.objects.filter(ip_address=ip_address, last_clean_date=today)
+        max_ip_count = max([u.clean_count for u in ip_usages], default=0)
+
         if guest_id:
             usage = GuestUsage.objects.filter(guest_id=guest_id).first()
             if usage:
@@ -585,10 +662,8 @@ class GuestSessionView(APIView):
                     usage.last_clean_date = today
                     usage.save(update_fields=["clean_count", "last_clean_date"])
                 clean_count = usage.clean_count
-            else:
-                ip_usage = GuestUsage.objects.filter(ip_address=ip_address, last_clean_date=today).first()
-                if ip_usage:
-                    clean_count = ip_usage.clean_count
+
+        clean_count = max(clean_count, max_ip_count)
 
         datasets_data = []
         if guest_id:

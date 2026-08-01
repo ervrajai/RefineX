@@ -183,8 +183,8 @@ export default function Footer() {
                   alt="RefineX Logo" 
                   className="w-10 h-10 object-cover rounded-xl shadow-sm border border-slate-100 dark:border-zinc-800" 
                 />
-                <span className="font-display text-2xl font-black tracking-wider text-slate-900 dark:text-white">
-                  Refine<span className="text-[#673ab7] font-sans">X</span>
+                <span className="sidebar-refine text-2xl tracking-wider inline-flex items-center text-slate-900 dark:text-white whitespace-nowrap">
+                  Refine<span className="font-sans text-[#673ab7] text-3xl font-black ml-0.5 leading-none">X</span>
                 </span>
               </div>
               

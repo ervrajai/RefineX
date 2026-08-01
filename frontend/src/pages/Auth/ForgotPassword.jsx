@@ -145,8 +145,8 @@ function ForgotPassword() {
       )}
 
       <AuthLayout
-        title="Reset password"
-        subtitle="Verify your email with an OTP, then choose a new secure password."
+        title="Reset Password"
+        subtitle="Enter your email to receive a verification OTP."
       >
         {/* Progress Bar */}
         <div className="mb-4 grid grid-cols-3 gap-2">

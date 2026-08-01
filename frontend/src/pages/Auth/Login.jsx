@@ -74,8 +74,8 @@ function Login() {
       )}
 
       <AuthLayout
-        title="Welcome back"
-        subtitle="Log in with your Refinex account or continue with your OAuth provider."
+        title="Log In"
+        subtitle="Enter your details to access your account."
       >
         <form onSubmit={submitLogin} className="space-y-4">
           <FormField

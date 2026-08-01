@@ -55,22 +55,22 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
         return {
           heading: (
             <>
-              Join The <br />
-              <span className="text-[#673AB7] dark:text-[#8b5cf6]">RefineX</span> Workspace
+              Get Started With <br />
+              <span className="text-[#673AB7] dark:text-[#8b5cf6]">RefineX</span>
             </>
           ),
-          description: "Start designing, developing, and optimizing databases with developer-grade efficiency.",
+          description: "Create your account to clean datasets, generate charts, and train ML models.",
           homeButtonText: "Back to Home",
         };
       case "/forgot-password":
         return {
           heading: (
             <>
-              Secure Your <br />
-              <span className="text-[#673AB7] dark:text-[#8b5cf6]">RefineX</span> Account
+              Reset Your <br />
+              <span className="text-[#673AB7] dark:text-[#8b5cf6]">Password</span>
             </>
           ),
-          description: "Follow the simple step-by-step process to verify your email and restore access.",
+          description: "Verify your email with an OTP code and set your new account password.",
           homeButtonText: "Back to Home",
         };
       case "/login":
@@ -82,7 +82,7 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
               <span className="text-[#673AB7] dark:text-[#8b5cf6]">RefineX</span>
             </>
           ),
-          description: "Access your workspace, manage database records, and run real-time queries smoothly.",
+          description: "Log in to access your workspace, manage datasets, and clean data.",
           homeButtonText: "Back to Home",
         };
     }
@@ -128,21 +128,21 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
       <Particles className="absolute inset-0 z-0 opacity-60 dark:opacity-50 pointer-events-none" color="#bf80ff" quantity={70} staticity={40} />
 
 
-      <div className="relative z-10 mx-auto max-w-5xl w-full flex items-center justify-center">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center w-full">
+      <div className="relative z-10 mx-auto max-w-5xl w-full flex items-center justify-center my-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center w-full lg:min-h-[540px]">
           
-          {/* --- LEFT COLUMN --- */}
-          <div className="lg:col-span-7 hidden lg:flex flex-col justify-center space-y-5 pr-4">
+          {/* --- LEFT COLUMN (Vertically Centered & Stable) --- */}
+          <div className="lg:col-span-7 hidden lg:flex flex-col justify-center space-y-5 pr-4 self-center">
             
-            {/* BRAND LOGO DISPLAY */}
+            {/* BRAND LOGO DISPLAY (Uses exact same Orbitron logo font as Navbar) */}
             <div className="flex items-center gap-3">
               <img
                 src={logoImg}
                 alt="RefineX Logo"
-                className="w-10 h-10 object-contain rounded-xl"
+                className="w-10 h-10 object-contain rounded-xl shadow-sm"
               />
-              <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-                RefineX
+              <span className="sidebar-refine text-2xl md:text-3xl tracking-wider inline-flex items-center text-slate-900 dark:text-white whitespace-nowrap">
+                Refine<span className="font-sans text-[#673ab7] text-3xl font-black ml-0.5 leading-none">X</span>
               </span>
             </div>
 
@@ -168,11 +168,23 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
             </div>
           </div>
 
-          {/* --- RIGHT COLUMN (Form Card) --- */}
-          <div className="lg:col-span-5 flex justify-center items-center w-full">
-            <div className="w-full max-w-sm relative overflow-hidden rounded-3xl border border-zinc-300 dark:border-zinc-700 bg-white/90 dark:bg-zinc-900/90 p-6 shadow-xl backdrop-blur-xl">
+          {/* --- RIGHT COLUMN (Form Card Vertically Centered) --- */}
+          <div className="lg:col-span-5 flex justify-center items-center w-full self-center">
+            <div className="w-full max-w-md relative overflow-hidden rounded-3xl border border-zinc-300 dark:border-zinc-700 bg-white/90 dark:bg-zinc-900/90 p-6 sm:p-7 shadow-xl backdrop-blur-xl">
               
               <div className="relative z-10 w-full">
+
+                {/* Mobile View RefineX Logo Header */}
+                <div className="lg:hidden flex items-center justify-center gap-2.5 mb-5">
+                  <img
+                    src={logoImg}
+                    alt="RefineX Logo"
+                    className="w-8 h-8 object-contain rounded-xl shadow-sm"
+                  />
+                  <span className="sidebar-refine text-xl tracking-wider inline-flex items-center text-slate-900 dark:text-white whitespace-nowrap">
+                    Refine<span className="font-sans text-[#673ab7] text-2xl font-black ml-0.5 leading-none">X</span>
+                  </span>
+                </div>
                 
                 {/* --- PILL SWITCHER --- */}
                 {(isLogin || isSignup) && (
@@ -232,11 +244,19 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
                       opacity: { duration: 0.15 },
                     }}
                   >
-                    {/* Form Header */}
-                    <div className="mb-4 text-left">
-                      <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">{title}</h2>
-                      <p className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400 leading-normal">{subtitle}</p>
-                    </div>
+                    {/* Form Header (Avoid duplicate Log In/Sign Up heading when pill switcher is active) */}
+                    {(!isLogin && !isSignup) ? (
+                      <div className="mb-4 text-left">
+                        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">{title}</h2>
+                        {subtitle && <p className="mt-0.5 text-xs text-slate-500 dark:text-zinc-400 leading-normal">{subtitle}</p>}
+                      </div>
+                    ) : (
+                      subtitle && (
+                        <div className="mb-4 text-left">
+                          <p className="text-xs font-medium text-slate-600 dark:text-zinc-400 leading-normal">{subtitle}</p>
+                        </div>
+                      )
+                    )}
 
                     {/* Dynamic Children (Inputs / Forms) */}
                     <div className="space-y-3.5">

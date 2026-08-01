@@ -1,5 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&family=Space+Grotesk:wght@300..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&family=Orbitron:wght@400..900&family=Space+Grotesk:wght@300..700&display=swap');
 @import "tailwindcss";
+
+.sidebar-refine {
+  font-family: 'Orbitron', sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 900;
+  font-style: normal;
+}
 
 /* ==========================================================================
    1. TAILWIND CSS V4 MANUAL DARK MODE VARIANT

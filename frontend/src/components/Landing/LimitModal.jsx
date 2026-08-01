@@ -51,7 +51,7 @@ function LimitModal({
               onClose();
               navigate("/login", { state: { message: "Please log in to your account to continue." } });
             }}
-            className="w-full flex items-center justify-center gap-2.5 py-3.5 px-5 bg-[#673ab7] hover:bg-[#522e93] text-white font-bold text-sm rounded-2xl shadow-lg hover:shadow-purple-500/25 transition-all duration-200 cursor-pointer active:scale-[0.99]"
+            className="w-full flex items-center justify-center gap-2.5 py-3.5 px-5 bg-[#673ab7] hover:bg-[#522e93] text-white font-bold text-sm rounded-2xl border border-transparent transition-colors duration-200 cursor-pointer active:scale-[0.99]"
           >
             <LogIn className="w-4.5 h-4.5" />
             <span>Log In to Existing Account</span>
@@ -63,7 +63,7 @@ function LimitModal({
               onClose();
               navigate("/signup", { state: { message: "Please create a free account to unlock ML training, visualizations, and unlimited cleaning." } });
             }}
-            className="w-full flex items-center justify-center gap-2.5 py-3.5 px-5 bg-slate-100 dark:bg-zinc-800/80 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-900 dark:text-white font-bold text-sm rounded-2xl border border-slate-300/80 dark:border-zinc-700 shadow-sm transition-all duration-200 cursor-pointer active:scale-[0.99]"
+            className="w-full flex items-center justify-center gap-2.5 py-3.5 px-5 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-900 dark:text-white font-bold text-sm rounded-2xl border border-slate-300/80 dark:border-zinc-700 transition-colors duration-200 cursor-pointer active:scale-[0.99]"
           >
             <UserPlus className="w-4.5 h-4.5 text-[#673ab7] dark:text-[#a855f7]" />
             <span>Create New Free Account</span>

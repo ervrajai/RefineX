@@ -1325,28 +1325,30 @@ export default function CleanView({
 
               </div>
 
-              {/* MOVED FOOTER: Next Steps directly under the config sidebar */}
-              <div className="mt-4 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-[#212121]/50 shadow-sm flex flex-col gap-3">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest text-center">
-                  Next Steps in Data Workflow
-                </span>
-                <div className="flex flex-col gap-2 w-full">
-                  <button 
-                    type="button"
-                    onClick={() => setActiveTab("visualization")} 
-                    className="w-full px-4 py-2.5 text-xs font-bold rounded-xl bg-violet-600 hover:bg-violet-700 text-white flex justify-center items-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all"
-                  >
-                    <LineChart className="w-4 h-4" /> Visualize Dataset
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setActiveTab("model-training")} 
-                    className="w-full px-4 py-2.5 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 border border-slate-900 dark:border-white flex justify-center items-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all"
-                  >
-                    <BrainCircuit className="w-4 h-4" /> Train ML Model
-                  </button>
+              {/* MOVED FOOTER: Next Steps directly under the config sidebar (hidden on guest/landing page) */}
+              {!isGuest && (
+                <div className="mt-4 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-[#212121]/50 shadow-sm flex flex-col gap-3">
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest text-center">
+                    Next Steps in Data Workflow
+                  </span>
+                  <div className="flex flex-col gap-2 w-full">
+                    <button 
+                      type="button"
+                      onClick={() => setActiveTab("visualization")} 
+                      className="w-full px-4 py-2.5 text-xs font-bold rounded-xl bg-violet-600 hover:bg-violet-700 text-white flex justify-center items-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all"
+                    >
+                      <LineChart className="w-4 h-4" /> Visualize Dataset
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setActiveTab("model-training")} 
+                      className="w-full px-4 py-2.5 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 border border-slate-900 dark:border-white flex justify-center items-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all"
+                    >
+                      <BrainCircuit className="w-4 h-4" /> Train ML Model
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* RIGHT CONTAINER (Dataset Table Viewer & Tabbed Reports) */}

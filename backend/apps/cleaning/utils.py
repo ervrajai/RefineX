@@ -6,6 +6,21 @@ import numpy as np
 import pandas as pd
 from django.core.files.base import ContentFile
 
+def is_numeric_column(series):
+    """
+    Returns True if series is strictly numeric (int or float) and NOT boolean.
+    Pandas considers boolean dtypes as numeric in is_numeric_dtype(s), which causes
+    quantile, lerp, std, variance, and outlier operations to fail with:
+    TypeError: numpy boolean subtract, the '-' operator, is not supported.
+    """
+    if series is None or len(series) == 0:
+        return False
+    if pd.api.types.is_bool_dtype(series):
+        return False
+    if str(series.dtype).lower() in ['bool', 'boolean', 'bool_']:
+        return False
+    return pd.api.types.is_numeric_dtype(series)
+
 def make_columns_unique(columns):
     seen = {}
     new_cols = []
@@ -267,11 +282,14 @@ def profile_dataset(df):
             constant_columns.append(col)
         
         # Check low variance (for numeric)
-        is_num = pd.api.types.is_numeric_dtype(df[col])
+        is_num = is_numeric_column(df[col])
         if is_num and rows > 1:
-            var = df[col].var(ddof=1)
-            if pd.notna(var) and var < 0.001:
-                low_variance_columns.append(col)
+            try:
+                var = df[col].var(ddof=1)
+                if pd.notna(var) and var < 0.001:
+                    low_variance_columns.append(col)
+            except Exception:
+                pass
         
         # High cardinality (objects with >50% unique values)
         if curr_type == 'object' and rows > 0:
@@ -315,18 +333,21 @@ def profile_dataset(df):
     numeric_columns = []
     
     for col in df.columns:
-        if pd.api.types.is_numeric_dtype(df[col]):
+        if is_numeric_column(df[col]):
             numeric_columns.append(col)
             col_nonnull = df[col].dropna()
             outlier_count = 0
             if len(col_nonnull) > 4:
-                q1 = col_nonnull.quantile(0.25)
-                q3 = col_nonnull.quantile(0.75)
-                iqr = q3 - q1
-                lower_bound = q1 - 1.5 * iqr
-                upper_bound = q3 + 1.5 * iqr
-                outliers = col_nonnull[(col_nonnull < lower_bound) | (col_nonnull > upper_bound)]
-                outlier_count = len(outliers)
+                try:
+                    q1 = col_nonnull.quantile(0.25)
+                    q3 = col_nonnull.quantile(0.75)
+                    iqr = q3 - q1
+                    lower_bound = q1 - 1.5 * iqr
+                    upper_bound = q3 + 1.5 * iqr
+                    outliers = col_nonnull[(col_nonnull < lower_bound) | (col_nonnull > upper_bound)]
+                    outlier_count = len(outliers)
+                except Exception:
+                    outlier_count = 0
             
             outlier_report.append({
                 "column": col,
@@ -337,7 +358,7 @@ def profile_dataset(df):
     # Numeric Statistics
     numeric_stats = []
     for col in df.columns:
-        if pd.api.types.is_numeric_dtype(df[col]):
+        if is_numeric_column(df[col]):
             try:
                 col_nonnull = df[col].dropna()
                 if len(col_nonnull) > 0:
@@ -515,7 +536,7 @@ def auto_clean_dataset(df):
         na_mask = cleaned_df[col].isna()
         if na_mask.any():
             null_count = int(na_mask.sum())
-            if pd.api.types.is_numeric_dtype(cleaned_df[col]):
+            if is_numeric_column(cleaned_df[col]):
                 median_val = cleaned_df[col].median()
                 cleaned_df[col] = cleaned_df[col].fillna(median_val)
                 num_imputed += null_count
@@ -536,21 +557,24 @@ def auto_clean_dataset(df):
     # -------------------------------------------------------------
     total_capped = 0
     for col in cleaned_df.columns:
-        if pd.api.types.is_numeric_dtype(cleaned_df[col]):
+        if is_numeric_column(cleaned_df[col]):
             col_series = cleaned_df[col].dropna()
             if len(col_series) > 4:
-                q1 = col_series.quantile(0.25)
-                q3 = col_series.quantile(0.75)
-                iqr = q3 - q1
-                if iqr > 0:
-                    lower_bound = q1 - 1.5 * iqr
-                    upper_bound = q3 + 1.5 * iqr
-                    
-                    outliers_mask = (cleaned_df[col] < lower_bound) | (cleaned_df[col] > upper_bound)
-                    c_count = int(outliers_mask.sum())
-                    if c_count > 0:
-                        cleaned_df[col] = cleaned_df[col].clip(lower=lower_bound, upper=upper_bound)
-                        total_capped += c_count
+                try:
+                    q1 = col_series.quantile(0.25)
+                    q3 = col_series.quantile(0.75)
+                    iqr = q3 - q1
+                    if iqr > 0:
+                        lower_bound = q1 - 1.5 * iqr
+                        upper_bound = q3 + 1.5 * iqr
+                        
+                        outliers_mask = (cleaned_df[col] < lower_bound) | (cleaned_df[col] > upper_bound)
+                        c_count = int(outliers_mask.sum())
+                        if c_count > 0:
+                            cleaned_df[col] = cleaned_df[col].clip(lower=lower_bound, upper=upper_bound)
+                            total_capped += c_count
+                except Exception:
+                    pass
 
     if total_capped > 0:
         logs.append(f"✓ Phase 3: Non-destructively capped {total_capped} numeric outlier values using IQR bounds")
@@ -851,11 +875,11 @@ def clean_dataset(df, config):
                     na_mask = cleaned_df[col].isna()
                     if na_mask.any():
                         count_na = na_mask.sum()
-                        if missing_strategy == "fill_mean" and pd.api.types.is_numeric_dtype(cleaned_df[col]):
+                        if missing_strategy == "fill_mean" and is_numeric_column(cleaned_df[col]):
                             mean_val = cleaned_df[col].mean()
                             cleaned_df[col] = cleaned_df[col].fillna(mean_val)
                             filled_count += count_na
-                        elif missing_strategy == "fill_median" and pd.api.types.is_numeric_dtype(cleaned_df[col]):
+                        elif missing_strategy == "fill_median" and is_numeric_column(cleaned_df[col]):
                             median_val = cleaned_df[col].median()
                             cleaned_df[col] = cleaned_df[col].fillna(median_val)
                             filled_count += count_na
@@ -870,13 +894,13 @@ def clean_dataset(df, config):
                         elif missing_strategy == "bfill":
                             cleaned_df[col] = cleaned_df[col].bfill()
                             filled_count += count_na
-                        elif missing_strategy == "interpolate" and pd.api.types.is_numeric_dtype(cleaned_df[col]):
+                        elif missing_strategy == "interpolate" and is_numeric_column(cleaned_df[col]):
                             cleaned_df[col] = cleaned_df[col].interpolate(method='linear')
                             filled_count += count_na
                         elif missing_strategy == "custom_value":
                             # Parse custom value safely
                             val = custom_fill_val
-                            if pd.api.types.is_numeric_dtype(cleaned_df[col]):
+                            if is_numeric_column(cleaned_df[col]):
                                 try:
                                     val = float(custom_fill_val) if '.' in custom_fill_val else int(custom_fill_val)
                                 except:
@@ -897,7 +921,7 @@ def clean_dataset(df, config):
         repl_count = 0
         
         for col in cleaned_df.columns:
-            if pd.api.types.is_numeric_dtype(cleaned_df[col]):
+            if is_numeric_column(cleaned_df[col]):
                 col_series = cleaned_df[col]
                 col_nonnull = col_series.dropna()
                 
@@ -1013,10 +1037,13 @@ def clean_dataset(df, config):
     if config.get("remove_low_variance_columns", False):
         low_var_cols = []
         for col in cleaned_df.columns:
-            if pd.api.types.is_numeric_dtype(cleaned_df[col]) and len(cleaned_df) > 1:
-                var = cleaned_df[col].var()
-                if pd.notna(var) and var < 0.001:
-                    low_var_cols.append(col)
+            if is_numeric_column(cleaned_df[col]) and len(cleaned_df) > 1:
+                try:
+                    var = cleaned_df[col].var()
+                    if pd.notna(var) and var < 0.001:
+                        low_var_cols.append(col)
+                except Exception:
+                    pass
                     
         if len(low_var_cols) > 0:
             cleaned_df = cleaned_df.drop(columns=low_var_cols)
@@ -1032,7 +1059,7 @@ def clean_dataset(df, config):
             col_lower = col.lower()
             
             # Age checks
-            if 'age' in col_lower and pd.api.types.is_numeric_dtype(cleaned_df[col]):
+            if 'age' in col_lower and is_numeric_column(cleaned_df[col]):
                 neg_mask = cleaned_df[col] < 0
                 too_old_mask = cleaned_df[col] > 120
                 mask = neg_mask | too_old_mask
@@ -1041,7 +1068,7 @@ def clean_dataset(df, config):
                     invalid_count += mask.sum()
                     
             # Salary checks
-            elif ('salary' in col_lower or 'income' in col_lower) and pd.api.types.is_numeric_dtype(cleaned_df[col]):
+            elif ('salary' in col_lower or 'income' in col_lower) and is_numeric_column(cleaned_df[col]):
                 neg_mask = cleaned_df[col] < 0
                 if neg_mask.any():
                     cleaned_df.loc[neg_mask, col] = np.nan

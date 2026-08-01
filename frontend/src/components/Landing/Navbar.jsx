@@ -18,11 +18,11 @@ import {
 import logoImg from "../../assets/logo/refinex_logo.png";
 
 const NAV_LINKS = [
-  { name: "Home", href: "#home" },
-  { name: "Dashboard", href: "#dashboard" },
-  { name: "Features", href: "#features" }, 
-  { name: "Library", href: "#library" },   
-  { name: "About", href: "#about" },
+  { name: "Home", href: "/#home" },
+  { name: "Dashboard", href: "/#dashboard" },
+  { name: "Features", href: "/#features" }, 
+  { name: "Library", href: "/#library" },   
+  { name: "About", href: "/#about" },
 ];
 
 function Navbar() {
@@ -127,8 +127,8 @@ function Navbar() {
               alt="RefineX Logo" 
               className="w-9 h-9 md:w-10 md:h-10 object-cover rounded-xl shadow-sm"
             />
-            <span className="font-display text-xl md:text-2xl font-black tracking-wider inline-flex items-center text-black dark:text-white">
-              Refine<span className="font-sans text-[#673ab7] text-2xl md:text-3xl ml-0.5 leading-none">X</span>
+            <span className="sidebar-refine text-xl md:text-2xl tracking-wider inline-flex items-center text-slate-900 dark:text-white whitespace-nowrap">
+              Refine<span className="font-sans text-[#673ab7] text-2xl md:text-3xl font-black ml-0.5 leading-none">X</span>
             </span>
           </a>
 
@@ -239,8 +239,8 @@ function Navbar() {
         }`}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-lightBorder/50 dark:border-gray-800">
-          <span className="font-display text-base font-black tracking-wider inline-flex items-baseline text-black dark:text-white">
-            Refine<span className="font-sans text-[#673ab7] text-xl ml-0.5">X</span>
+          <span className="sidebar-refine text-lg tracking-wider inline-flex items-center text-slate-900 dark:text-white whitespace-nowrap">
+            Refine<span className="font-sans text-[#673ab7] text-2xl font-black ml-0.5 leading-none">X</span>
           </span>
           <button
             onClick={closeMobileMenu}

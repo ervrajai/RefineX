@@ -169,8 +169,8 @@ function Signup() {
       )}
 
       <AuthLayout
-        title="Create your account"
-        subtitle="Start with your email, verify it, then set a secure password."
+        title="Sign Up"
+        subtitle="Create your free account in a few simple steps."
       >
         {/* Progress Bar */}
         <div className="mb-4 grid grid-cols-3 gap-2">

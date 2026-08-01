@@ -122,21 +122,19 @@
   /* Firefox Scrollbar Support */
   * {
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
-  }
-
-  .dark * {
-    scrollbar-color: #52525b transparent;
+    /* Universal color: translucent gray works beautifully on both dark and light backgrounds */
+    scrollbar-color: rgba(136, 136, 136, 0.5) transparent; 
   }
 
   /* Webkit Scrollbar Support (Chrome, Edge, Safari) */
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px; /* Slightly thinner, modern size */
+    height: 8px; /* Applied to horizontal scrollbars */
   }
 
+  /* Completely hides the up/down arrow buttons */
   ::-webkit-scrollbar-button {
-    display: none;
+    display: none; 
     width: 0;
     height: 0;
   }
@@ -149,25 +147,15 @@
     background: transparent;
   }
 
-  /* Light Mode Scrollbar Thumb */
+  /* Universal Scrollbar Thumb (Draggable Button) */
   ::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
+    background-color: rgba(136, 136, 136, 0.5); /* Universal translucent gray */
     border-radius: 9999px;
-    border: 3px solid transparent;
-    background-clip: content-box;
   }
 
+  /* Hover state when the user is interacting with it */
   ::-webkit-scrollbar-thumb:hover {
-    background-color: #94a3b8;
-  }
-
-  /* Dark Mode Scrollbar Thumb */
-  .dark ::-webkit-scrollbar-thumb {
-    background-color: #52525b;
-  }
-
-  .dark ::-webkit-scrollbar-thumb:hover {
-    background-color: #71717a;
+    background-color: rgba(136, 136, 136, 0.8); /* Becomes more solid on hover */
   }
 }
 /* Checkmark Draw Animation for Chart Save Confirmation */

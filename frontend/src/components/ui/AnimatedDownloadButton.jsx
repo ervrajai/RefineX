@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 
-export default function AnimatedDownloadButton({ label = "Download", onClick, className = "" }) {
+export default function AnimatedDownloadButton({
+  label = "Download",
+  completedLabel = "Done",
+  onClick,
+  className = "",
+  color = "rgb(91, 91, 240)",
+  successColor = "rgb(35, 174, 35)"
+}) {
   const [checked, setChecked] = useState(false);
 
   const handleClick = async (e) => {
@@ -15,7 +22,7 @@ export default function AnimatedDownloadButton({ label = "Download", onClick, cl
     } catch (err) {
       console.error("Download error:", err);
     } finally {
-      // 4.2s timeout matches the full CSS animation cycle (3s fill + 0.5s morph + 0.7s completed display)
+      // Reset button state after the 4.2s animation sequence
       setTimeout(() => {
         setChecked(false);
       }, 4200);
@@ -36,17 +43,20 @@ export default function AnimatedDownloadButton({ label = "Download", onClick, cl
 
         .download-btn-label {
           background-color: transparent;
-          border: 2px solid var(--primary-color, rgb(91, 91, 240));
+          border: 2px solid ${color};
           display: inline-flex;
           align-items: center;
+          justify-content: space-between;
           border-radius: 50px;
-          height: 42px;
+          min-width: 135px;
+          height: 38px;
           cursor: pointer;
           transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-          padding: 3px 16px 3px 3px;
+          padding: 3px 14px 3px 3px;
           position: relative;
           user-select: none;
-          gap: 10px;
+          overflow: hidden;
+          gap: 8px;
         }
 
         .download-btn-label::before {
@@ -56,7 +66,7 @@ export default function AnimatedDownloadButton({ label = "Download", onClick, cl
           bottom: 0;
           left: 0;
           right: 0;
-          background-color: var(--primary-color, rgb(91, 91, 240));
+          background-color: #ffffff;
           width: 8px;
           height: 8px;
           transition: all 0.4s ease;
@@ -71,36 +81,37 @@ export default function AnimatedDownloadButton({ label = "Download", onClick, cl
         }
 
         .download-btn-label .title {
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 700;
-          color: #1e293b;
+          color: #334155;
           transition: all 0.3s ease;
           white-space: nowrap;
           margin: 0;
           padding: 0;
           line-height: 1;
+          flex: 1;
+          text-align: center;
         }
 
         .dark .download-btn-label .title {
-          color: #f4f4f5;
+          color: #f1f5f9;
         }
 
         .download-btn-label .title:last-child {
+          opacity: 0;
+          visibility: hidden;
           position: absolute;
           left: 50%;
           top: 50%;
           transform: translate(-50%, -50%);
-          opacity: 0;
-          visibility: hidden;
-          margin: 0;
-          color: rgb(35, 174, 35);
+          color: ${successColor};
         }
 
         .download-btn-label .circle {
-          height: 32px;
-          width: 32px;
+          height: 28px;
+          width: 28px;
           border-radius: 50%;
-          background-color: var(--primary-color, rgb(91, 91, 240));
+          background-color: ${color};
           display: flex;
           justify-content: center;
           align-items: center;
@@ -108,13 +119,13 @@ export default function AnimatedDownloadButton({ label = "Download", onClick, cl
           position: relative;
           box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
           overflow: hidden;
-          shrink: 0;
+          flex-shrink: 0;
         }
 
         .download-btn-label .circle .icon {
-          color: #fff;
-          width: 18px;
-          height: 18px;
+          color: #ffffff;
+          width: 16px;
+          height: 16px;
           position: absolute;
           top: 50%;
           left: 50%;
@@ -124,9 +135,9 @@ export default function AnimatedDownloadButton({ label = "Download", onClick, cl
 
         .download-btn-label .circle .square {
           aspect-ratio: 1;
-          width: 12px;
+          width: 9px;
           border-radius: 2px;
-          background-color: #fff;
+          background-color: #ffffff;
           opacity: 0;
           visibility: hidden;
           position: absolute;
@@ -141,15 +152,15 @@ export default function AnimatedDownloadButton({ label = "Download", onClick, cl
           position: absolute;
           left: 0;
           top: 0;
-          background-color: #3333a8;
+          background-color: rgba(0, 0, 0, 0.25);
           width: 100%;
           height: 0;
           transition: all 0.4s ease;
         }
 
         .download-btn-label:has(.input:checked) {
-          width: 42px;
-          min-width: 42px;
+          width: 38px;
+          min-width: 38px;
           padding: 3px;
           animation: installed 0.4s ease 3.5s forwards;
         }
@@ -162,7 +173,7 @@ export default function AnimatedDownloadButton({ label = "Download", onClick, cl
           animation:
             pulse 1s forwards,
             circleDelete 0.2s ease 3.5s forwards;
-          rotate: 180deg;
+          transform: rotate(180deg);
         }
 
         .download-btn-label .input:checked + .circle::before {
@@ -174,7 +185,7 @@ export default function AnimatedDownloadButton({ label = "Download", onClick, cl
           visibility: hidden;
         }
 
-        .download-btn-label .input:checked ~ .circle .square {
+        .download-btn-label .input:checked + .circle .square {
           opacity: 1;
           visibility: visible;
         }
@@ -190,15 +201,15 @@ export default function AnimatedDownloadButton({ label = "Download", onClick, cl
 
         @keyframes pulse {
           0% {
-            scale: 0.95;
+            transform: scale(0.95) rotate(180deg);
             box-shadow: 0 0 0 0 rgba(91, 91, 240, 0.7);
           }
           70% {
-            scale: 1;
-            box-shadow: 0 0 0 14px rgba(91, 91, 240, 0);
+            transform: scale(1) rotate(180deg);
+            box-shadow: 0 0 0 12px rgba(91, 91, 240, 0);
           }
           100% {
-            scale: 0.95;
+            transform: scale(0.95) rotate(180deg);
             box-shadow: 0 0 0 0 rgba(91, 91, 240, 0);
           }
         }
@@ -214,12 +225,12 @@ export default function AnimatedDownloadButton({ label = "Download", onClick, cl
 
         @keyframes rotate {
           0% {
-            transform: rotate(-90deg) translate(21px) rotate(0);
+            transform: rotate(-90deg) translate(19px) rotate(0);
             opacity: 1;
             visibility: visible;
           }
           99% {
-            transform: rotate(270deg) translate(21px) rotate(270deg);
+            transform: rotate(270deg) translate(19px) rotate(270deg);
             opacity: 1;
             visibility: visible;
           }
@@ -233,7 +244,7 @@ export default function AnimatedDownloadButton({ label = "Download", onClick, cl
           100% {
             width: 120px;
             min-width: 120px;
-            border-color: rgb(35, 174, 35);
+            border-color: ${successColor};
           }
         }
 
@@ -251,6 +262,7 @@ export default function AnimatedDownloadButton({ label = "Download", onClick, cl
           }
         }
       `}</style>
+
       <div className="download-btn-container">
         <label className="download-btn-label" onClick={handleClick}>
           <input
@@ -271,14 +283,14 @@ export default function AnimatedDownloadButton({ label = "Download", onClick, cl
                 stroke="currentColor"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth="1.5"
+                strokeWidth="2"
                 d="M12 19V5m0 14-4-4m4 4 4-4"
               />
             </svg>
             <div className="square" />
           </span>
           <p className="title">{label}</p>
-          <p className="title">Done</p>
+          <p className="title">{completedLabel}</p>
         </label>
       </div>
     </div>

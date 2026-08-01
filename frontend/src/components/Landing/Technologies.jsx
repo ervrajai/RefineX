@@ -1,11 +1,36 @@
 import React from "react";
 
 const techs = [
-  { name: "Pandas", url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/pandas/pandas-original.svg" },
-  { name: "NumPy", url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/numpy/numpy-original.svg" },
-  { name: "Scikit-Learn", url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/scikitlearn/scikitlearn-original.svg" },
-  { name: "Matplotlib", url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/matplotlib/matplotlib-original.svg" },
-  { name: "Plotly", url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/plotly/plotly-original.svg" }
+  {
+    name: "Pandas",
+    url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/pandas/pandas-original.svg",
+    link: "https://pandas.pydata.org/"
+  },
+  {
+    name: "NumPy",
+    url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/numpy/numpy-original.svg",
+    link: "https://numpy.org/"
+  },
+  {
+    name: "Scikit-Learn",
+    url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/scikitlearn/scikitlearn-original.svg",
+    link: "https://scikit-learn.org/"
+  },
+  {
+    name: "Matplotlib",
+    url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/matplotlib/matplotlib-original.svg",
+    link: "https://matplotlib.org/"
+  },
+  {
+    name: "Plotly",
+    url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/plotly/plotly-original.svg",
+    link: "https://plotly.com/python/"
+  },
+  {
+    name: "Python",
+    url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg",
+    link: "https://www.python.org/"
+  }
 ];
 
 // Duplicate the array a few times so the marquee is always full on ultra-wide screens
@@ -30,13 +55,13 @@ export default function Technologies() {
         }
       `}</style>
 
-      {/* Section Header - Kept centered and contained */}
+      {/* Section Header */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 text-center mb-16">
         <h2 className="text-3xl md:text-5xl font-bold text-black dark:text-white mb-4 tracking-tight">
           Powered By The Best
         </h2>
         <p className="text-gray-600 dark:text-gray-400 text-lg max-w-2xl mx-auto">
-          The industry-leading frameworks and libraries driving the RefineX engine.
+          The industry-leading frameworks and libraries driving the RefineX engine. Click any technology to explore its official documentation.
         </p>
       </div>
 
@@ -46,19 +71,23 @@ export default function Technologies() {
         {/* Scrolling Track */}
         <div className="flex w-max animate-marquee">
           {duplicatedTechs.map((tech, index) => (
-            <div
+            <a
               key={`${tech.name}-${index}`}
-              className="flex items-center gap-4 px-6 py-4 mx-3 bg-white dark:bg-[#212121] border border-lightBorder/50 dark:border-white/10 rounded-2xl cursor-pointer transition-transform duration-300 hover:scale-105 hover:border-[#673ab7] hover:shadow-[0_0_20px_rgba(103,58,183,0.15)] shrink-0"
+              href={tech.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`Visit official ${tech.name} website`}
+              className="group/item flex items-center gap-4 px-6 py-4 mx-3 bg-white dark:bg-[#212121] border border-slate-200/80 dark:border-white/10 rounded-2xl cursor-pointer transition-all duration-300 hover:scale-105 hover:border-[#673ab7] hover:shadow-[0_0_20px_rgba(103,58,183,0.2)] shrink-0 no-underline"
             >
               <img 
                 src={tech.url} 
                 alt={tech.name} 
-                className="w-10 h-10 md:w-12 md:h-12 object-contain drop-shadow-sm" 
+                className="w-10 h-10 md:w-12 md:h-12 object-contain drop-shadow-sm group-hover/item:scale-110 transition-transform duration-300" 
               />
-              <span className="font-bold text-base md:text-lg text-gray-800 dark:text-gray-200">
+              <span className="font-bold text-base md:text-lg text-gray-800 dark:text-gray-200 group-hover/item:text-[#673ab7] dark:group-hover/item:text-purple-300 transition-colors">
                 {tech.name}
               </span>
-            </div>
+            </a>
           ))}
         </div>
 

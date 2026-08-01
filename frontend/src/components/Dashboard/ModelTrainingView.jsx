@@ -739,7 +739,7 @@ export default function ModelTrainingView({
             </div>
 
             {/* 30% Right: History Card Panel */}
-            {!uploading && cleanHistoryList.length > 0 && (
+            {cleanHistoryList.length > 0 && (
               <div className="lg:col-span-4 w-full">
                 <RecentDatasetPanel
                   items={cleanHistoryList}

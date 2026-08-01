@@ -19,6 +19,15 @@ import {
   ShieldAlert,
   Mail,
   Calendar,
+  Trash2,
+  RotateCcw,
+  Sparkles,
+  Clock,
+  FileText,
+  BrainCircuit,
+  LineChart,
+  ArrowLeft,
+  ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
@@ -26,6 +35,7 @@ import PasswordChecklist from "../Auth/PasswordChecklist";
 import OtpInput from "../Auth/OtpInput";
 import { validatePassword } from "../../utils/passwordPolicy";
 import { useAuth } from "../../context/AuthContext";
+import { BouncyAccordion } from "../ui/BouncyAccordion";
 
 function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
   const navigate = useNavigate();
@@ -67,6 +77,77 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleteMsg, setDeleteMsg] = useState("");
+
+  // Recently Deleted State
+  const [trashSearchQuery, setTrashSearchQuery] = useState("");
+  const [recentlyDeleted, setRecentlyDeleted] = useState([]);
+  const [loadingDeleted, setLoadingDeleted] = useState(false);
+  const [restoringId, setRestoringId] = useState(null);
+  const [purgingId, setPurgingId] = useState(null);
+  const [itemToPurge, setItemToPurge] = useState(null); // specific item to permanently delete modal
+  const [showEmptyTrashModal, setShowEmptyTrashModal] = useState(false);
+  const [recentlyDeletedMsg, setRecentlyDeletedMsg] = useState({ type: "", text: "" });
+
+  const fetchRecentlyDeleted = async () => {
+    setLoadingDeleted(true);
+    try {
+      const response = await api.get("history/recently-deleted/");
+      setRecentlyDeleted(response.data || []);
+    } catch (err) {
+      console.error("Failed to load recently deleted items:", err);
+    } finally {
+      setLoadingDeleted(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecentlyDeleted();
+  }, []);
+
+  const handleRestoreItem = async (id, type) => {
+    setRestoringId(`${type}-${id}`);
+    setRecentlyDeletedMsg({ type: "", text: "" });
+    try {
+      await api.post("history/recently-deleted/", { action: "restore", item_id: id, type });
+      setRecentlyDeletedMsg({ type: "success", text: "Item restored successfully!" });
+      fetchRecentlyDeleted();
+    } catch (err) {
+      setRecentlyDeletedMsg({ type: "error", text: "Failed to restore item." });
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
+  const confirmPurgeSingleItem = async () => {
+    if (!itemToPurge) return;
+    const { id, type } = itemToPurge;
+    setPurgingId(`${type}-${id}`);
+    setRecentlyDeletedMsg({ type: "", text: "" });
+    try {
+      await api.delete(`history/recently-deleted/?item_id=${id}&type=${type}`);
+      setRecentlyDeletedMsg({ type: "success", text: "Item permanently deleted." });
+      setItemToPurge(null);
+      fetchRecentlyDeleted();
+    } catch (err) {
+      setRecentlyDeletedMsg({ type: "error", text: "Failed to delete item permanently." });
+    } finally {
+      setPurgingId(null);
+    }
+  };
+
+  const handleEmptyTrash = async () => {
+    setLoadingDeleted(true);
+    try {
+      await api.delete("history/recently-deleted/?all=true");
+      setRecentlyDeletedMsg({ type: "success", text: "Recently deleted items cleared." });
+      setShowEmptyTrashModal(false);
+      fetchRecentlyDeleted();
+    } catch (err) {
+      setRecentlyDeletedMsg({ type: "error", text: "Failed to empty trash." });
+    } finally {
+      setLoadingDeleted(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -999,6 +1080,279 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Recently Deleted Bouncy Accordion */}
+      <BouncyAccordion
+        items={[
+          {
+            id: "recently-deleted",
+            icon: <Trash2 className="w-5 h-5 text-amber-500" />,
+            title: (
+              <div className="flex items-center justify-between w-full pr-2">
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                    Recently Deleted
+                  </h3>
+                  {recentlyDeleted.length > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-black border border-amber-500/20">
+                      {recentlyDeleted.length}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] sm:text-xs text-slate-400 hidden sm:block font-medium">
+                  10-Day Retention
+                </p>
+              </div>
+            ),
+            description: (
+              <div className="flex flex-col gap-4">
+                {/* Control Bar: Search & Empty Trash */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
+                  <p className="text-xs text-slate-500 dark:text-zinc-400 font-medium">
+                    Items will be automatically purged permanently from local storage after 10 days
+                  </p>
+
+                  <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                    {/* Search Bar Input */}
+                    <div className="relative flex-1 sm:w-64">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search deleted files..."
+                        value={trashSearchQuery}
+                        onChange={(e) => setTrashSearchQuery(e.target.value)}
+                        className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30 text-slate-900 dark:text-white placeholder:text-slate-400"
+                      />
+                      {trashSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setTrashSearchQuery("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    {recentlyDeleted.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowEmptyTrashModal(true)}
+                        className="px-3.5 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 border border-rose-500/20"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Empty Trash</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {recentlyDeletedMsg.text && (
+                  <div className={`p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
+                    recentlyDeletedMsg.type === "success"
+                      ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                      : "bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400"
+                  }`}>
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{recentlyDeletedMsg.text}</span>
+                  </div>
+                )}
+
+                {/* Items Grid/List */}
+                {loadingDeleted ? (
+                  <div className="py-8 text-center flex items-center justify-center gap-2 text-xs text-slate-400">
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                    <span>Loading recently deleted items...</span>
+                  </div>
+                ) : recentlyDeleted.length === 0 ? (
+                  <div className="py-8 text-center flex flex-col items-center justify-center gap-2">
+                    <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-400 dark:text-zinc-500">
+                      <Trash2 className="w-5 h-5" />
+                    </div>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400">
+                      Trash is empty. No soft-deleted items found.
+                    </p>
+                  </div>
+                ) : (
+                  (() => {
+                    const filteredItems = recentlyDeleted.filter((item) => {
+                      if (!trashSearchQuery.trim()) return true;
+                      const q = trashSearchQuery.toLowerCase();
+                      return (
+                        (item.name && item.name.toLowerCase().includes(q)) ||
+                        (item.dataset_name && item.dataset_name.toLowerCase().includes(q)) ||
+                        (item.type && item.type.toLowerCase().includes(q))
+                      );
+                    });
+
+                    if (filteredItems.length === 0) {
+                      return (
+                        <div className="py-8 text-center flex flex-col items-center justify-center gap-1.5">
+                          <Search className="w-4 h-4 text-slate-400" />
+                          <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400">
+                            No deleted items match &quot;{trashSearchQuery}&quot;
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2.5">
+                        {filteredItems.map((item) => {
+                          const isRestoring = restoringId === `${item.type}-${item.id}`;
+                          const isPurging = purgingId === `${item.type}-${item.id}`;
+
+                          return (
+                            <div
+                              key={`${item.type}-${item.id}`}
+                              className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 gap-3 hover:border-slate-300 dark:hover:border-zinc-700 transition"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 shadow-xs border border-slate-200/60 dark:border-zinc-700 shrink-0">
+                                  {item.type === "cleaning" && <FileText className="w-4 h-4 text-sky-500" />}
+                                  {item.type === "training" && <BrainCircuit className="w-4 h-4 text-purple-500" />}
+                                  {item.type === "visualization" && <LineChart className="w-4 h-4 text-emerald-500" />}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-zinc-100 truncate">
+                                      {item.name}
+                                    </h4>
+                                    <span className="capitalize text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-slate-200/70 dark:bg-zinc-700 text-slate-600 dark:text-zinc-300">
+                                      {item.type}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-400 dark:text-zinc-500 truncate">
+                                    Dataset: {item.dataset_name}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/50 dark:border-zinc-800">
+                                <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                                  <Clock className="w-3 h-3 shrink-0" />
+                                  <span>{item.days_remaining} {item.days_remaining === 1 ? "day" : "days"} left</span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={isRestoring || isPurging}
+                                    onClick={() => handleRestoreItem(item.id, item.type)}
+                                    className="px-3 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95 disabled:opacity-50"
+                                  >
+                                    {isRestoring ? (
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                        <span>Restore</span>
+                                      </>
+                                    )}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    disabled={isRestoring || isPurging}
+                                    onClick={() => setItemToPurge(item)}
+                                    className="px-3 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95 disabled:opacity-50"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>Delete</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
+            ),
+          },
+        ]}
+      />
+
+      {/* Specific Item Permanent Delete Confirmation Modal */}
+      {itemToPurge && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/50 dark:bg-black/75 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-white dark:bg-[#1c1c21] border border-slate-200 dark:border-zinc-800 shadow-xl flex flex-col gap-4">
+            <div className="flex items-center gap-3 text-rose-500">
+              <div className="p-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                <AlertTriangle className="w-5 h-5 text-rose-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Permanently Delete Item?</h3>
+                <p className="text-[11px] text-slate-400">Irreversible Local File Erasure</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed font-medium">
+              Are you sure you want to permanently delete <strong className="text-slate-900 dark:text-white font-bold">{itemToPurge.name}</strong>? <strong className="text-rose-500 font-bold">This action cannot be undone.</strong> Associated files on disk will be erased immediately.
+            </p>
+
+            <div className="flex justify-end gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setItemToPurge(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer active:scale-95"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={purgingId === `${itemToPurge.type}-${itemToPurge.id}`}
+                onClick={confirmPurgeSingleItem}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                {purgingId === `${itemToPurge.type}-${itemToPurge.id}` ? "Deleting..." : "Permanently Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Empty All Trash Modal */}
+      {showEmptyTrashModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/50 dark:bg-black/75 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-white dark:bg-[#1c1c21] border border-slate-200 dark:border-zinc-800 shadow-xl flex flex-col gap-4">
+            <div className="flex items-center gap-3 text-rose-500">
+              <div className="p-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                <AlertTriangle className="w-5 h-5 text-rose-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Empty Trash Permanently?</h3>
+                <p className="text-[11px] text-slate-400">Irreversible Action</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed font-medium">
+              Are you sure you want to permanently delete all items in Recently Deleted? <strong className="text-rose-500 font-bold">This cannot be undone.</strong> Associated files on disk will be erased immediately.
+            </p>
+
+            <div className="flex justify-end gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowEmptyTrashModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer active:scale-95"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleEmptyTrash}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
+              >
+                Permanently Delete All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Logout Section */}
       {showLogout && (

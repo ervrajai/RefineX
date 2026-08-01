@@ -1,5 +1,6 @@
 import os
 import io
+import re
 import pandas as pd
 import numpy as np
 from rest_framework.views import APIView
@@ -16,8 +17,23 @@ from django.utils import timezone
 from apps.accounts.views import CsrfExemptSessionAuthentication
 
 from .models import Dataset, CleaningJob, GuestUsage
-from .utils import profile_dataset, clean_dataset, make_json_safe, read_dataframe
+from .utils import profile_dataset, clean_dataset, auto_clean_dataset, make_json_safe, read_dataframe
 from apps.core.services import ActivityService
+
+
+def get_versioned_filename(dataset, extension="csv"):
+    """
+    Generates a clean versioned filename if same or multiple cleanings exist.
+    Example: 'sales_cleaned_v1.csv', 'sales_cleaned_v2.xlsx'.
+    """
+    clean_base = os.path.splitext(dataset.name)[0]
+    clean_base = re.sub(r'^(cleaned_|_cleaned)', '', clean_base, flags=re.IGNORECASE)
+    clean_base = re.sub(r'_cleaned_v\d+$', '', clean_base, flags=re.IGNORECASE)
+    
+    # Calculate version based on existing cleaning jobs count
+    job_count = CleaningJob.objects.filter(dataset=dataset).count()
+    version = max(1, job_count)
+    return f"{clean_base}_cleaned_v{version}.{extension}"
 
 
 
@@ -126,6 +142,17 @@ class DatasetUploadView(APIView):
 
 
         except Exception as e:
+            # Clean up disk file and DB record if upload or profiling failed
+            if 'dataset' in locals() and dataset and dataset.pk:
+                try:
+                    if dataset.original_file:
+                        dataset.original_file.delete(save=False)
+                    if dataset.cleaned_file:
+                        dataset.cleaned_file.delete(save=False)
+                    dataset.delete()
+                except Exception:
+                    pass
+
             return Response({"error": f"Failed to parse dataset: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -169,12 +196,22 @@ def perform_cleaning_operation(dataset, config, user=None):
     """
     Helper function that executes the cleaning pipeline and updates the Dataset model and CleaningJob.
     Strictly branches: Auto-Decide mode (auto_clean_dataset) vs Manual mode (clean_dataset).
-    Stores cleaned binary artifact as fast .parquet format.
+    Stores cleaned binary artifact as fast .parquet format with safe CSV fallback.
     """
-    input_file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
-    input_file_type = "parquet" if (dataset.cleaned_file and dataset.cleaned_file.name.endswith(".parquet")) else dataset.file_type
+    # Prefer cleaned_file if it exists, else fallback to original_file
+    input_file_path = dataset.original_file.path
+    input_file_type = dataset.file_type
     
-    df, _ = read_dataframe(input_file_path, input_file_type, encoding=dataset.encoding)
+    if dataset.cleaned_file and os.path.exists(dataset.cleaned_file.path):
+        input_file_path = dataset.cleaned_file.path
+        if dataset.cleaned_file.name.endswith(".parquet"):
+            input_file_type = "parquet"
+            
+    try:
+        df, _ = read_dataframe(input_file_path, input_file_type, encoding=dataset.encoding)
+    except Exception:
+        # Fallback to reading original file if cleaned file read fails
+        df, _ = read_dataframe(dataset.original_file.path, dataset.file_type, encoding=dataset.encoding)
     
     if config.get("is_auto_decide", False):
         cleaned_df, logs, before_report, after_report = auto_clean_dataset(df)
@@ -182,13 +219,31 @@ def perform_cleaning_operation(dataset, config, user=None):
         cleaned_df, logs, before_report, after_report = clean_dataset(df, config)
     
     out_buffer = io.BytesIO()
-    cleaned_name = f"cleaned_{dataset.id}.parquet"
+    version = CleaningJob.objects.filter(dataset=dataset).count() + 1
+    clean_base = os.path.splitext(dataset.name)[0]
+    clean_base = re.sub(r'^(cleaned_|_cleaned)', '', clean_base, flags=re.IGNORECASE)
+    clean_base = re.sub(r'_cleaned_v\d+$', '', clean_base, flags=re.IGNORECASE)
+    
+    cleaned_name = f"{clean_base}_cleaned_v{version}.parquet"
+    
+    # Ensure column headers are all string type for PyArrow Parquet engine
+    cleaned_df.columns = [str(col) for col in cleaned_df.columns]
+
     try:
         cleaned_df.to_parquet(out_buffer, index=False)
-    except Exception:
-        # Fallback to CSV if pyarrow engine is not present
-        cleaned_name = f"cleaned_{dataset.id}.csv"
-        cleaned_df.to_csv(out_buffer, index=False, encoding=dataset.encoding)
+    except Exception as err:
+        # Retry by converting object columns to string if PyArrow encounters mixed types
+        try:
+            temp_df = cleaned_df.copy()
+            for col in temp_df.select_dtypes(include=['object']).columns:
+                temp_df[col] = temp_df[col].astype(str)
+            out_buffer = io.BytesIO()
+            temp_df.to_parquet(out_buffer, index=False)
+        except Exception:
+            # Fallback to CSV if Parquet engine fails completely
+            out_buffer = io.BytesIO()
+            cleaned_name = f"{clean_base}_cleaned_v{version}.csv"
+            cleaned_df.to_csv(out_buffer, index=False, encoding=dataset.encoding)
         
     dataset.cleaned_file.save(cleaned_name, ContentFile(out_buffer.getvalue()), save=False)
     dataset.status = "cleaned"
@@ -398,13 +453,11 @@ class DatasetDownloadView(APIView):
             return Response({"error": "Dataset file not found on disk"}, status=status.HTTP_404_NOT_FOUND)
             
         if download_type == "csv":
-            # Serve CSV export
+            # Serve CSV export with versioned filename
             try:
                 df, _ = read_dataframe(file_path, file_type, encoding=dataset.encoding)
                 response = HttpResponse(content_type='text/csv')
-                filename = f"cleaned_{dataset.name}" if dataset.cleaned_file else dataset.name
-                if not filename.endswith('.csv'):
-                    filename = os.path.splitext(filename)[0] + '.csv'
+                filename = get_versioned_filename(dataset, "csv")
                 response['Content-Disposition'] = f'attachment; filename="{filename}"'
                 df.to_csv(path_or_buf=response, index=False, encoding=dataset.encoding)
                 return response
@@ -412,12 +465,11 @@ class DatasetDownloadView(APIView):
                 return Response({"error": f"Failed to export CSV: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
                 
         elif download_type == "excel":
-            # Serve Excel export
+            # Serve Excel export with versioned filename
             try:
                 df, _ = read_dataframe(file_path, file_type, encoding=dataset.encoding)
                 response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-                filename = f"cleaned_{dataset.name}" if dataset.cleaned_file else dataset.name
-                filename = os.path.splitext(filename)[0] + '.xlsx'
+                filename = get_versioned_filename(dataset, "xlsx")
                 response['Content-Disposition'] = f'attachment; filename="{filename}"'
                 
                 # Write to response using Pandas excel engine

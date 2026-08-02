@@ -296,8 +296,8 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
                 className="w-[40px] h-[40px] object-cover rounded-lg shrink-0 shadow-sm"
               />
               <span className="sidebar-refine text-xl tracking-wider inline-flex items-center text-slate-900 dark:text-white whitespace-nowrap">
-              Refine<span className="font-sans text-purple-600 dark:text-purple-400 text-2xl font-extrabold ml-0.5 inline-flex items-center justify-center leading-none">X</span>
-            </span>
+                Refine<span className="font-sans text-[#673ab7] text-2xl font-black ml-0.5 inline-flex items-center justify-center leading-none">X</span>
+              </span>
             </div>
 
             <div className={cn(

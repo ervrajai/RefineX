@@ -53,7 +53,7 @@ export default function DashboardShowcase() {
   ];
 
   return (
-    <section id="dashboard" className="min-h-screen w-full relative bg-[#F8FAFC] dark:bg-[#0F0F0F] text-black dark:text-white transition-colors duration-300">
+    <section id="dashboard" className="min-h-screen w-full relative bg-white dark:bg-[#0F0F0F] text-black dark:text-white transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 md:px-8 text-center pt-16 pb-8">
         <h2 className="text-3xl md:text-5xl font-bold text-black dark:text-white mb-4 tracking-tight">
           Refine Your Data & Accelerate Your AI
@@ -66,7 +66,7 @@ export default function DashboardShowcase() {
 
       <ZoomParallax images={images} />
 
-      <div className="h-[20vh] bg-[#F8FAFC] dark:bg-[#0F0F0F] transition-colors duration-300" />
+      <div className="h-[20vh] bg-white dark:bg-[#0F0F0F] transition-colors duration-300" />
     </section>
   );
 }

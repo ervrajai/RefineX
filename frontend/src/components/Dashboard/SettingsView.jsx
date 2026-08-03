@@ -123,13 +123,16 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
     const { id, type } = itemToPurge;
     setPurgingId(`${type}-${id}`);
     setRecentlyDeletedMsg({ type: "", text: "" });
+    setItemToPurge(null);
     try {
       await api.delete(`history/recently-deleted/?item_id=${id}&type=${type}`);
       setRecentlyDeletedMsg({ type: "success", text: "Item permanently deleted." });
-      setItemToPurge(null);
       fetchRecentlyDeleted();
     } catch (err) {
-      setRecentlyDeletedMsg({ type: "error", text: "Failed to delete item permanently." });
+      setRecentlyDeletedMsg({
+        type: "error",
+        text: err.response?.data?.detail || err.response?.data?.error || "Failed to delete item permanently."
+      });
     } finally {
       setPurgingId(null);
     }

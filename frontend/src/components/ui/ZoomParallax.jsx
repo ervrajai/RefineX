@@ -117,7 +117,7 @@ export function ZoomParallax({ images = [], features = [] }) {
   const f3Opacity = useTransform(scrollYProgress, [0, 0.75, 0.82, 1.0], [0, 0, 1, 1]);
 
   return (
-    <div ref={container} className="relative h-[500vh] bg-[#F8FAFC] dark:bg-[#0F0F0F] transition-colors duration-300">
+    <div ref={container} className="relative h-[500vh] bg-white dark:bg-[#0F0F0F] transition-colors duration-300">
       <div className="sticky top-0 h-screen w-full overflow-hidden flex items-center justify-center">
         
         {/* PARALLAX GRID: ALL 7 IMAGES (PHASE 1) */}

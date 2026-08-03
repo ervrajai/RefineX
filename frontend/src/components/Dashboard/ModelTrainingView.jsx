@@ -268,14 +268,17 @@ export default function ModelTrainingView({
     try {
       const res = await api.get("history/");
       const seen = new Set();
-      const uniqueCleanJobs = res.data.filter((job) => {
-        if (seen.has(job.dataset_id)) return false;
-        seen.add(job.dataset_id);
-        return true;
-      });
-      setCleanHistoryList(uniqueCleanJobs);
+      const userDatasets = (res.data || [])
+        .filter((job) => job.dataset_id || job.id)
+        .filter((job) => {
+          const id = job.dataset_id || job.id;
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+      setCleanHistoryList(userDatasets);
     } catch (err) {
-      console.error("Failed to load cleaning history:", err);
+      console.error("Failed to load dataset history:", err);
     } finally {
       setLoadingCleanHistory(false);
     }

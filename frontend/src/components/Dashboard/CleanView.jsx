@@ -84,36 +84,42 @@ export default function CleanView({
     try {
       const res = await api.get("history/");
       const seen = new Set();
-      const cleaningJobs = res.data.filter(job => job.type === "cleaning" && job.dataset_id).filter(job => {
-        if (seen.has(job.dataset_id)) return false;
-        seen.add(job.dataset_id);
-        return true;
-      });
-      setCleanHistoryList(cleaningJobs);
+      const userDatasets = (res.data || [])
+        .filter((job) => job.dataset_id || job.id)
+        .filter((job) => {
+          const id = job.dataset_id || job.id;
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+      setCleanHistoryList(userDatasets);
     } catch (err) {
-      console.error("Failed to load cleaning history:", err);
+      console.error("Failed to load dataset history:", err);
     } finally {
       setLoadingCleanHistory(false);
     }
   };
 
   const handleUseFromHistory = async (job) => {
+    const targetDatasetId = job.dataset_id || job.id;
+    if (!targetDatasetId) return;
+
     setProcessing(true);
     setErrorMsg("");
     setSuccessMsg("");
     try {
-      const res = await api.get(`cleaning/${job.dataset_id}/preview/?offset=0&limit=100`);
+      const res = await api.get(`cleaning/${targetDatasetId}/preview/?offset=0&limit=100`);
       const data = res.data;
       
-      setDatasetId(job.dataset_id);
+      setDatasetId(targetDatasetId);
       setMetadata(data.metadata);
       setPreview(data);
+      if (data.report) setReport(data.report);
       if (job.before_stats) setBeforeReport(job.before_stats);
       if (job.after_stats) setAfterReport(job.after_stats);
-      setReport(data.metadata || job.after_stats);
       if (job.logs) setCleanLogs(job.logs);
 
-      setSuccessMsg(`Loaded cleaned dataset "${job.dataset_name}" from history!`);
+      setSuccessMsg(`Loaded uploaded dataset "${job.dataset_name || job.name || data.metadata?.name}"!`);
     } catch (err) {
       setErrorMsg("Failed to load historical dataset details. The file might have been deleted.");
     } finally {
@@ -347,6 +353,7 @@ export default function CleanView({
       setManualTypes(mapping);
 
       setSuccessMsg("✓ File uploaded and profiled successfully!");
+      fetchCleanHistory();
     } catch (err) {
       if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || (err.message && err.message.includes("canceled"))) {
         setErrorMsg("Upload canceled.");

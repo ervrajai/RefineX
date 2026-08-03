@@ -23,9 +23,9 @@ export default function RecentDatasetPanel({
   };
 
   return (
-    <div className="w-full p-4 sm:p-5 lg:p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-md dark:shadow-black/40 flex flex-col justify-between h-full min-h-[260px] lg:min-h-[380px]">
+    <div className="w-full p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-md dark:shadow-black/40 flex flex-col justify-between h-[380px] min-h-[380px] max-h-[380px] overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800/80 mb-3 lg:mb-4">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800/80 mb-3 shrink-0">
         <div className="flex items-center gap-2">
           <History className="w-4 h-4 lg:w-5 lg:h-5 text-purple-600 dark:text-purple-400 shrink-0" />
           <h3 className="text-sm lg:text-base font-bold text-slate-900 dark:text-white tracking-tight">
@@ -43,10 +43,10 @@ export default function RecentDatasetPanel({
         )}
       </div>
 
-      {/* Dataset List - Responsive height: 3 items on Mobile, 5 items on Desktop */}
-      <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[215px] sm:max-h-[235px] lg:max-h-[380px] pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-zinc-700">
+      {/* Dataset List - Fixed height locked at max-h-[295px] matching 380px outer box */}
+      <div className="flex-1 space-y-2 overflow-y-auto max-h-[295px] pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-zinc-700">
         {items.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-400 dark:text-zinc-500 font-medium">
+          <div className="py-12 text-center text-xs text-slate-400 dark:text-zinc-500 font-medium">
             No recent datasets found
           </div>
         ) : (
@@ -59,7 +59,7 @@ export default function RecentDatasetPanel({
               <div
                 key={item.id || idx}
                 onClick={() => onSelect && onSelect(item)}
-                className="relative group p-2.5 sm:p-3.5 rounded-xl border border-slate-200/90 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/60 hover:bg-slate-900 dark:hover:bg-white hover:border-slate-900 dark:hover:border-white transition-all duration-300 ease-in-out cursor-pointer flex items-center justify-between shadow-2xs overflow-hidden"
+                className="relative group p-2.5 sm:p-3 rounded-xl border border-slate-200/90 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/60 hover:bg-slate-900 dark:hover:bg-white hover:border-slate-900 dark:hover:border-white transition-all duration-300 ease-in-out cursor-pointer flex items-center justify-between shadow-2xs overflow-hidden"
               >
                 {/* Top/Bottom Key accent lines (Fancy hover style) */}
                 <span className="absolute top-0 left-3 h-[2px] w-5 bg-slate-300 dark:bg-zinc-700 group-hover:w-0 group-hover:left-0 transition-all duration-300" />

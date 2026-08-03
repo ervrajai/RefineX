@@ -75,6 +75,7 @@ class CleaningHistoryView(APIView):
                 Dataset.objects.filter(guest_id=guest_id, user__isnull=True).update(user=request.user)
                 CleaningJob.objects.filter(dataset__guest_id=guest_id, user__isnull=True).update(user=request.user)
 
+            user_datasets = Dataset.objects.filter(user=request.user, is_deleted=False).distinct()
             clean_jobs = CleaningJob.objects.filter(
                 (Q(user=request.user) | Q(dataset__user=request.user)) & Q(is_deleted=False)
             ).distinct()
@@ -84,13 +85,37 @@ class CleaningHistoryView(APIView):
             vis_graphs = SavedGraph.objects.filter(
                 (Q(user=request.user) | Q(dataset__user=request.user)) & Q(is_deleted=False)
             ).distinct()
-
         else:
-            clean_jobs = CleaningJob.objects.filter(is_deleted=False)
-            ml_jobs = ModelTrainingJob.objects.filter(is_deleted=False)
-            vis_graphs = SavedGraph.objects.filter(is_deleted=False)
+            guest_id = request.query_params.get("guest_id") or request.headers.get("X-Guest-ID")
+            if guest_id:
+                user_datasets = Dataset.objects.filter(guest_id=guest_id, is_deleted=False).distinct()
+                clean_jobs = CleaningJob.objects.filter(dataset__guest_id=guest_id, is_deleted=False).distinct()
+                ml_jobs = ModelTrainingJob.objects.filter(dataset__guest_id=guest_id, is_deleted=False).distinct()
+                vis_graphs = SavedGraph.objects.filter(dataset__guest_id=guest_id, is_deleted=False).distinct()
+            else:
+                user_datasets = Dataset.objects.filter(is_deleted=False)
+                clean_jobs = CleaningJob.objects.filter(is_deleted=False)
+                ml_jobs = ModelTrainingJob.objects.filter(is_deleted=False)
+                vis_graphs = SavedGraph.objects.filter(is_deleted=False)
 
         results = []
+
+        for ds in user_datasets:
+            results.append({
+                "id": ds.id,
+                "type": "uploaded_dataset",
+                "dataset_id": ds.id,
+                "dataset_name": ds.name,
+                "name": ds.name,
+                "created_at": ds.created_at,
+                "file_type": ds.file_type,
+                "file_size": ds.file_size,
+                "rows": ds.rows_count,
+                "columns": ds.cols_count,
+                "before_stats": {"rows": ds.rows_count, "columns": ds.cols_count},
+                "status": ds.status
+            })
+
         for job in clean_jobs:
             results.append({
                 "id": job.id,
@@ -148,14 +173,36 @@ class CleaningHistoryView(APIView):
         """
         Soft deletes item (moves to Recently Deleted for 10 days) unless permanent=true is specified.
         """
-        target_id = item_id or request.query_params.get("item_id")
+        raw_target_id = item_id or request.query_params.get("item_id")
         item_type = request.query_params.get("type")
         is_permanent = request.query_params.get("permanent", "").lower() == "true"
         now = timezone.now()
 
         # Single item deletion
-        if target_id and item_type:
-            if item_type == "cleaning":
+        if raw_target_id:
+            target_id = str(raw_target_id).replace("dataset_", "")
+
+            if item_type in ["uploaded_dataset", "dataset"] or str(raw_target_id).startswith("dataset_"):
+                ds = Dataset.objects.filter(id=target_id).first()
+                if ds:
+                    if is_permanent:
+                        if ds.original_file and ds.original_file.name and os.path.isfile(ds.original_file.path):
+                            try: os.remove(ds.original_file.path)
+                            except Exception: pass
+                        if ds.cleaned_file and ds.cleaned_file.name and os.path.isfile(ds.cleaned_file.path):
+                            try: os.remove(ds.cleaned_file.path)
+                            except Exception: pass
+                        ds.delete()
+                        return Response({"detail": "Uploaded dataset permanently deleted."}, status=status.HTTP_200_OK)
+                    else:
+                        ds.is_deleted = True
+                        ds.deleted_at = now
+                        ds.save()
+                        CleaningJob.objects.filter(dataset=ds).update(is_deleted=True, deleted_at=now)
+                        return Response({"detail": "Dataset moved to Recently Deleted. It will be automatically removed after 10 days."}, status=status.HTTP_200_OK)
+                return Response({"detail": "Uploaded dataset not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            elif item_type == "cleaning":
                 job = CleaningJob.objects.filter(id=target_id).first()
                 if job:
                     if is_permanent:
@@ -180,6 +227,25 @@ class CleaningHistoryView(APIView):
                             job.dataset.deleted_at = now
                             job.dataset.save()
                         return Response({"detail": "Item moved to Recently Deleted. It will be automatically removed after 10 days."}, status=status.HTTP_200_OK)
+
+                ds = Dataset.objects.filter(id=target_id).first()
+                if ds:
+                    if is_permanent:
+                        if ds.original_file and ds.original_file.name and os.path.isfile(ds.original_file.path):
+                            try: os.remove(ds.original_file.path)
+                            except Exception: pass
+                        if ds.cleaned_file and ds.cleaned_file.name and os.path.isfile(ds.cleaned_file.path):
+                            try: os.remove(ds.cleaned_file.path)
+                            except Exception: pass
+                        ds.delete()
+                        return Response({"detail": "Dataset permanently deleted."}, status=status.HTTP_200_OK)
+                    else:
+                        ds.is_deleted = True
+                        ds.deleted_at = now
+                        ds.save()
+                        CleaningJob.objects.filter(dataset=ds).update(is_deleted=True, deleted_at=now)
+                        return Response({"detail": "Dataset moved to Recently Deleted. It will be automatically removed after 10 days."}, status=status.HTTP_200_OK)
+
                 return Response({"detail": "Cleaning record not found."}, status=status.HTTP_404_NOT_FOUND)
 
             elif item_type == "training":
@@ -269,6 +335,7 @@ class RecentlyDeletedView(APIView):
 
         if request.user.is_authenticated:
             user = request.user
+            user_datasets = Dataset.objects.filter(user=user, is_deleted=True).distinct()
             clean_jobs = CleaningJob.objects.filter(
                 (Q(user=user) | Q(dataset__user=user)) & Q(is_deleted=True)
             ).distinct()
@@ -279,13 +346,39 @@ class RecentlyDeletedView(APIView):
                 (Q(user=user) | Q(dataset__user=user)) & Q(is_deleted=True)
             ).distinct()
         else:
-            clean_jobs = CleaningJob.objects.filter(is_deleted=True)
-            ml_jobs = ModelTrainingJob.objects.filter(is_deleted=True)
-            vis_graphs = SavedGraph.objects.filter(is_deleted=True)
+            guest_id = request.query_params.get("guest_id") or request.headers.get("X-Guest-ID")
+            if guest_id:
+                user_datasets = Dataset.objects.filter(guest_id=guest_id, is_deleted=True).distinct()
+                clean_jobs = CleaningJob.objects.filter(dataset__guest_id=guest_id, is_deleted=True).distinct()
+                ml_jobs = ModelTrainingJob.objects.filter(dataset__guest_id=guest_id, is_deleted=True).distinct()
+                vis_graphs = SavedGraph.objects.filter(dataset__guest_id=guest_id, is_deleted=True).distinct()
+            else:
+                user_datasets = Dataset.objects.filter(is_deleted=True)
+                clean_jobs = CleaningJob.objects.filter(is_deleted=True)
+                ml_jobs = ModelTrainingJob.objects.filter(is_deleted=True)
+                vis_graphs = SavedGraph.objects.filter(is_deleted=True)
 
         results = []
+        seen_datasets = set()
+
+        for ds in user_datasets:
+            seen_datasets.add(ds.id)
+            del_at = ds.deleted_at or now
+            days_passed = (now - del_at).days
+            days_remaining = max(0, 10 - days_passed)
+            results.append({
+                "id": ds.id,
+                "type": "uploaded_dataset",
+                "name": ds.name,
+                "dataset_name": ds.name,
+                "deleted_at": del_at.isoformat(),
+                "created_at": ds.created_at.isoformat(),
+                "days_remaining": days_remaining
+            })
 
         for job in clean_jobs:
+            if job.dataset and job.dataset.id in seen_datasets:
+                continue
             del_at = job.deleted_at or now
             days_passed = (now - del_at).days
             days_remaining = max(0, 10 - days_passed)
@@ -357,8 +450,19 @@ class RecentlyDeletedView(APIView):
             if not item_id or not item_type:
                 return Response({"error": "item_id and type are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-            if item_type == "cleaning":
-                job = CleaningJob.objects.filter(id=item_id, is_deleted=True).first()
+            clean_item_id = str(item_id).replace("dataset_", "")
+
+            if item_type in ["uploaded_dataset", "dataset"]:
+                ds = Dataset.objects.filter(id=clean_item_id, is_deleted=True).first()
+                if ds:
+                    ds.is_deleted = False
+                    ds.deleted_at = None
+                    ds.save()
+                    CleaningJob.objects.filter(dataset=ds, is_deleted=True).update(is_deleted=False, deleted_at=None)
+                    return Response({"detail": "Uploaded dataset restored successfully."}, status=status.HTTP_200_OK)
+
+            elif item_type == "cleaning":
+                job = CleaningJob.objects.filter(id=clean_item_id, is_deleted=True).first()
                 if job:
                     job.is_deleted = False
                     job.deleted_at = None
@@ -368,9 +472,16 @@ class RecentlyDeletedView(APIView):
                         job.dataset.deleted_at = None
                         job.dataset.save()
                     return Response({"detail": "Cleaning record restored successfully."}, status=status.HTTP_200_OK)
+                ds = Dataset.objects.filter(id=clean_item_id, is_deleted=True).first()
+                if ds:
+                    ds.is_deleted = False
+                    ds.deleted_at = None
+                    ds.save()
+                    CleaningJob.objects.filter(dataset=ds, is_deleted=True).update(is_deleted=False, deleted_at=None)
+                    return Response({"detail": "Dataset restored successfully."}, status=status.HTTP_200_OK)
 
             elif item_type == "training":
-                job = ModelTrainingJob.objects.filter(id=item_id, is_deleted=True).first()
+                job = ModelTrainingJob.objects.filter(id=clean_item_id, is_deleted=True).first()
                 if job:
                     job.is_deleted = False
                     job.deleted_at = None
@@ -378,7 +489,7 @@ class RecentlyDeletedView(APIView):
                     return Response({"detail": "Training record restored successfully."}, status=status.HTTP_200_OK)
 
             elif item_type == "visualization":
-                graph = SavedGraph.objects.filter(id=item_id, is_deleted=True).first()
+                graph = SavedGraph.objects.filter(id=clean_item_id, is_deleted=True).first()
                 if graph:
                     graph.is_deleted = False
                     graph.deleted_at = None
@@ -393,7 +504,7 @@ class RecentlyDeletedView(APIView):
         """
         Permanently purge item(s) from Recently Deleted.
         """
-        item_id = request.query_params.get("item_id") or request.data.get("item_id")
+        raw_item_id = request.query_params.get("item_id") or request.data.get("item_id")
         item_type = request.query_params.get("type") or request.data.get("type")
         purge_all = request.query_params.get("all", "").lower() == "true" or request.data.get("all", False)
 
@@ -429,11 +540,28 @@ class RecentlyDeletedView(APIView):
             datasets.delete()
             return Response({"detail": "All recently deleted items permanently erased."}, status=status.HTTP_200_OK)
 
-        if not item_id or not item_type:
+        if not raw_item_id or not item_type:
             return Response({"error": "item_id and type are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if item_type == "cleaning":
-            job = CleaningJob.objects.filter(id=item_id, is_deleted=True).first()
+        clean_item_id = str(raw_item_id).replace("dataset_", "")
+
+        if item_type in ["uploaded_dataset", "dataset"] or str(raw_item_id).startswith("dataset_"):
+            ds = Dataset.objects.filter(id=clean_item_id, is_deleted=True).first()
+            if not ds:
+                ds = Dataset.objects.filter(id=clean_item_id).first()
+            if ds:
+                if ds.original_file and ds.original_file.name and os.path.isfile(ds.original_file.path):
+                    try: os.remove(ds.original_file.path)
+                    except Exception: pass
+                if ds.cleaned_file and ds.cleaned_file.name and os.path.isfile(ds.cleaned_file.path):
+                    try: os.remove(ds.cleaned_file.path)
+                    except Exception: pass
+                ds.delete()
+                return Response({"detail": "Uploaded dataset permanently purged."}, status=status.HTTP_200_OK)
+            return Response({"error": "Uploaded dataset not found in Recently Deleted."}, status=status.HTTP_404_NOT_FOUND)
+
+        elif item_type == "cleaning":
+            job = CleaningJob.objects.filter(id=clean_item_id, is_deleted=True).first()
             if job:
                 ds = job.dataset
                 if ds:
@@ -448,19 +576,34 @@ class RecentlyDeletedView(APIView):
                     job.delete()
                 return Response({"detail": "Cleaning record permanently erased."}, status=status.HTTP_200_OK)
 
+            ds = Dataset.objects.filter(id=clean_item_id).first()
+            if ds:
+                if ds.original_file and ds.original_file.name and os.path.isfile(ds.original_file.path):
+                    try: os.remove(ds.original_file.path)
+                    except Exception: pass
+                if ds.cleaned_file and ds.cleaned_file.name and os.path.isfile(ds.cleaned_file.path):
+                    try: os.remove(ds.cleaned_file.path)
+                    except Exception: pass
+                ds.delete()
+                return Response({"detail": "Dataset permanently erased."}, status=status.HTTP_200_OK)
+
+            return Response({"error": "Cleaning record not found in Recently Deleted."}, status=status.HTTP_404_NOT_FOUND)
+
         elif item_type == "training":
-            job = ModelTrainingJob.objects.filter(id=item_id, is_deleted=True).first()
+            job = ModelTrainingJob.objects.filter(id=clean_item_id, is_deleted=True).first()
             if job:
                 if job.trained_model_file and job.trained_model_file.name and os.path.isfile(job.trained_model_file.path):
                     try: os.remove(job.trained_model_file.path)
                     except Exception: pass
                 job.delete()
                 return Response({"detail": "Model training record permanently erased."}, status=status.HTTP_200_OK)
+            return Response({"error": "Training record not found in Recently Deleted."}, status=status.HTTP_404_NOT_FOUND)
 
         elif item_type == "visualization":
-            graph = SavedGraph.objects.filter(id=item_id, is_deleted=True).first()
+            graph = SavedGraph.objects.filter(id=clean_item_id, is_deleted=True).first()
             if graph:
                 graph.delete()
                 return Response({"detail": "Visualization permanently erased."}, status=status.HTTP_200_OK)
+            return Response({"error": "Visualization record not found in Recently Deleted."}, status=status.HTTP_404_NOT_FOUND)
 
         return Response({"error": "Item not found in Recently Deleted."}, status=status.HTTP_404_NOT_FOUND)

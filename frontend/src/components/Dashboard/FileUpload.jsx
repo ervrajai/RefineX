@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import fileUploadImg from "../../assets/icons/file_upload.png";
 import {
   FileSpreadsheet,
   FileText,
@@ -7,13 +6,8 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
-  RefreshCw,
   Trash2,
-  Sparkles,
-  ArrowUpFromLine,
-  Zap,
-  Check,
-  FileCheck2
+  Upload
 } from "lucide-react";
 
 /**
@@ -140,8 +134,8 @@ const FileUpload = ({
     setIsDragging(false);
   };
 
-  const validateAndProcessFile = (file) => {
-    if (!file) return;
+  const validateFile = (file) => {
+    if (!file) return false;
     setValidationError("");
 
     const fileExt = "." + file.name.split(".").pop()?.toLowerCase();
@@ -151,9 +145,9 @@ const FileUpload = ({
 
     if (!isValidFormat) {
       setValidationError(
-        `Unsupported file format (${fileExt}). Please upload ${acceptedFormats.join(", ")}.`
+        `Unsupported file format (${fileExt}). Please select ${acceptedFormats.join(", ")}.`
       );
-      return;
+      return false;
     }
 
     const maxSizeBytes = maxSizeMB * 1024 * 1024;
@@ -161,14 +155,11 @@ const FileUpload = ({
       setValidationError(
         `File size (${formatBytes(file.size)}) exceeds maximum limit of ${maxSizeMB}MB.`
       );
-      return;
+      return false;
     }
 
     setSelectedFile(file);
-    setDisplayProgress(5);
-    if (onFileUpload) {
-      onFileUpload(file);
-    }
+    return true;
   };
 
   const handleDrop = (e) => {
@@ -178,20 +169,23 @@ const FileUpload = ({
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
-      validateAndProcessFile(file);
+      validateFile(file);
     }
   };
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      validateAndProcessFile(file);
+      validateFile(file);
     }
   };
 
-  const handleCancelUpload = () => {
-    if (onCancel) onCancel();
-    handleClear();
+  const handleConfirmUpload = () => {
+    if (!selectedFile) return;
+    setDisplayProgress(5);
+    if (onFileUpload) {
+      onFileUpload(selectedFile);
+    }
   };
 
   const handleClear = () => {
@@ -216,32 +210,11 @@ const FileUpload = ({
   };
 
   const fileSize = selectedFile?.size || totalBytes || 0;
-  const currentLoadedBytes =
-    loadedBytes > 0
-      ? loadedBytes
-      : Math.round((fileSize * displayProgress) / 100);
 
   return (
     <>
       <style>{`
-        @keyframes shimmerGlow {
-          0% { left: -100%; }
-          100% { left: 100%; }
-        }
-        .animate-shimmer-glow {
-          position: absolute;
-          top: 0;
-          bottom: 0;
-          width: 50%;
-          background: linear-gradient(
-            90deg,
-            rgba(255, 255, 255, 0) 0%,
-            rgba(255, 255, 255, 0.45) 50%,
-            rgba(255, 255, 255, 0) 100%
-          );
-          animation: shimmerGlow 1.6s infinite ease-in-out;
-        }
-
+        /* 3D Folder Container */
         .folder-container {
           --transition: 350ms;
           --folder-W: 110px;
@@ -258,64 +231,115 @@ const FileUpload = ({
           width: 210px;
           position: relative;
           user-select: none;
+          perspective: 1000px;
         }
 
         .folder-element {
           position: absolute;
           top: -18px;
           left: calc(50% - 55px);
-          animation: floatFolder 2.5s infinite ease-in-out;
+          width: var(--folder-W);
+          height: var(--folder-H);
           transition: transform var(--transition) ease;
+          transform-style: preserve-3d;
         }
 
-        .folder-element:hover {
-          transform: scale(1.05);
+        .group:hover .folder-element,
+        .folder-container:hover .folder-element {
+          transform: scale(1.04);
         }
 
-        .folder-element .front-side,
         .folder-element .back-side {
           position: absolute;
-          transition: transform var(--transition);
-          transform-origin: bottom center;
+          top: 0;
+          left: 0;
+          width: var(--folder-W);
+          height: var(--folder-H);
+          background: linear-gradient(135deg, #9333ea, #6b21a8);
+          border-radius: 10px;
+          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+          transform-style: preserve-3d;
         }
 
+        /* Inner Papers Stack (Symmetrical & Perfectly Aligned) */
         .folder-element .back-side::before,
         .folder-element .back-side::after {
           content: "";
           display: block;
-          background-color: rgba(255, 255, 255, 0.6);
-          z-index: 0;
-          width: var(--folder-W);
-          height: var(--folder-H);
           position: absolute;
+          top: 4px;
+          left: 8px;
+          width: calc(var(--folder-W) - 16px);
+          height: calc(var(--folder-H) - 10px);
+          background-color: rgba(255, 255, 255, 0.7);
+          border-radius: 6px;
           transform-origin: bottom center;
-          border-radius: 12px;
-          transition: transform 350ms;
+          transition: transform var(--transition) ease;
+          z-index: 0;
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
-        .group:hover .back-side::before {
-          transform: rotateX(-5deg) skewX(5deg);
-        }
-        .group:hover .back-side::after {
-          transform: rotateX(-15deg) skewX(12deg);
+        .folder-element .back-side::after {
+          background-color: rgba(255, 255, 255, 0.4);
+          top: 2px;
+          left: 12px;
+          width: calc(var(--folder-W) - 24px);
         }
 
-        .folder-element .front-side {
+        .group:hover .folder-element .back-side::before,
+        .folder-container:hover .back-side::before {
+          transform: translateY(-6px) rotateX(-8deg);
+        }
+
+        .group:hover .folder-element .back-side::after,
+        .folder-container:hover .back-side::after {
+          transform: translateY(-12px) rotateX(-16deg);
+        }
+
+        /* Main Document Paper (Slides Up Centered) */
+        .folder-element .paper {
+          position: absolute;
+          top: 6px;
+          left: 10px;
+          width: calc(var(--folder-W) - 20px);
+          height: calc(var(--folder-H) - 12px);
+          background: #ffffff;
+          border-radius: 6px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+          transition: transform var(--transition) ease;
           z-index: 1;
         }
 
-        .group:hover .front-side {
-          transform: rotateX(-40deg) skewX(15deg);
+        .group:hover .folder-element .paper,
+        .folder-container:hover .paper {
+          transform: translateY(-14px);
+        }
+
+        /* Front Flap (Opens Forward Centered) */
+        .folder-element .front-side {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: var(--folder-W);
+          height: var(--folder-H);
+          transform-origin: bottom center;
+          transition: transform var(--transition) ease;
+          z-index: 2;
+        }
+
+        .group:hover .folder-element .front-side,
+        .folder-container:hover .front-side {
+          transform: rotateX(-36deg);
         }
 
         .folder-element .tip {
           background: linear-gradient(135deg, #a855f7, #7c3aed);
-          width: 70px;
-          height: 18px;
-          border-radius: 10px 10px 0 0;
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+          width: 65px;
+          height: 14px;
+          border-radius: 8px 8px 0 0;
           position: absolute;
-          top: -9px;
+          top: -8px;
+          left: 0;
           z-index: 2;
         }
 
@@ -323,8 +347,10 @@ const FileUpload = ({
           background: linear-gradient(135deg, #c084fc, #9333ea);
           width: var(--folder-W);
           height: var(--folder-H);
-          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
           border-radius: 10px;
+          position: relative;
+          z-index: 3;
         }
 
         .custom-file-upload-btn {
@@ -335,9 +361,6 @@ const FileUpload = ({
           background: rgba(255, 255, 255, 0.25);
           border: 1px solid rgba(255, 255, 255, 0.3);
           border-radius: 12px;
-          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-          cursor: pointer;
-          transition: all var(--transition) ease;
           display: inline-block;
           width: 100%;
           padding: 8px 20px;
@@ -345,19 +368,27 @@ const FileUpload = ({
           backdrop-filter: blur(4px);
         }
 
-        .group:hover .custom-file-upload-btn {
-          background: rgba(255, 255, 255, 0.4);
-          transform: translateY(-1px);
+        /* Spinner Loader (From Uiverse.io by Fernando-sv) */
+        .loader {
+          border-width: 3px;
+          border-style: solid;
+          border-radius: 50%;
+          width: 32px;
+          height: 32px;
+          animation: spin89345 0.9s linear infinite;
         }
 
-        @keyframes floatFolder {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-12px); }
-          100% { transform: translateY(0px); }
+        @keyframes spin89345 {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
         }
       `}</style>
 
-      <div className="w-full h-full font-sans">
+      <div className="w-full h-[380px] min-h-[380px] max-h-[380px] font-sans">
         {/* Hidden File Input */}
         <input
           type="file"
@@ -368,7 +399,7 @@ const FileUpload = ({
           id="refinex-file-input"
         />
 
-        {/* DRAG & DROP ZONE */}
+        {/* STATE 1: DRAG & DROP ZONE (NO FILE SELECTED YET) */}
         {!selectedFile && !uploading ? (
           <div
             onDragEnter={handleDragEnter}
@@ -383,36 +414,37 @@ const FileUpload = ({
               }
             }}
             tabIndex={0}
-            className={`relative group cursor-pointer w-full min-h-[380px] h-full rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center transition-all duration-300 border-2 border-dashed outline-none overflow-hidden ${
+            className={`relative group cursor-pointer w-full h-[380px] min-h-[380px] max-h-[380px] rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center transition-all duration-300 border-2 border-dashed outline-none overflow-hidden ${
               isDragging
                 ? "border-purple-600 bg-purple-500/10 ring-4 ring-purple-500/20 shadow-xl"
                 : "border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-md dark:shadow-black/40 hover:border-slate-400 dark:hover:border-zinc-700"
             }`}
           >
-
-            {/* 3D Folder Upload Animation */}
+            {/* Stable 3D Folder Container */}
             <div className="mb-3 select-none my-2 pointer-events-none">
               <div className="folder-container">
                 <div className="folder-element">
+                  <div className="back-side" />
+                  <div className="paper" />
                   <div className="front-side">
                     <div className="tip" />
                     <div className="cover" />
                   </div>
-                  <div className="back-side cover" />
                 </div>
-                <span className="custom-file-upload-btn">
+                <span className="custom-file-upload-btn select-none">
                   Browse File
                 </span>
               </div>
             </div>
 
-            {/* Title & Instructions */}
+            {/* Headline */}
             <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight mt-2 mb-1">
-              {isDragging ? "Drop dataset here to begin" : "Drag and drop dataset here"}
+              {isDragging ? "Drop Dataset Here to Begin" : "Drag & Drop Dataset"}
             </h3>
 
+            {/* Size limit subtext */}
             <p className="text-xs text-slate-500 dark:text-zinc-400 font-medium mb-3">
-              Supports <strong className="text-slate-800 dark:text-zinc-200">CSV, XLSX, XLS, JSON</strong> • Up to <strong className="text-purple-600 dark:text-purple-400 font-bold">{maxSizeMB}MB</strong>
+              Up to <strong className="text-purple-600 dark:text-purple-400 font-bold">{maxSizeMB}MB</strong>
             </p>
 
             {/* Accepted Formats Badges */}
@@ -436,19 +468,21 @@ const FileUpload = ({
             )}
           </div>
         ) : (
-          /* ACTIVE FILE / UPLOADING / COMPLETED CARD */
-          <div className="w-full min-h-[380px] h-full bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 flex flex-col justify-center shadow-lg shadow-slate-100/50 dark:shadow-none transition-all duration-300 relative overflow-hidden">
-            {/* Top Section: File Metadata (Flex Row: Left Folder + Right Text) */}
-            <div className="flex items-center gap-6 mb-6">
-              {/* Left Side: 3D Folder Container */}
+          /* STATE 2 & 3: SELECTED FILE / UPLOADING / COMPLETED CARD */
+          <div className="w-full h-[380px] min-h-[380px] max-h-[380px] bg-white dark:bg-[#212121] border border-slate-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 flex flex-col justify-between shadow-lg shadow-slate-100/50 dark:shadow-none transition-all duration-300 relative overflow-hidden">
+            
+            {/* FILE DETAILS SECTION (Left Folder / File Icon + Right Dataset Name & Size) */}
+            <div className="flex items-center gap-6 my-auto">
+              {/* Left Side: 3D Folder Representation */}
               <div className="select-none shrink-0 scale-75 sm:scale-85 origin-left">
                 <div className="folder-container">
                   <div className="folder-element">
+                    <div className="back-side" />
+                    <div className="paper" />
                     <div className="front-side">
                       <div className="tip" />
                       <div className="cover" />
                     </div>
-                    <div className="back-side cover" />
                   </div>
                   <span className="custom-file-upload-btn uppercase tracking-wider text-[11px] font-extrabold">
                     {fileDetails?.label || "FILE"}
@@ -456,67 +490,77 @@ const FileUpload = ({
                 </div>
               </div>
 
-              {/* Right Side: File Name, Size & Cancel Upload Button */}
-              <div className="min-w-0 flex-1 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <h4 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white truncate">
-                    {selectedFile?.name || "Dataset"}
-                  </h4>
-                  <p className="text-xs sm:text-sm text-slate-400 dark:text-zinc-400 font-medium mt-1">
-                    {formatBytes(fileSize)}
-                  </p>
-                </div>
-
-                {uploading && (
-                  <button
-                    type="button"
-                    onClick={handleCancelUpload}
-                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95"
-                    title="Cancel upload"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    <span>Cancel</span>
-                  </button>
-                )}
+              {/* Right Side: File Name & Size */}
+              <div className="min-w-0 flex-1">
+                <h4 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white truncate">
+                  {selectedFile?.name || "Dataset"}
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400 font-medium mt-1">
+                  {formatBytes(fileSize)}
+                </p>
               </div>
             </div>
 
-            {/* Bottom Section: The Inner Progress Box */}
+            {/* ACTION BUTTONS (70% UPLOAD / 30% CANCEL - MINIMAL PILL SHAPE) */}
+            {selectedFile && !uploading && !isCompleted && !isFailed && (
+              <div className="w-full mt-auto pt-6 border-t border-slate-200/80 dark:border-zinc-800 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={handleConfirmUpload}
+                  className="w-[70%] py-3 px-5 text-xs sm:text-sm font-bold rounded-full bg-[#673ab7] hover:bg-[#522e93] text-white transition-all duration-300 ease-in-out cursor-pointer text-center whitespace-nowrap select-none active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>Upload Dataset</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className="group w-[30%] py-3 px-4 text-xs sm:text-sm font-bold rounded-full bg-transparent text-slate-800 dark:text-zinc-200 border border-slate-300 dark:border-zinc-700 hover:text-rose-500 dark:hover:text-rose-400 hover:border-rose-500 dark:hover:border-rose-400 focus:text-rose-500 focus:border-rose-500 transition-all duration-300 ease-in-out cursor-pointer text-center whitespace-nowrap select-none active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <X className="w-4 h-4 text-slate-500 dark:text-zinc-400 group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors duration-300" />
+                  <span>Cancel</span>
+                </button>
+              </div>
+            )}
+
+            {/* UPLOADING STATE (UIVERSE SPINNER & PROGRESS BAR) */}
             {uploading && (
-              <div className="bg-slate-50/60 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/10 rounded-2xl p-5 backdrop-blur-sm space-y-3">
-                {/* Progress Header (Flex Row) */}
-                <div className="flex items-center justify-between text-xs gap-3">
-                  {/* Left: Circular CSS Spinner + Stage Message */}
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-3.5 h-3.5 rounded-full border-2 border-purple-500 border-t-transparent animate-spin shrink-0" />
-                    <span className="text-xs font-semibold text-slate-700 dark:text-zinc-200 truncate">
-                      {getStageMessage()}
-                    </span>
+              <div className="bg-slate-50/80 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/10 rounded-2xl p-6 backdrop-blur-sm space-y-4 my-auto">
+                {/* Progress Header with Spinner */}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    {/* Uiverse Spinner (Black in Light mode, White in Dark mode) */}
+                    <div className="loader border-slate-900/20 border-l-slate-900 dark:border-white/20 dark:border-l-white shrink-0" />
+                    
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                        {getStageMessage()}
+                      </span>
+                      <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
+                        Uploading dataset payload...
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Right: Percentage Text */}
-                  <span className="text-xs sm:text-sm font-extrabold text-purple-600 dark:text-purple-300 shrink-0">
+                  <span className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white shrink-0">
                     {displayProgress}%
                   </span>
                 </div>
 
-                {/* Progress Track & Bar */}
-                <div className="w-full h-2.5 rounded-full bg-slate-200 dark:bg-zinc-800 overflow-hidden relative">
-                  {/* Fill Bar with bright purple-to-pink gradient and neon glow */}
+                {/* Progress Track & Bar (Black in Light mode, White in Dark mode) */}
+                <div className="w-full h-3 rounded-full bg-slate-200 dark:bg-zinc-800 overflow-hidden relative">
                   <div
-                    className="h-full bg-gradient-to-r from-purple-500 to-fuchsia-400 rounded-full transition-all duration-200 ease-out relative shadow-[0_0_12px_rgba(168,85,247,0.8)]"
+                    className="h-full bg-black dark:bg-white rounded-full transition-all duration-200 ease-out"
                     style={{ width: `${Math.min(100, Math.max(0, displayProgress))}%` }}
-                  >
-                    {/* Shimmer animation overlay */}
-                    <div className="animate-shimmer-glow" />
-                  </div>
+                  />
                 </div>
               </div>
             )}
 
             {/* SUCCESS BANNER */}
             {isCompleted && (
-              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3 text-emerald-700 dark:text-emerald-400 text-xs font-medium shadow-sm">
+              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3 text-emerald-700 dark:text-emerald-400 text-xs font-medium shadow-sm mt-4">
                 <div className="flex items-center gap-2.5">
                   <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
                   <span>
@@ -535,7 +579,7 @@ const FileUpload = ({
 
             {/* ERROR BANNER */}
             {isFailed && (
-              <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-3 text-red-600 dark:text-red-400 text-xs font-medium shadow-sm">
+              <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-3 text-red-600 dark:text-red-400 text-xs font-medium shadow-sm mt-4">
                 <div className="flex items-center gap-2.5">
                   <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
                   <span>
@@ -545,7 +589,7 @@ const FileUpload = ({
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={() => validateAndProcessFile(selectedFile)}
+                    onClick={handleConfirmUpload}
                     className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#673ab7] text-white hover:bg-[#522e93] transition cursor-pointer"
                   >
                     Retry

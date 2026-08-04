@@ -506,20 +506,20 @@ const FileUpload = ({
               <div className="w-full mt-auto pt-6 border-t border-slate-200/80 dark:border-zinc-800 flex items-center justify-between gap-3">
                 <button
                   type="button"
-                  onClick={handleConfirmUpload}
-                  className="w-[70%] py-3 px-5 text-xs sm:text-sm font-bold rounded-full bg-[#673ab7] hover:bg-[#522e93] text-white transition-all duration-300 ease-in-out cursor-pointer text-center whitespace-nowrap select-none active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>Upload Dataset</span>
-                </button>
-
-                <button
-                  type="button"
                   onClick={handleClear}
                   className="group w-[30%] py-3 px-4 text-xs sm:text-sm font-bold rounded-full bg-transparent text-slate-800 dark:text-zinc-200 border border-slate-300 dark:border-zinc-700 hover:text-rose-500 dark:hover:text-rose-400 hover:border-rose-500 dark:hover:border-rose-400 focus:text-rose-500 focus:border-rose-500 transition-all duration-300 ease-in-out cursor-pointer text-center whitespace-nowrap select-none active:scale-95 flex items-center justify-center gap-1.5"
                 >
                   <X className="w-4 h-4 text-slate-500 dark:text-zinc-400 group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors duration-300" />
                   <span>Cancel</span>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={handleConfirmUpload}
+                  className="w-[70%] py-3 px-5 text-xs sm:text-sm font-bold rounded-full bg-[#673ab7] hover:bg-[#522e93] text-white transition-all duration-300 ease-in-out cursor-pointer text-center whitespace-nowrap select-none active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>Upload Dataset</span>
                 </button>
               </div>
             )}

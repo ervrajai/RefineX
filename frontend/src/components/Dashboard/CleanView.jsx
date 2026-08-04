@@ -352,7 +352,7 @@ export default function CleanView({
       });
       setManualTypes(mapping);
 
-      setSuccessMsg("✓ File uploaded and profiled successfully!");
+      setSuccessMsg("File uploaded and profiled successfully!");
       fetchCleanHistory();
     } catch (err) {
       if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || (err.message && err.message.includes("canceled"))) {
@@ -392,7 +392,7 @@ export default function CleanView({
       setSelectedUnwanted([]);
       
       setActiveReportTab("compare");
-      setSuccessMsg("✓ Dataset cleaned successfully!");
+      setSuccessMsg("Dataset cleaned successfully!");
     } catch (err) {
       setErrorMsg(err.response?.data?.error || "Cleaning operation failed.");
     } finally {
@@ -487,7 +487,7 @@ export default function CleanView({
       }));
 
       setActiveReportTab("profile");
-      setSuccessMsg("✓ Dataset reset to original state.");
+      setSuccessMsg("Dataset reset to original state.");
     } catch (err) {
       setErrorMsg(err.response?.data?.error || "Reset failed.");
     } finally {

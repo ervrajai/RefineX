@@ -65,7 +65,7 @@ const FileUpload = ({
   uploadSpeed = 0,
   errorMsg = "",
   successMsg = "",
-  acceptedFormats = [".csv", ".xlsx", ".xls", ".json"],
+  acceptedFormats = [".csv", ".xlsx", ".xls"],
   maxSizeMB = 100,
   onReset,
   onCancel
@@ -226,7 +226,7 @@ const FileUpload = ({
           padding: 12px;
           background: linear-gradient(135deg, #7c3aed, #4f46e5);
           border-radius: 20px;
-          box-shadow: 0 12px 28px rgba(124, 58, 237, 0.35);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           height: calc(var(--folder-H) * 1.65);
           width: 210px;
           position: relative;

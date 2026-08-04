@@ -186,6 +186,13 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
     }
   };
 
+  const getInitials = (firstName, lastName, email) => {
+    if (firstName && lastName) return `${firstName[0]}${lastName[0]}`.toUpperCase();
+    if (firstName) return firstName[0].toUpperCase();
+    if (email) return email[0].toUpperCase();
+    return "U";
+  };
+
   const formatDate = (iso) => {
     if (!iso) return "—";
     return new Date(iso).toLocaleDateString("en-US", {
@@ -220,7 +227,6 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
       const response = await api.patch("accounts/profile/", {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
-        username: username.trim(),
         profile_picture: avatar.trim(),
         avatar: avatar.trim(),
       });
@@ -563,10 +569,8 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                         }}
                       />
                     ) : (
-                      <span className="text-xl sm:text-3xl font-extrabold text-purple-600 dark:text-purple-400">
-                        {user?.first_name
-                          ? user.first_name[0].toUpperCase()
-                          : "U"}
+                      <span className="text-xl sm:text-3xl font-extrabold text-slate-700 dark:text-zinc-300">
+                        {getInitials(user?.first_name, user?.last_name, user?.email)}
                       </span>
                     )}
                   </div>
@@ -711,18 +715,6 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] sm:text-xs font-semibold text-slate-400">
-                      Username
-                    </label>
-                    <input
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30"
-                    />
-                  </div>
-
                   <div className="flex items-center justify-end gap-2 pt-1">
                     <button
                       type="button"
@@ -754,15 +746,19 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
       {/* Appearance Section */}
       {showAppearance && (
         <div className="flex flex-col p-4 sm:p-5 rounded-3xl bg-slate-100/70 dark:bg-zinc-900/70 border border-slate-200/80 dark:border-zinc-800/80">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <Moon className="w-4 h-4 text-purple-500" />
-            <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
-              Appearance
-            </h3>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 sm:p-2.5 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
+              <Moon className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                Appearance
+              </h3>
+              <p className="text-[10px] sm:text-xs text-slate-400 dark:text-zinc-400">
+                Select your preferred display theme
+              </p>
+            </div>
           </div>
-          <p className="text-[11px] sm:text-xs text-slate-400 dark:text-zinc-400 mb-4">
-            Select your preferred display theme
-          </p>
 
           {/* Full width grid, slightly taller padding (p-1.5) */}
           <div className="grid grid-cols-3 gap-1.5 bg-slate-200/60 dark:bg-[#1c1c1e] p-1.5 rounded-2xl border border-slate-300/40 dark:border-zinc-800/60 w-full">
@@ -803,13 +799,15 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
       {showUpdatePassword && (
         <div>
           {user?.auth_provider && user?.auth_provider !== "email" ? (
-            <div className="p-4 rounded-3xl bg-slate-100/70 dark:bg-zinc-900/70 border border-slate-200/80 dark:border-zinc-800/80 flex items-center gap-3">
-              <ShieldAlert className="w-4 h-4 text-purple-500 shrink-0" />
+            <div className="p-4 sm:p-5 rounded-3xl bg-slate-100/70 dark:bg-zinc-900/70 border border-slate-200/80 dark:border-zinc-800/80 flex items-center gap-3">
+              <div className="p-2 sm:p-2.5 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
+                <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
               <div>
                 <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
                   Social Account Connected
                 </h4>
-                <p className="text-[10px] sm:text-xs text-slate-400">
+                <p className="text-[10px] sm:text-xs text-slate-400 dark:text-zinc-400">
                   Signed in via{" "}
                   <span className="capitalize font-semibold">
                     {user.auth_provider}
@@ -1094,7 +1092,11 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
         items={[
           {
             id: "recently-deleted",
-            icon: <Trash2 className="w-5 h-5 text-amber-500" />,
+            icon: (
+              <div className="p-2 sm:p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+            ),
             title: (
               <div className="flex items-center justify-between w-full pr-2">
                 <div className="flex items-center gap-2.5">

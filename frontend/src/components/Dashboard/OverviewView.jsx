@@ -10,7 +10,8 @@ import {
   ChevronRight,
   ArrowRight,
   BrushCleaning,
-  LineChart
+  LineChart,
+  Play
 } from "lucide-react";
 import { 
   BarChart, 
@@ -119,6 +120,14 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
   }
 
   const profile = data?.profile || user || {};
+  const userAvatar = profile?.profile_picture || profile?.avatar || user?.profile_picture || user?.avatar;
+
+  const getInitials = (firstName, lastName, email) => {
+    if (firstName && lastName) return `${firstName[0]}${lastName[0]}`.toUpperCase();
+    if (firstName) return firstName[0].toUpperCase();
+    if (email) return email[0].toUpperCase();
+    return "U";
+  };
   const stats = data?.stats || {};
   const recentCsvs = data?.recent_csv_files || [];
   const latestModels = data?.latest_trained_models || [];
@@ -216,7 +225,7 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
           <div className="lg:col-span-8 space-y-6 min-w-0">
             
             {/* RESPONSIVE TOP HEADER (MOBILE ONLY: 2 EQUAL SQUARES) */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:hidden">
+            <div className="grid grid-cols-2 gap-3 sm:hidden">
               {/* Square 1: Upload CSV Action */}
               <div className="rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-[#7a5af8] to-[#9b82f6] text-white flex flex-col justify-between aspect-square relative overflow-hidden shadow-sm select-none">
                 <Sparkles className="absolute top-3 right-3 w-8 h-8 sm:w-10 sm:h-10 text-white opacity-20 pointer-events-none" />
@@ -243,10 +252,12 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
               <div className="rounded-3xl p-4 sm:p-5 bg-white dark:bg-[#212121] border border-slate-200/80 dark:border-zinc-800 flex flex-col items-center justify-between text-center aspect-square shadow-sm">
                 {/* Avatar */}
                 <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden border-2 border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 shadow-xs mt-0.5">
-                  {profile.avatar ? (
-                    <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
+                  {userAvatar ? (
+                    <img src={userAvatar} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    <User className="w-6 h-6 sm:w-7 sm:h-7 text-purple-600 dark:text-purple-400" />
+                    <span className="text-xs sm:text-sm font-extrabold text-slate-700 dark:text-zinc-300">
+                      {getInitials(profile?.first_name || user?.first_name, profile?.last_name || user?.last_name, profile?.email || user?.email)}
+                    </span>
                   )}
                 </div>
 
@@ -272,8 +283,8 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
               </div>
             </div>
 
-            {/* DESKTOP HERO BANNER (DESKTOP ONLY) */}
-            <div className="hidden lg:flex w-full min-h-[200px] rounded-3xl p-8 bg-gradient-to-r from-[#7a5af8] to-[#9b82f6] border border-transparent select-none flex-col justify-between relative overflow-hidden shadow-sm">
+            {/* WIDE HERO BANNER (TABLETS & DESKTOP) */}
+            <div className="hidden sm:flex w-full min-h-[200px] rounded-3xl p-8 bg-gradient-to-r from-[#7a5af8] to-[#9b82f6] border border-transparent select-none flex-col justify-between relative overflow-hidden shadow-sm">
               <Sparkles className="absolute top-6 right-10 w-16 h-16 text-white opacity-20 pointer-events-none" />
               <Sparkles className="absolute bottom-4 right-1/4 w-8 h-8 text-white opacity-20 pointer-events-none" />
 
@@ -447,7 +458,7 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
             </div>
 
             {/* MOBILE ONLY: PROFILE REMAINING SECTIONS (STATS GRID & RECENT WORKSPACE AT THE VERY BOTTOM) */}
-            <div className="flex flex-col gap-6 lg:hidden pt-2">
+            <div className="flex flex-col gap-6 sm:hidden pt-2">
               <div className="p-3.5 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm">
                 <div className="grid grid-cols-3 gap-2">
                   <div 
@@ -521,9 +532,9 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
                           </div>
                           <button 
                             onClick={(e) => { e.stopPropagation(); onQuickResume(ds); }}
-                            className="px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700 dark:hover:bg-zinc-700 shrink-0 transition-colors flex items-center gap-1 cursor-pointer"
+                            className="px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700 dark:hover:bg-zinc-700 shrink-0 transition-colors flex items-center gap-1.5 cursor-pointer"
                           >
-                            <User className="w-3 h-3 hidden sm:block" /> Resume
+                            <Play className="w-3 h-3 text-slate-700 dark:text-white fill-none stroke-[2.2] shrink-0" /> Resume
                           </button>
                         </div>
                       ))
@@ -546,15 +557,17 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
 
           </div>
 
-          {/* --- RIGHT COLUMN: STICKY PROFILE PANEL (DESKTOP ONLY) --- */}
-          <div className="hidden lg:flex lg:col-span-4 lg:sticky lg:top-0 rounded-3xl bg-white dark:bg-[#212121] border border-slate-200/80 dark:border-zinc-800 shadow-md dark:shadow-black/50 p-6 flex-col gap-6 shadow-sm">
+          {/* --- RIGHT COLUMN: STICKY PROFILE PANEL (TABLETS & DESKTOP) --- */}
+          <div className="hidden sm:flex lg:col-span-4 lg:sticky lg:top-0 rounded-3xl bg-white dark:bg-[#212121] border border-slate-200/80 dark:border-zinc-800 shadow-md dark:shadow-black/50 p-6 flex-col gap-6 shadow-sm">
             
             <div className="flex flex-col items-center text-center gap-3 pb-4 border-b border-slate-200 dark:border-zinc-700">
               <div className="w-18 h-18 rounded-full overflow-hidden border-2 border-slate-200 dark:border-zinc-700 shadow-sm bg-slate-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
-                {profile.avatar ? (
-                  <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
+                {userAvatar ? (
+                  <img src={userAvatar} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
-                  <User className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+                  <span className="text-base sm:text-lg font-extrabold text-slate-700 dark:text-zinc-300">
+                    {getInitials(profile?.first_name || user?.first_name, profile?.last_name || user?.last_name, profile?.email || user?.email)}
+                  </span>
                 )}
               </div>
               <div className="flex flex-col items-center">
@@ -650,9 +663,9 @@ function OverviewView({ user, onQuickResume, setActiveTab }) {
                         </div>
                         <button 
                           onClick={(e) => { e.stopPropagation(); onQuickResume(ds); }}
-                          className="px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700 dark:hover:bg-zinc-700 shrink-0 transition-colors flex items-center gap-1 cursor-pointer"
+                          className="px-3 py-1.5 rounded-full text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700 dark:hover:bg-zinc-700 shrink-0 transition-colors flex items-center gap-1.5 cursor-pointer"
                         >
-                          <User className="w-3 h-3 hidden sm:block" /> Resume
+                          <Play className="w-3 h-3 text-slate-700 dark:text-white fill-none stroke-[2.2] shrink-0" /> Resume
                         </button>
                       </div>
                     ))

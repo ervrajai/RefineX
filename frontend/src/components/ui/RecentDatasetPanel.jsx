@@ -61,10 +61,6 @@ export default function RecentDatasetPanel({
                 onClick={() => onSelect && onSelect(item)}
                 className="relative group p-2.5 sm:p-3 rounded-xl border border-slate-200/90 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/60 hover:bg-slate-900 dark:hover:bg-white hover:border-slate-900 dark:hover:border-white transition-all duration-300 ease-in-out cursor-pointer flex items-center justify-between shadow-2xs overflow-hidden"
               >
-                {/* Top/Bottom Key accent lines (Fancy hover style) */}
-                <span className="absolute top-0 left-3 h-[2px] w-5 bg-slate-300 dark:bg-zinc-700 group-hover:w-0 group-hover:left-0 transition-all duration-300" />
-                <span className="absolute bottom-0 right-3 h-[2px] w-5 bg-slate-300 dark:bg-zinc-700 group-hover:w-0 group-hover:right-0 transition-all duration-300" />
-
                 {/* Left content: Icon + Info */}
                 <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                   <div className="p-1.5 sm:p-2 rounded-lg bg-slate-200/70 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 group-hover:bg-white/20 dark:group-hover:bg-slate-900/10 group-hover:text-white dark:group-hover:text-slate-900 shrink-0 transition-colors duration-300">

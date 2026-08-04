@@ -214,7 +214,7 @@ export default function VisualizationView({
       setMetadata(previewRes.data.metadata);
       setPreview(previewRes.data);
       setReport(analyzeRes.data);
-      setSuccessMsg("✓ File uploaded successfully!");
+      setSuccessMsg("File uploaded successfully!");
     } catch (err) {
       if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || (err.message && err.message.includes("canceled"))) {
         setErrorMsg("Upload canceled.");

@@ -144,6 +144,7 @@ class DatasetMLTrainView(APIView):
             target_column=target,
             selected_features=features,
             selected_models=algorithms,
+            feature_dtypes=request.data.get("feature_dtypes", {}),
             training_mode=mode,
             hyperparameters=hparams,
             status="pending",

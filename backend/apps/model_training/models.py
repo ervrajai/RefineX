@@ -24,6 +24,7 @@ class ModelTrainingJob(models.Model):
     target_column = models.CharField(max_length=100)
     selected_features = models.JSONField(default=list)
     selected_models = models.JSONField(default=list)
+    feature_dtypes = models.JSONField(default=dict, null=True, blank=True)
     training_mode = models.CharField(max_length=50, default="manual")  # manual, decide
     
     preprocessing_steps = models.JSONField(default=list)

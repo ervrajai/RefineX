@@ -1905,6 +1905,30 @@ export default function VisualizationView({
 
                     <div>
                       <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        Color Palette / Gradient
+                      </label>
+                      <AnimatedSelect
+                        value={config.color_palette}
+                        onChange={(val) => updateConfig({ ...config, color_palette: val })}
+                        options={[
+                          { value: "viridis", label: "Viridis (Purple-Teal-Yellow)" },
+                          { value: "plasma", label: "Plasma (Purple-Red-Yellow)" },
+                          { value: "magma", label: "Magma (Dark-Pink-White)" },
+                          { value: "cividis", label: "Cividis (Blue-Yellow)" },
+                          { value: "coolwarm", label: "Coolwarm (Blue-White-Red)" },
+                          { value: "rdbu", label: "RdBu (Red-White-Blue)" },
+                          { value: "spectral", label: "Spectral (Rainbow Gradient)" },
+                          { value: "inferno", label: "Inferno (Black-Red-Yellow)" },
+                          { value: "turbo", label: "Turbo (Vibrant Multi-Color)" },
+                          { value: "blues", label: "Blues (Deep Blue Gradient)" },
+                          { value: "purples", label: "Purples (Deep Purple Gradient)" },
+                        ]}
+                        className="w-full mt-1.5"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                         Cell Border Width
                       </label>
                       <input

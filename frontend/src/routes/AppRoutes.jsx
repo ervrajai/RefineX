@@ -9,6 +9,7 @@ import Signup from "../pages/Auth/Signup";
 import Dashboard from "../pages/Dashboard/Dashboard";
 import Landing from "../pages/Landing/Landing";
 import GuestCleanPage from "../pages/Landing/GuestCleanPage";
+import NotFound from "../pages/NotFound";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -61,6 +62,9 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
+        {/* Catch-all 404 Page Not Found */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </>
   );

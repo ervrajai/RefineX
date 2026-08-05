@@ -82,10 +82,6 @@ class User(AbstractUser):
 class UserProfile(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
-    bio = models.TextField(blank=True, default="")
-    phone = models.CharField(max_length=30, blank=True, default="")
-    organization = models.CharField(max_length=255, blank=True, default="")
-    job_title = models.CharField(max_length=255, blank=True, default="")
     avatar = models.CharField(max_length=500, blank=True, default="")
     preferences = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

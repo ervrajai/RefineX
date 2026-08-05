@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AlertCircle, X } from "lucide-react";
 
 import AuthLayout from "../../components/Auth/AuthLayout";
 import FormField from "../../components/Auth/FormField";
 import PasswordChecklist from "../../components/Auth/PasswordChecklist";
 import OtpInput from "../../components/Auth/OtpInput";
+import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 import { validatePassword } from "../../utils/passwordPolicy";
 
 function ForgotPassword() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { setLoggedOut } = useAuth();
+  const initialEmail = location.state?.email || "";
   const [step, setStep] = useState(1);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [otp, setOtp] = useState("");
   const [passwords, setPasswords] = useState({ password: "", confirm_password: "" });
   const [message, setMessage] = useState("");
@@ -20,6 +24,12 @@ function ForgotPassword() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [resendIn, setResendIn] = useState(0);
+
+  useEffect(() => {
+    if (location.state?.email) {
+      setEmail(location.state.email);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (resendIn <= 0) {
@@ -50,6 +60,20 @@ function ForgotPassword() {
     setError("");
   };
 
+  const formatErrorMessage = (err, fallback) => {
+    if (err.response?.status === 403) {
+      return "Security verification failed. Please refresh the page and try again.";
+    }
+    const detail = err.response?.data?.detail;
+    if (typeof detail === "string") {
+      if (detail.toLowerCase().includes("csrf") || detail.toLowerCase().includes("forbidden")) {
+        return "Security verification failed. Please refresh the page and try again.";
+      }
+      return detail;
+    }
+    return fallback;
+  };
+
   const requestOtp = async (event) => {
     event?.preventDefault();
     setError("");
@@ -65,15 +89,11 @@ function ForgotPassword() {
         setResendIn(err.response.data.retry_after);
       }
       const data = err.response?.data;
-      if (data && typeof data === "object") {
-        if (data.detail) {
-          setError(data.detail);
-        } else {
-          setFieldErrors(data);
-          setError("Please correct the errors in the form.");
-        }
+      if (data && typeof data === "object" && !data.detail) {
+        setFieldErrors(data);
+        setError("Please correct the errors in the form.");
       } else {
-        setError("Could not send OTP. Please try again.");
+        setError(formatErrorMessage(err, "Could not send OTP. Please try again."));
       }
     } finally {
       setLoading(false);
@@ -89,7 +109,7 @@ function ForgotPassword() {
       setMessage("OTP verified. Set your new password.");
       setStep(3);
     } catch (err) {
-      setError(err.response?.data?.detail || "Invalid OTP.");
+      setError(formatErrorMessage(err, "Invalid OTP. Please check the code and try again."));
     } finally {
       setLoading(false);
     }
@@ -112,19 +132,19 @@ function ForgotPassword() {
 
     setLoading(true);
     try {
-      await api.post("accounts/forgot-password/reset/", { email, ...passwords });
-      navigate("/login");
+      const res = await api.post("accounts/forgot-password/reset/", { email, ...passwords });
+      setLoggedOut();
+      navigate("/login", {
+        replace: true,
+        state: { message: res.data?.detail || "Password updated successfully. Please log in with your new password." },
+      });
     } catch (err) {
       const data = err.response?.data;
-      if (data && typeof data === "object") {
-        if (data.detail) {
-          setError(data.detail);
-        } else {
-          setFieldErrors(data);
-          setError("Could not reset password.");
-        }
-      } else {
+      if (data && typeof data === "object" && !data.detail) {
+        setFieldErrors(data);
         setError("Could not reset password.");
+      } else {
+        setError(formatErrorMessage(err, "Could not reset password. Please try again."));
       }
     } finally {
       setLoading(false);

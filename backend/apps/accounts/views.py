@@ -34,6 +34,11 @@ OTP_MAX_ATTEMPTS = 5
 OTP_RESEND_COOLDOWN_SECONDS = 30
 
 
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return
+
+
 def _otp_session_key(purpose):
     return f"{purpose}_otp"
 
@@ -104,16 +109,38 @@ def _resend_cooldown_response(request, purpose, email):
     )
 
 
-def _send_otp(email, otp, subject):
-    message = (
-        f"Your Refinex verification code is {otp}. "
-        f"It expires in {OTP_TIMEOUT_MINUTES} minutes."
-    )
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+
+PURPOSE_EMAIL_CONFIG = {
+    "signup": {
+        "template": "emails/signup_otp.html",
+        "subject": "Verify your RefineX signup",
+    },
+    "password_reset": {
+        "template": "emails/password_reset_otp.html",
+        "subject": "Reset your RefineX password",
+    },
+    "delete_account": {
+        "template": "emails/delete_account_otp.html",
+        "subject": "Confirm RefineX Account Deletion",
+    },
+}
+
+
+def _send_otp(email, otp, subject, purpose="signup"):
+    config = PURPOSE_EMAIL_CONFIG.get(purpose, PURPOSE_EMAIL_CONFIG["signup"])
+    final_subject = subject or config["subject"]
+    context = {"otp_code": otp}
+    html_message = render_to_string(config["template"], context)
+    text_message = strip_tags(html_message)
+
     sent_count = send_mail(
-        subject,
-        message,
+        final_subject,
+        text_message,
         getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@refinex.local"),
         [email],
+        html_message=html_message,
         fail_silently=False,
     )
     if sent_count != 1:
@@ -138,8 +165,10 @@ class GetCSRFTokenView(APIView):
     def get(self, request):
         return Response({"detail": "CSRF cookie set successfully."})
 
+@method_decorator(csrf_exempt, name='dispatch')
 class SignupOtpRequestView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
         serializer = SignupOtpRequestSerializer(data=request.data)
@@ -166,7 +195,7 @@ class SignupOtpRequestView(APIView):
 
         otp = _generate_otp()
         try:
-            _send_otp(email, otp, "Verify your Refinex signup")
+            _send_otp(email, otp, "Verify your RefineX signup", purpose="signup")
         except (BadHeaderError, SMTPException, OSError):
             return _otp_email_error_response()
 
@@ -183,8 +212,10 @@ class SignupOtpRequestView(APIView):
         return Response({"detail": "OTP sent to your email."})
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class SignupOtpVerifyView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
         serializer = OtpVerifySerializer(data=request.data)
@@ -209,8 +240,10 @@ class SignupOtpVerifyView(APIView):
         return Response({"detail": "OTP verified."})
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CompleteSignupView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
         serializer = CompleteSignupSerializer(data=request.data)
@@ -233,6 +266,7 @@ class CompleteSignupView(APIView):
             first_name=record["extra"].get("first_name", ""),
             last_name=record["extra"].get("last_name", ""),
             auth_provider=User.AuthProvider.EMAIL,
+            is_email_verified=True,
         )
         user.backend = 'django.contrib.auth.backends.ModelBackend'
 
@@ -246,10 +280,6 @@ class CompleteSignupView(APIView):
         _clear_otp(request, "signup")
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
-
-class CsrfExemptSessionAuthentication(SessionAuthentication):
-    def enforce_csrf(self, request):
-        return
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -275,7 +305,8 @@ class RegisterView(APIView):
             password=password,
             first_name=first_name,
             last_name=last_name,
-            auth_provider=User.AuthProvider.EMAIL
+            auth_provider=User.AuthProvider.EMAIL,
+            is_email_verified=True,
         )
         user.backend = 'django.contrib.auth.backends.ModelBackend'
 
@@ -343,8 +374,10 @@ class CurrentUserView(APIView):
         return Response(UserSerializer(request.user).data)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ForgotPasswordOtpRequestView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
         serializer = ForgotPasswordOtpRequestSerializer(data=request.data)
@@ -369,7 +402,7 @@ class ForgotPasswordOtpRequestView(APIView):
 
         otp = _generate_otp()
         try:
-            _send_otp(email, otp, "Reset your Refinex password")
+            _send_otp(email, otp, "Reset your RefineX password", purpose="password_reset")
         except (BadHeaderError, SMTPException, OSError):
             return _otp_email_error_response()
 
@@ -377,8 +410,10 @@ class ForgotPasswordOtpRequestView(APIView):
         return Response({"detail": "OTP has been sent to your email."})
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ForgotPasswordOtpVerifyView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
         serializer = OtpVerifySerializer(data=request.data)
@@ -403,8 +438,10 @@ class ForgotPasswordOtpVerifyView(APIView):
         return Response({"detail": "OTP verified."})
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
         serializer = ResetPasswordSerializer(data=request.data)
@@ -425,17 +462,17 @@ class ResetPasswordView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             user.set_password(serializer.validated_data["password"])
+            user.password_last_updated = timezone.now()
             user.save()
+            logout(request)
         _clear_otp(request, "password_reset")
-        return Response({"detail": "Password updated successfully."})
+        return Response({"detail": "Password reset successfully. Please log in with your new password."})
 
 
 from .services import UserService, AccountSecurityService, OtpService
 from .serializers import (
     UpdateProfileSerializer,
     ChangePasswordSerializer,
-    EmailUpdateOtpRequestSerializer,
-    EmailUpdateVerifySerializer,
 )
 
 
@@ -455,13 +492,11 @@ class UserProfileView(APIView):
             "last_name": user.last_name,
             "profile_picture": user.profile_picture,
             "avatar": avatar,
-            "bio": profile.bio if profile else "",
-            "phone": profile.phone if profile else "",
-            "organization": profile.organization if profile else "",
-            "job_title": profile.job_title if profile else "",
             "auth_provider": user.auth_provider,
             "is_email_verified": user.is_email_verified,
-            "date_joined": user.date_joined,
+            "date_joined": user.date_joined or user.created_at,
+            "created_at": user.created_at,
+            "password_last_updated": user.password_last_updated,
         })
 
     def patch(self, request):
@@ -504,68 +539,14 @@ class ChangePasswordView(APIView):
                 new_password=data["new_password"],
                 request=request
             )
-            return Response({"detail": "Password updated successfully."}, status=status.HTTP_200_OK)
+            return Response({
+                "detail": "Password updated successfully.",
+                "user": UserSerializer(request.user).data
+            }, status=status.HTTP_200_OK)
         except ValueError as err:
             return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-class EmailUpdateOtpRequestView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        serializer = EmailUpdateOtpRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        new_email = serializer.validated_data["new_email"].lower()
-
-        if new_email == request.user.email.lower():
-            return Response({"detail": "New email cannot be the same as your current email."}, status=status.HTTP_400_BAD_REQUEST)
-
-        if UserModel.objects.filter(email__iexact=new_email).exists():
-            return Response({"detail": "An account with this email address already exists."}, status=status.HTTP_400_BAD_REQUEST)
-
-        cooldown_response = _resend_cooldown_response(request, "email_update", new_email)
-        if cooldown_response:
-            return cooldown_response
-
-        otp = OtpService.generate_otp()
-        try:
-            OtpService.send_otp_email(new_email, otp, "Verify your new Refinex email address")
-        except (BadHeaderError, SMTPException, OSError):
-            return _otp_email_error_response()
-
-        OtpService.store_otp(request, "email_update", email=new_email, otp=otp)
-        return Response({"detail": f"OTP verification code sent to {new_email}."})
-
-
-class EmailUpdateVerifyView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        serializer = EmailUpdateVerifySerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        new_email = serializer.validated_data["new_email"].lower()
-
-        record, error = OtpService.get_otp_record(request, "email_update")
-        if error:
-            return Response({"detail": error}, status=status.HTTP_400_BAD_REQUEST)
-
-        if record["email"] != new_email:
-            return Response({"detail": "OTP does not match this email address."}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not secrets.compare_digest(record["otp"], serializer.validated_data["otp"]):
-            record["attempts"] = record.get("attempts", 0) + 1
-            request.session[_otp_session_key("email_update")] = record
-            request.session.modified = True
-            return Response({"detail": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
-
-        user = request.user
-        user.email = new_email
-        user.is_email_verified = True
-        user.save(update_fields=["email", "is_email_verified"])
-
-        OtpService.clear_otp(request, "email_update")
-        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -583,7 +564,7 @@ class DeleteAccountOtpRequestView(APIView):
 
         otp = _generate_otp()
         try:
-            _send_otp(email, otp, "Confirm Refinex Account Deletion")
+            _send_otp(email, otp, "Confirm RefineX Account Deletion", purpose="delete_account")
         except (BadHeaderError, SMTPException, OSError):
             return _otp_email_error_response()
 

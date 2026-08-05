@@ -63,16 +63,26 @@ class OtpService:
         request.session.modified = True
 
     @staticmethod
-    def send_otp_email(email, otp, subject):
-        message = (
-            f"Your Refinex verification code is {otp}. "
-            f"It expires in {OTP_TIMEOUT_MINUTES} minutes."
-        )
+    def send_otp_email(email, otp, subject, purpose="signup"):
+        from django.template.loader import render_to_string
+        from django.utils.html import strip_tags
+
+        template_name = {
+            "signup": "emails/signup_otp.html",
+            "password_reset": "emails/password_reset_otp.html",
+            "delete_account": "emails/delete_account_otp.html",
+        }.get(purpose, "emails/signup_otp.html")
+
+        context = {"otp_code": otp}
+        html_message = render_to_string(template_name, context)
+        text_message = strip_tags(html_message)
+
         sent_count = send_mail(
             subject,
-            message,
+            text_message,
             getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@refinex.local"),
             [email],
+            html_message=html_message,
             fail_silently=False,
         )
         if sent_count != 1:
@@ -109,14 +119,6 @@ class UserService:
         profile, _ = UserProfile.objects.get_or_create(user=user)
         if avatar is not None:
             profile.avatar = avatar
-        if "bio" in data:
-            profile.bio = data["bio"]
-        if "phone" in data:
-            profile.phone = data["phone"]
-        if "organization" in data:
-            profile.organization = data["organization"]
-        if "job_title" in data:
-            profile.job_title = data["job_title"]
         profile.save()
 
         ActivityService.log_activity(

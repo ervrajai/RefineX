@@ -919,7 +919,7 @@ export default function VisualizationView({
               uploadSpeed={uploadSpeed}
               errorMsg={errorMsg}
               successMsg={successMsg}
-              acceptedFormats={[".csv", ".xlsx", ".xls", ".json"]}
+              acceptedFormats={[".csv", ".xlsx", ".xls"]}
               maxSizeMB={100}
               onCancel={cancelUpload}
               onReset={() => {

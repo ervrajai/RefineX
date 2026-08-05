@@ -70,6 +70,14 @@ def generate_graph(df, config):
             return {"success": False, "error": "Please select a valid X Axis Column."}
         if not y_col or y_col not in df.columns:
             return {"success": False, "error": "Please select a valid Y Axis Column."}
+
+    # Downsample large datasets to prevent browser DOM listener memory leaks & high CPU lag
+    MAX_VIZ_ROWS = 5000
+    if len(df) > MAX_VIZ_ROWS and graph_type not in ["heatmap", "correlationchart"]:
+        df = df.sample(n=MAX_VIZ_ROWS, random_state=42)
+    
+    # Clean up any lingering matplotlib figures before creating new plot
+    plt.close('all')
     
     # Apply theme colors
     # We will adjust standard matplotlib styles based on light/dark mode
@@ -104,21 +112,23 @@ def generate_graph(df, config):
     plt.rcParams['xtick.color'] = text_color
     plt.rcParams['ytick.color'] = text_color
     
-    # Check if network graph
-    if graph_type in ["networkgraph", "network", "relationshipchart"]:
-        return draw_networkx(df, config, bg_color, text_color)
-        
-    if library == "plotly":
-        return draw_plotly(df, config, plotly_template)
-    elif library == "seaborn":
-        return draw_seaborn(df, config)
-    elif library == "matplotlib":
-        return draw_matplotlib(df, config)
-    else:
-        return {
-            "success": False,
-            "error": f"Unsupported library: {library}"
-        }
+    try:
+        if graph_type in ["networkgraph", "network", "relationshipchart"]:
+            res = draw_networkx(df, config, bg_color, text_color)
+        elif library == "plotly":
+            res = draw_plotly(df, config, plotly_template)
+        elif library == "seaborn":
+            res = draw_seaborn(df, config)
+        elif library == "matplotlib":
+            res = draw_matplotlib(df, config)
+        else:
+            res = {
+                "success": False,
+                "error": f"Unsupported library: {library}"
+            }
+        return res
+    finally:
+        plt.close('all')
 
 def get_base64_images():
     """

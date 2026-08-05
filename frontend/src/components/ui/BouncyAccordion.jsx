@@ -103,7 +103,7 @@ function BouncyAccordionRow({
           )}
         >
           {item.icon && (
-            <span className={cn("grid h-7 w-7 shrink-0 place-items-center text-slate-500", classNames?.icon)}>
+            <span className={cn("flex shrink-0 items-center justify-center text-slate-500", classNames?.icon)}>
               {item.icon}
             </span>
           )}

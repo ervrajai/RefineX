@@ -102,6 +102,7 @@ export default function ModelTrainingView({
   const [selectedModelForModal, setSelectedModelForModal] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [openDownloadDropdownId, setOpenDownloadDropdownId] = useState(null);
+  const [centerViewMode, setCenterViewMode] = useState(trainingJobDetail ? "models" : "table");
   
   // Dedicated Predict Modal State
   const [isPredictModalOpen, setIsPredictModalOpen] = useState(false);
@@ -110,6 +111,21 @@ export default function ModelTrainingView({
   const [predictValidationErrors, setPredictValidationErrors] = useState({});
   const [predictOutputResult, setPredictOutputResult] = useState(null);
   const [predictingState, setPredictingState] = useState(false);
+
+  // Automatically switch to "models" view when a trained model job is loaded or restored
+  useEffect(() => {
+    if (trainingJobDetail) {
+      setCenterViewMode("models");
+    }
+  }, [trainingJobDetail]);
+
+  // Clear previous training results if datasetId changes to a different dataset
+  useEffect(() => {
+    if (trainingJobDetail && datasetId && trainingJobDetail.dataset_id !== datasetId) {
+      setTrainingJobDetail(null);
+      setCenterViewMode("table");
+    }
+  }, [datasetId, trainingJobDetail]);
 
   const handleResetSetup = () => {
     setTrainingMode("decide");
@@ -120,6 +136,7 @@ export default function ModelTrainingView({
     setTestSize(0.2);
     setCvFolds(5);
     setTrainingJobDetail(null);
+    setCenterViewMode("table");
     setSuccessMsg("Configuration parameters reset. Ready for new setup.");
   };
 
@@ -728,7 +745,7 @@ export default function ModelTrainingView({
                 uploadSpeed={uploadSpeed}
                 errorMsg={errorMsg}
                 successMsg={successMsg}
-                acceptedFormats={[".csv", ".xlsx", ".xls", ".json"]}
+                acceptedFormats={[".csv", ".xlsx", ".xls"]}
                 maxSizeMB={100}
                 onCancel={cancelUpload}
                 onReset={() => {
@@ -1197,8 +1214,38 @@ export default function ModelTrainingView({
                 </div>
               )}
 
+              {/* VIEW SWITCHER TAB BAR (WHEN BOTH MODEL RESULTS AND DATA TABLE EXIST) */}
+              {trainingJobDetail && preview && (
+                <div className="flex items-center gap-2 p-1 rounded-2xl bg-slate-100/80 dark:bg-zinc-900/80 border border-slate-200/80 dark:border-zinc-800 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setCenterViewMode("table")}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                      centerViewMode === "table"
+                        ? "bg-white dark:bg-[#212121] text-purple-600 dark:text-purple-400 shadow-sm"
+                        : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>Dataset Preview Table</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCenterViewMode("models")}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                      centerViewMode === "models"
+                        ? "bg-white dark:bg-[#212121] text-purple-600 dark:text-purple-400 shadow-sm"
+                        : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Trained Estimators Leaderboard</span>
+                  </button>
+                </div>
+              )}
+
               {/* GRID RESULTS */}
-              {trainingJobDetail && (
+              {trainingJobDetail && (centerViewMode === "models" || !preview) && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-200/80 dark:border-zinc-800">
                     <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -1362,7 +1409,7 @@ export default function ModelTrainingView({
               )}
 
               {/* DATASHEET PREVIEW TAB */}
-              {!trainingJobDetail && preview && (
+              {preview && (centerViewMode === "table" || !trainingJobDetail) && (
                 <DatasetTableViewer
                   preview={preview}
                   metadata={metadata}

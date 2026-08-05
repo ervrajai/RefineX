@@ -26,9 +26,12 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 # RefineX Imports
 from apps.cleaning.models import Dataset
-from apps.cleaning.utils import read_dataframe, make_columns_unique
+from apps.cleaning.utils import read_dataframe, make_columns_unique, make_json_safe
 from .models import ModelTrainingJob
 
 class DatasetValidationService:
@@ -505,16 +508,16 @@ class ModelTrainingService:
                 predicted_labels = list(label_encoder.inverse_transform(predicted_labels))
                 actual_labels = list(label_encoder.inverse_transform(actual_labels))
 
-            pred_data = {
+            pred_data = make_json_safe({
                 "actual": actual_labels,
                 "predicted": predicted_labels
-            }
+            })
 
             # Update Job DB Record
             job.status = "completed"
             job.progress_stage = "completed"
             job.progress_percent = 100
-            job.evaluation_metrics = trained_models_summary
+            job.evaluation_metrics = make_json_safe(trained_models_summary)
             job.best_model_name = best_model_name
             job.best_model_score = float(best_score)
             job.training_duration = float(sum(m["training_time"] for m in trained_models_summary.values()))
@@ -528,4 +531,5 @@ class ModelTrainingService:
             job.progress_stage = "failed"
             job.progress_percent = 100
             job.error_message = str(e)
+            job.predictions = {}
             job.save()

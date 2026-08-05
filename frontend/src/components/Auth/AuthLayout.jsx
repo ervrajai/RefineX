@@ -4,8 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Particles } from "./Particles";
 import logoImg from "../../assets/logo/refinex_logo.png";
+import useDisableInspect from "../../hooks/useDisableInspect";
 
 function AuthLayout({ title, subtitle, children, footerText, footerLink, footerLabel }) {
+  // Activate anti-inspect security guard on all auth pages
+  useDisableInspect();
+
   const location = useLocation();
   const navigate = useNavigate();
   const isLogin = location.pathname === "/login";

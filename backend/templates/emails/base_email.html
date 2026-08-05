@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{% block title %}RefineX Notification{% endblock %}</title>
+    <!-- Import Orbitron for RefineX Brand Logo & Fira Code for OTP -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700;800&family=Orbitron:wght@800;900&display=swap" rel="stylesheet">
+    <style>
+        /* Mobile Responsive Styles */
+        @media only screen and (max-width: 600px) {
+            .email-wrapper {
+                padding: 16px 8px !important;
+            }
+            .email-card {
+                width: 100% !important;
+                max-width: 100% !important;
+                border-radius: 16px !important;
+            }
+            .brand-header {
+                padding: 28px 20px 20px 20px !important;
+            }
+            .brand-title {
+                font-size: 24px !important;
+            }
+            .email-body {
+                padding: 0 20px 28px 20px !important;
+            }
+            .email-heading {
+                font-size: 20px !important;
+            }
+            .email-text {
+                font-size: 14px !important;
+                line-height: 1.5 !important;
+            }
+            .otp-box {
+                padding: 14px 14px !important;
+                margin-bottom: 24px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            .otp-code {
+                font-size: 26px !important;
+                letter-spacing: 6px !important;
+                margin-right: -6px !important;
+            }
+            .email-footer {
+                padding: 20px 16px !important;
+            }
+        }
+    </style>
+</head>
+<body class="email-wrapper" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; padding: 40px 16px; color: #0f172a; margin: 0; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;">
+    
+    <!-- Main Email Card Container -->
+    <div class="email-card" style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); box-sizing: border-box;">
+        
+        <!-- Brand Header Section (Title Only) -->
+        <div class="brand-header" style="padding: 36px 32px 24px 32px; text-align: center;">
+            <div class="brand-title" style="font-family: 'Orbitron', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 28px; font-weight: 900; letter-spacing: 1px; color: #0f172a; line-height: 1; display: inline-block; text-align: center;">
+                Refine<span style="color: #673ab7; font-weight: 900; font-family: sans-serif; margin-left: 2px;">X</span>
+            </div>
+        </div>
+        
+        <!-- Email Body Content -->
+        <div class="email-body" style="padding: 0 32px 32px 32px; text-align: center;">
+            
+            <!-- Dynamic Action Heading -->
+            <h2 class="email-heading" style="font-size: 22px; font-weight: 800; margin: 0 0 12px 0; color: {% block heading_color %}#0f172a{% endblock %}; letter-spacing: -0.5px; text-align: center;">
+                {% block email_heading %}Verification Request{% endblock %}
+            </h2>
+            
+            <!-- Context Description Text -->
+            <p class="email-text" style="font-size: 15px; line-height: 1.6; margin: 0 0 24px 0; color: #64748b; text-align: center;">
+                {% block email_context %}{% endblock %}
+            </p>
+
+            <!-- Centered Purple OTP Box with Responsive Fira Code Font -->
+            <div class="otp-box" style="display: inline-block; background-color: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 14px; padding: 16px 24px; margin-bottom: 24px; text-align: center; white-space: nowrap; max-width: 100%; box-sizing: border-box;">
+                <span class="otp-code" style="font-family: 'Fira Code', 'SFMono-Regular', 'SF Mono', Consolas, 'Liberation Mono', Menlo, Monaco, 'Courier New', monospace; font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #6d28d9; white-space: nowrap; word-break: keep-all; display: inline-block; margin-right: -8px; text-align: center;">
+                    {{ otp_code }}
+                </span>
+            </div>
+
+            <!-- Expiration Notice -->
+            <p class="email-text" style="font-size: 14px; line-height: 1.6; color: #64748b; margin: 0; text-align: center;">
+                This code will expire in <strong>10 minutes</strong>. If you did not initiate this request, you can safely ignore this email.
+            </p>
+
+        </div>
+        
+        <!-- Email Footer -->
+        <div class="email-footer" style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 32px; text-align: center;">
+            <p style="font-size: 12px; color: #94a3b8; margin: 0; line-height: 1.5; text-align: center;">
+                © 2026 RefineX. All rights reserved.<br>
+                <a href="#" style="color: #673ab7; text-decoration: none; margin-top: 6px; display: inline-block; font-weight: 500;">Privacy Policy</a> &nbsp;&bull;&nbsp; <a href="#" style="color: #673ab7; text-decoration: none; font-weight: 500;">Support</a>
+            </p>
+        </div>
+
+    </div>
+
+</body>
+</html>

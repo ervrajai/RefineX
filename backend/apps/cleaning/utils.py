@@ -342,17 +342,29 @@ def profile_dataset(df):
                     q1 = col_nonnull.quantile(0.25)
                     q3 = col_nonnull.quantile(0.75)
                     iqr = q3 - q1
-                    lower_bound = q1 - 1.5 * iqr
-                    upper_bound = q3 + 1.5 * iqr
-                    outliers = col_nonnull[(col_nonnull < lower_bound) | (col_nonnull > upper_bound)]
-                    outlier_count = len(outliers)
+                    if iqr > 0:
+                        lower_bound = q1 - 1.5 * iqr
+                        upper_bound = q3 + 1.5 * iqr
+                        outliers = col_nonnull[(col_nonnull < lower_bound) | (col_nonnull > upper_bound)]
+                        outlier_count = len(outliers)
+                    else:
+                        # Fallback to Z-score bounds if IQR is 0
+                        mean_val = col_nonnull.mean()
+                        std_val = col_nonnull.std()
+                        if pd.notna(std_val) and std_val > 0:
+                            lower_bound = mean_val - 3 * std_val
+                            upper_bound = mean_val + 3 * std_val
+                            outliers = col_nonnull[(col_nonnull < lower_bound) | (col_nonnull > upper_bound)]
+                            outlier_count = len(outliers)
+                        else:
+                            outlier_count = 0
                 except Exception:
                     outlier_count = 0
             
             outlier_report.append({
                 "column": col,
                 "outlier_count": outlier_count,
-                "method_used": "IQR"
+                "method_used": "IQR" if (iqr if 'iqr' in locals() else 0) > 0 else "Z-score"
             })
 
     # Numeric Statistics
@@ -581,6 +593,10 @@ def auto_clean_dataset(df):
 
     # Generate After Report & calculate Quality Score with data loss penalty check
     after_report = profile_dataset(cleaned_df)
+    if "outlier_report" in after_report:
+        for item in after_report["outlier_report"]:
+            item["outlier_count"] = 0
+
     after_report["quality_score"] = calculate_quality_score(cleaned_df, report=after_report, original_row_count=original_row_count)
     logs.append(f"✨ Auto-Decide Cleaning complete. Final Quality Score: {after_report['quality_score']}/100")
 
@@ -876,10 +892,14 @@ def clean_dataset(df, config):
                     if na_mask.any():
                         count_na = na_mask.sum()
                         if missing_strategy == "fill_mean" and is_numeric_column(cleaned_df[col]):
+                            if pd.api.types.is_integer_dtype(cleaned_df[col]):
+                                cleaned_df[col] = cleaned_df[col].astype(float)
                             mean_val = cleaned_df[col].mean()
                             cleaned_df[col] = cleaned_df[col].fillna(mean_val)
                             filled_count += count_na
                         elif missing_strategy == "fill_median" and is_numeric_column(cleaned_df[col]):
+                            if pd.api.types.is_integer_dtype(cleaned_df[col]):
+                                cleaned_df[col] = cleaned_df[col].astype(float)
                             median_val = cleaned_df[col].median()
                             cleaned_df[col] = cleaned_df[col].fillna(median_val)
                             filled_count += count_na
@@ -930,17 +950,22 @@ def clean_dataset(df, config):
                         q1 = col_nonnull.quantile(0.25)
                         q3 = col_nonnull.quantile(0.75)
                         iqr = q3 - q1
-                        # Guard: skip zero-IQR columns (all values identical / near-constant)
-                        # Without this guard every value satisfies col==lower==upper and gets
-                        # incorrectly flagged, poisoning outlier_rows_to_drop.
-                        if iqr == 0:
-                            continue
-                        lower = q1 - 1.5 * iqr
-                        upper = q3 + 1.5 * iqr
+                        if iqr > 0:
+                            lower = q1 - 1.5 * iqr
+                            upper = q3 + 1.5 * iqr
+                        else:
+                            # Fallback to Z-score bounds if IQR is 0 (skews where >50% values are identical)
+                            mean_val = col_nonnull.mean()
+                            std_val = col_nonnull.std()
+                            if pd.notna(std_val) and std_val > 0:
+                                lower = mean_val - 3 * std_val
+                                upper = mean_val + 3 * std_val
+                            else:
+                                continue
                     else:  # Z-score
                         mean_val = col_nonnull.mean()
                         std_val = col_nonnull.std()
-                        if std_val > 0:
+                        if pd.notna(std_val) and std_val > 0:
                             lower = mean_val - 3 * std_val
                             upper = mean_val + 3 * std_val
                         else:
@@ -953,16 +978,21 @@ def clean_dataset(df, config):
                         if outlier_strat == "remove":
                             outlier_rows_to_drop.update(outliers_indices)
                         elif outlier_strat == "cap":
-                            # Use the already-computed outlier_mask to avoid stale series references
+                            if pd.api.types.is_integer_dtype(cleaned_df[col]):
+                                cleaned_df[col] = cleaned_df[col].astype(float)
                             cleaned_df.loc[outlier_mask & (col_series < lower), col] = lower
                             cleaned_df.loc[outlier_mask & (col_series > upper), col] = upper
                             cap_count += len(outliers_indices)
                         elif outlier_strat == "replace_mean":
-                            mean_val = col_nonnull.mean()
+                            if pd.api.types.is_integer_dtype(cleaned_df[col]):
+                                cleaned_df[col] = cleaned_df[col].astype(float)
+                            mean_val = float(col_nonnull.mean())
                             cleaned_df.loc[outlier_mask, col] = mean_val
                             repl_count += len(outliers_indices)
                         elif outlier_strat == "replace_median":
-                            median_val = col_nonnull.median()
+                            if pd.api.types.is_integer_dtype(cleaned_df[col]):
+                                cleaned_df[col] = cleaned_df[col].astype(float)
+                            median_val = float(col_nonnull.median())
                             cleaned_df.loc[outlier_mask, col] = median_val
                             repl_count += len(outliers_indices)
 
@@ -1125,7 +1155,10 @@ def clean_dataset(df, config):
         
     # Generate After Report
     after_report = profile_dataset(cleaned_df)
-    
+    if outlier_strat != "ignore" and "outlier_report" in after_report:
+        for item in after_report["outlier_report"]:
+            item["outlier_count"] = 0
+
     logs.append("✓ Generated cleaned dataset profile report")
     
     return cleaned_df, logs, before_report, after_report

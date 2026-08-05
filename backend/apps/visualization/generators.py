@@ -10,6 +10,38 @@ import plotly.express as px
 import plotly.graph_objects as go
 import networkx as nx
 
+HEATMAP_COLORMAP_MAP = {
+    "deep": "Purples",
+    "muted": "Blues",
+    "bright": "plasma",
+    "dark": "magma",
+    "colorblind": "viridis",
+    "pastel": "coolwarm",
+    "viridis": "viridis",
+    "plasma": "plasma",
+    "magma": "magma",
+    "cividis": "cividis",
+    "coolwarm": "coolwarm",
+    "rdbu": "RdBu",
+    "rocket": "rocket",
+    "mako": "mako",
+    "vlag": "vlag",
+    "blues": "Blues",
+    "purples": "Purples",
+    "greens": "Greens",
+    "oranges": "Oranges",
+    "spectral": "Spectral",
+    "inferno": "inferno",
+    "turbo": "turbo",
+    "portland": "portland",
+}
+
+def resolve_heatmap_cmap(palette_name):
+    if not palette_name:
+        return "viridis"
+    cleaned = str(palette_name).strip().lower()
+    return HEATMAP_COLORMAP_MAP.get(cleaned, "viridis")
+
 def generate_graph(df, config):
     """
     Main entrypoint to generate a graph from a dataset and config dictionary.
@@ -252,6 +284,8 @@ def draw_plotly(df, config, template):
                     title=config.get("title", ""),
                     opacity=float(config.get("opacity", 1.0))
                 )
+            bar_width = float(config.get("bar_width", 0.8))
+            fig.update_traces(width=bar_width)
             
         # 2. Line Chart
         elif graph_type in ["line", "linechart", "lineplot"]:
@@ -284,6 +318,8 @@ def draw_plotly(df, config, template):
                 title=config.get("title", ""),
                 opacity=float(config.get("opacity", 1.0))
             )
+            marker_size = int(config.get("marker_size", 10))
+            fig.update_traces(marker=dict(size=marker_size))
             
         # 4. Bubble Chart
         elif graph_type in ["bubble", "bubblechart"]:
@@ -338,9 +374,12 @@ def draw_plotly(df, config, template):
             numeric_df = df.select_dtypes(include=[np.number])
             if numeric_df.shape[1] >= 2:
                 corr_matrix = numeric_df.corr().round(2)
+                palette = config.get("color_palette", "viridis")
+                colorscale = resolve_heatmap_cmap(palette)
                 fig = px.imshow(
                     corr_matrix,
-                    text_auto=True,
+                    text_auto=config.get("annotations", True),
+                    color_continuous_scale=colorscale,
                     template=template,
                     title=config.get("title", "Correlation Matrix Heatmap")
                 )
@@ -391,6 +430,8 @@ def draw_plotly(df, config, template):
                 title=config.get("title", ""),
                 opacity=float(config.get("opacity", 0.8))
             )
+            marker_size = int(config.get("marker_size", 10))
+            fig.update_traces(marker=dict(size=marker_size))
             # Apply 3D rotation if given
             camera = dict(
                 eye=dict(
@@ -505,23 +546,37 @@ def draw_seaborn(df, config):
                 # Pivot heatmap from X and Y
                 plot_data = df.pivot(index=y_col, columns=x_col, values=config.get("value_column"))
                 
-            sns.heatmap(
-                plot_data,
-                annot=config.get("annotations", True),
-                cmap=palette,
-                linewidths=float(config.get("grid_width", 0.5)),
-                ax=ax,
-                square=config.get("square_cells", False),
-                cbar=config.get("color_bar", True)
-            )
+            cmap = resolve_heatmap_cmap(config.get("color_palette", "viridis"))
+            try:
+                sns.heatmap(
+                    plot_data,
+                    annot=config.get("annotations", True),
+                    cmap=cmap,
+                    linewidths=float(config.get("grid_width", 0.5)),
+                    ax=ax,
+                    square=config.get("square_cells", False),
+                    cbar=config.get("color_bar", True)
+                )
+            except Exception:
+                sns.heatmap(
+                    plot_data,
+                    annot=config.get("annotations", True),
+                    cmap="viridis",
+                    linewidths=float(config.get("grid_width", 0.5)),
+                    ax=ax,
+                    square=config.get("square_cells", False),
+                    cbar=config.get("color_bar", True)
+                )
             
         # 2. Scatter Plot
         elif graph_type in ["scatter", "scatterplot"]:
+            marker_size = int(config.get("marker_size", 20))
             sns.scatterplot(
                 data=df, x=x_col, y=y_col,
                 hue=color_col,
                 palette=palette if color_col else None,
                 alpha=float(config.get("opacity", 1.0)),
+                s=marker_size,
                 ax=ax
             )
             

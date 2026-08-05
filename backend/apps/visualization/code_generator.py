@@ -142,16 +142,20 @@ def compile_python_code(config):
         if graph_type in ["bar", "barchart"]:
             orientation = "h" if config.get("orientation", "vertical") == "horizontal" else "v"
             barmode = config.get("barmode", "group")
+            bar_w = float(config.get("bar_width", 0.8))
             x_var = y_col if orientation == "h" else x_col
             y_var = x_col if orientation == "h" else y_col
             code.append(f"fig = px.bar(df, x='{x_var}', y='{y_var}', barmode='{barmode}', orientation='{orientation}'{color_param}{title_param}, opacity={opacity})")
+            code.append(f"fig.update_traces(width={bar_w})")
             
         elif graph_type in ["line", "linechart"]:
             code.append(f"fig = px.line(df, x='{x_col}', y='{y_col}'{color_param}{title_param}, opacity={opacity})")
             
         elif graph_type in ["scatter", "scatterplot", "scatter2d"]:
             trendline = ", trendline='ols'" if config.get("trend_line", False) else ""
+            marker_size = int(config.get("marker_size", 20))
             code.append(f"fig = px.scatter(df, x='{x_col}', y='{y_col}'{color_param}{trendline}{title_param}, opacity={opacity})")
+            code.append(f"fig.update_traces(marker=dict(size={marker_size}))")
             
         elif graph_type in ["bubble", "bubblechart"]:
             size_param = f", size='{size_col}'"
@@ -174,7 +178,9 @@ def compile_python_code(config):
             code.append(f"fig = px.scatter_matrix(df, dimensions={dims}{color_param}{title_param}, opacity={opacity})")
             
         elif graph_type in ["3dscatter", "3dscatterplot"]:
+            marker_size = int(config.get("marker_size", 20))
             code.append(f"fig = px.scatter_3d(df, x='{x_col}', y='{y_col}', z='{z_col}'{color_param}{title_param}, opacity={opacity})")
+            code.append(f"fig.update_traces(marker=dict(size={marker_size}))")
             eye_x = float(config.get("camera_x", 1.25))
             eye_y = float(config.get("camera_y", 1.25))
             eye_z = float(config.get("camera_z", 1.25))
@@ -246,7 +252,8 @@ def compile_python_code(config):
                 code.append(f"sns.heatmap(plot_data, annot={annot}, cmap='{palette}', linewidths={grid_w}, square={sq}, cbar={cbar}, ax=ax)")
                 
             elif graph_type in ["scatter", "scatterplot"]:
-                code.append(f"sns.scatterplot(data=df, x='{x_col}', y='{y_col}'{color_param}{palette_param}, alpha={opacity}, ax=ax)")
+                marker_size = int(config.get("marker_size", 20))
+                code.append(f"sns.scatterplot(data=df, x='{x_col}', y='{y_col}'{color_param}{palette_param}, s={marker_size}, alpha={opacity}, ax=ax)")
                 
             elif graph_type in ["box", "boxplot"]:
                 w = float(config.get("box_width", 0.5))

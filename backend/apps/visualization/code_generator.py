@@ -205,6 +205,7 @@ def compile_python_code(config):
         axis_rotation = int(config.get("axis_rotation", 0))
         if axis_rotation != 0:
             code.append(f"fig.update_xaxes(showgrid={show_grid}, tickangle={axis_rotation})")
+            code.append(f"fig.for_each_xaxis(lambda ax: ax.update(tickangle={axis_rotation}))")
         else:
             code.append(f"fig.update_xaxes(showgrid={show_grid})")
         code.append(f"fig.update_yaxes(showgrid={show_grid})")
@@ -230,6 +231,14 @@ def compile_python_code(config):
         code.append(f"plt.rcParams['xtick.color'] = '{text_color}'")
         code.append(f"plt.rcParams['ytick.color'] = '{text_color}'")
         code.append(f"plt.rcParams['font.size'] = {font_size}")
+        
+        font_family = config.get("font_family", "sans-serif")
+        if font_family in ["serif", "sans-serif", "monospace"]:
+            code.append(f"plt.rcParams['font.family'] = '{font_family}'")
+        else:
+            code.append(f"plt.rcParams['font.sans-serif'] = ['{font_family}', 'DejaVu Sans', 'Arial', 'sans-serif']")
+            code.append("plt.rcParams['font.family'] = 'sans-serif'")
+
         code.append(f"fig, ax = plt.subplots(figsize=({width / 100}, {height / 100}))")
         
         opacity = float(config.get("opacity", 1.0))
@@ -238,6 +247,7 @@ def compile_python_code(config):
         palette_param = f", palette='{palette}'" if color_col else ""
         
         if library == "seaborn":
+            code.append(f"sns.set_palette('{palette}')")
             if graph_type in ["heatmap", "correlationchart"]:
                 if graph_type == "correlationchart" or not config.get("heatmap_pivoted", False):
                     code.append("plot_data = df.select_dtypes(include=[np.number]).corr()")
@@ -251,17 +261,30 @@ def compile_python_code(config):
                 cbar = "True" if config.get("color_bar", True) else "False"
                 code.append(f"sns.heatmap(plot_data, annot={annot}, cmap='{palette}', linewidths={grid_w}, square={sq}, cbar={cbar}, ax=ax)")
                 
-            elif graph_type in ["scatter", "scatterplot"]:
+            elif graph_type in ["scatter", "scatterplot", "scatterchart"]:
                 marker_size = int(config.get("marker_size", 20))
                 code.append(f"sns.scatterplot(data=df, x='{x_col}', y='{y_col}'{color_param}{palette_param}, s={marker_size}, alpha={opacity}, ax=ax)")
                 
+            elif graph_type in ["bar", "barplot", "barchart"]:
+                code.append(f"sns.barplot(data=df, x='{x_col}', y='{y_col}'{color_param}{palette_param}, alpha={opacity}, ax=ax)")
+
+            elif graph_type in ["line", "lineplot", "linechart"]:
+                code.append(f"sns.lineplot(data=df, x='{x_col}', y='{y_col}'{color_param}{palette_param}, alpha={opacity}, ax=ax)")
+
             elif graph_type in ["box", "boxplot"]:
                 w = float(config.get("box_width", 0.5))
                 fliers = "True" if config.get("show_outliers", True) else "False"
                 code.append(f"sns.boxplot(data=df, x='{x_col}', y='{y_col}'{color_param}{palette_param}, width={w}, showfliers={fliers}, ax=ax)")
+
+            elif graph_type in ["histogram", "hist", "histogramchart", "dist", "distplot"]:
+                bins = int(config.get("bins", 20))
+                code.append(f"sns.histplot(data=df, x='{x_col}'{color_param}{palette_param}, bins={bins}, alpha={opacity}, ax=ax)")
+
+            elif graph_type in ["violin", "violinplot"]:
+                code.append(f"sns.violinplot(data=df, x='{x_col}', y='{y_col}'{color_param}{palette_param}, ax=ax)")
                 
         else:  # raw matplotlib
-            if graph_type in ["line", "lineplot"]:
+            if graph_type in ["line", "lineplot", "linechart"]:
                 if color_col:
                     code.append(f"for label, group in df.groupby('{color_col}'):")
                     code.append(f"    ax.plot(group['{x_col}'], group['{y_col}'], label=label, alpha={opacity})")
@@ -269,7 +292,7 @@ def compile_python_code(config):
                 else:
                     code.append(f"ax.plot(df['{x_col}'], df['{y_col}'], alpha={opacity})")
                     
-            elif graph_type in ["bar", "barplot"]:
+            elif graph_type in ["bar", "barplot", "barchart"]:
                 orientation = config.get("orientation", "vertical")
                 w = float(config.get("bar_width", 0.8))
                 if orientation == "horizontal":
@@ -277,20 +300,29 @@ def compile_python_code(config):
                 else:
                     code.append(f"ax.bar(df['{x_col}'], df['{y_col}'], alpha={opacity}, width={w})")
                     
-            elif graph_type in ["scatter", "scatterplot"]:
+            elif graph_type in ["scatter", "scatterplot", "scatterchart"]:
                 s = int(config.get("marker_size", 20))
                 code.append(f"ax.scatter(df['{x_col}'], df['{y_col}'], alpha={opacity}, s={s})")
                 
-            elif graph_type in ["histogram", "hist"]:
+            elif graph_type in ["histogram", "hist", "histogramchart", "dist", "distplot"]:
                 bins = int(config.get("bins", 20))
                 code.append(f"ax.hist(df['{x_col}'], bins={bins}, alpha={opacity})")
                 
-            elif graph_type in ["pie", "piechart"]:
+            elif graph_type in ["pie", "piechart", "pieplot"]:
                 code.append(f"ax.pie(df['{y_col}'], labels=df['{x_col}'], autopct='%1.1f%%', startangle=90)")
+
+            elif graph_type in ["box", "boxplot"]:
+                target_col = y_col if y_col else x_col
+                code.append(f"ax.boxplot(df['{target_col}'].dropna())")
+
+            elif graph_type in ["area", "areachart", "areaplot"]:
+                code.append(f"ax.fill_between(df['{x_col}'], df['{y_col}'], alpha={opacity})")
                 
         # Common matplotlib properties
         if config.get("grid", False):
             code.append("ax.grid(True, linestyle='--', alpha=0.5)")
+        else:
+            code.append("ax.grid(False)")
             
         x_label = config.get("x_label", x_col or "")
         y_label = config.get("y_label", y_col or "")
@@ -301,20 +333,19 @@ def compile_python_code(config):
             code.append(f"fig.suptitle('{title}', fontsize={font_size + 2})")
         if subtitle:
             code.append(f"ax.set_title('{subtitle}', fontsize={font_size})")
+
+        if not config.get("legend", True):
+            code.append("if ax.get_legend(): ax.get_legend().remove()")
             
         rotation = float(config.get("axis_rotation", 0))
-        if rotation:
-            code.append(f"plt.setp(ax.get_xticklabels(), rotation={rotation}, horizontalalignment='right')")
+        if rotation > 0:
+            code.append(f"for a in fig.axes:")
+            code.append(f"    plt.setp(a.get_xticklabels(), rotation={rotation}, horizontalalignment='right')")
             
         if caption:
             code.append(f"fig.text(0.01, 0.01, '{caption}', transform=fig.transFigure, fontsize={font_size}, color='gray')")
             
-        # Margins
-        margin_left = float(config.get("margin_left", 40)) / 400
-        margin_right = 1.0 - float(config.get("margin_right", 40)) / 400
-        margin_top = 1.0 - float(config.get("margin_top", 60)) / 450
-        margin_bottom = float(config.get("margin_bottom", 40)) / 400
-        code.append(f"fig.subplots_adjust(left={round(margin_left, 3)}, right={round(margin_right, 3)}, top={round(margin_top, 3)}, bottom={round(margin_bottom, 3)})")
+        code.append("plt.tight_layout()")
         code.append("plt.show()")
         
     return "\n".join(code)

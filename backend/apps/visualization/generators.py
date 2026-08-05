@@ -144,6 +144,13 @@ def generate_graph(df, config):
     plt.rcParams['xtick.color'] = text_color
     plt.rcParams['ytick.color'] = text_color
     
+    font_family = config.get("font_family", "sans-serif")
+    if font_family in ["serif", "sans-serif", "monospace"]:
+        plt.rcParams['font.family'] = font_family
+    else:
+        plt.rcParams['font.sans-serif'] = [font_family, 'DejaVu Sans', 'Arial', 'sans-serif']
+        plt.rcParams['font.family'] = 'sans-serif'
+    
     try:
         if graph_type in ["networkgraph", "network", "relationshipchart"]:
             res = draw_networkx(df, config, bg_color, text_color)
@@ -475,7 +482,11 @@ def draw_plotly(df, config, template):
         
         rotation = int(config.get("axis_rotation", 0))
         if rotation > 0:
-            fig.update_xaxes(tickangle=rotation)
+            fig.update_xaxes(tickangle=rotation, overwrite=True)
+            fig.for_each_xaxis(lambda ax: ax.update(tickangle=rotation))
+        else:
+            fig.update_xaxes(tickangle=0, overwrite=True)
+            fig.for_each_xaxis(lambda ax: ax.update(tickangle=0))
             
         opacity = float(config.get("opacity", 1.0))
         if opacity < 1.0:
@@ -532,18 +543,14 @@ def draw_seaborn(df, config):
         height = float(config.get("height", 500))
         
         fig, ax = plt.subplots(figsize=(width / 100, height / 100))
-        
-        # Set palette
         palette = config.get("color_palette", "deep")
         
         # 1. Heatmap
         if graph_type in ["heatmap", "correlationchart"]:
-            # Heatmap expects correlation matrix or pivot
             if graph_type == "correlationchart" or not config.get("heatmap_pivoted", False):
                 numeric_df = df.select_dtypes(include=[np.number])
                 plot_data = numeric_df.corr()
             else:
-                # Pivot heatmap from X and Y
                 plot_data = df.pivot(index=y_col, columns=x_col, values=config.get("value_column"))
                 
             cmap = resolve_heatmap_cmap(config.get("color_palette", "viridis"))
@@ -569,7 +576,7 @@ def draw_seaborn(df, config):
                 )
             
         # 2. Scatter Plot
-        elif graph_type in ["scatter", "scatterplot"]:
+        elif graph_type in ["scatter", "scatterplot", "scatterchart"]:
             marker_size = int(config.get("marker_size", 20))
             sns.scatterplot(
                 data=df, x=x_col, y=y_col,
@@ -580,7 +587,28 @@ def draw_seaborn(df, config):
                 ax=ax
             )
             
-        # 3. Box Plot
+        # 3. Bar Plot
+        elif graph_type in ["bar", "barplot", "barchart"]:
+            sns.barplot(
+                data=df, x=x_col, y=y_col,
+                hue=color_col,
+                palette=palette if color_col else None,
+                alpha=float(config.get("opacity", 1.0)),
+                ax=ax
+            )
+
+        # 4. Line Plot
+        elif graph_type in ["line", "lineplot", "linechart"]:
+            plot_df = df.sort_values(by=x_col).reset_index(drop=True)
+            sns.lineplot(
+                data=plot_df, x=x_col, y=y_col,
+                hue=color_col,
+                palette=palette if color_col else None,
+                alpha=float(config.get("opacity", 1.0)),
+                ax=ax
+            )
+            
+        # 5. Box Plot
         elif graph_type in ["box", "boxplot"]:
             sns.boxplot(
                 data=df, x=x_col, y=y_col,
@@ -590,10 +618,30 @@ def draw_seaborn(df, config):
                 showfliers=config.get("show_outliers", True),
                 ax=ax
             )
+
+        # 6. Histogram
+        elif graph_type in ["histogram", "hist", "histogramchart", "dist", "distplot"]:
+            sns.histplot(
+                data=df, x=x_col,
+                hue=color_col,
+                bins=int(config.get("bins", 20)),
+                palette=palette if color_col else None,
+                alpha=float(config.get("opacity", 1.0)),
+                ax=ax
+            )
+
+        # 7. Violin Plot
+        elif graph_type in ["violin", "violinplot"]:
+            sns.violinplot(
+                data=df, x=x_col, y=y_col,
+                hue=color_col,
+                palette=palette if color_col else None,
+                ax=ax
+            )
             
         else:
             plt.close(fig)
-            return {"success": False, "error": f"Seaborn cannot draw graph type: {graph_type}"}
+            return {"success": False, "error": f"Seaborn cannot draw graph type: {config.get('graph_type')}"}
             
         # Apply standard settings
         apply_matplotlib_titles_labels(ax, fig, config)
@@ -623,7 +671,7 @@ def draw_matplotlib(df, config):
         fig, ax = plt.subplots(figsize=(width / 100, height / 100))
         
         # 1. Line Plot
-        if graph_type in ["line", "lineplot"]:
+        if graph_type in ["line", "lineplot", "linechart"]:
             plot_df = df.sort_values(by=x_col).reset_index(drop=True)
             if color_col:
                 for label, group in plot_df.groupby(color_col):
@@ -633,7 +681,7 @@ def draw_matplotlib(df, config):
                 ax.plot(plot_df[x_col], plot_df[y_col], alpha=float(config.get("opacity", 1.0)))
                 
         # 2. Bar Plot
-        elif graph_type in ["bar", "barplot"]:
+        elif graph_type in ["bar", "barplot", "barchart"]:
             orientation = config.get("orientation", "vertical")
             x_data = df[x_col].astype(str)
             y_data = df[y_col]
@@ -643,20 +691,38 @@ def draw_matplotlib(df, config):
                 ax.bar(x_data, y_data, alpha=float(config.get("opacity", 1.0)), width=float(config.get("bar_width", 0.8)))
                 
         # 3. Scatter Plot
-        elif graph_type in ["scatter", "scatterplot"]:
+        elif graph_type in ["scatter", "scatterplot", "scatterchart"]:
             ax.scatter(df[x_col], df[y_col], alpha=float(config.get("opacity", 1.0)), s=int(config.get("marker_size", 20)))
             
         # 4. Histogram
-        elif graph_type in ["histogram", "hist"]:
+        elif graph_type in ["histogram", "hist", "histogramchart", "dist", "distplot"]:
             ax.hist(df[x_col], bins=int(config.get("bins", 20)), alpha=float(config.get("opacity", 1.0)))
             
         # 5. Pie Chart
-        elif graph_type in ["pie", "piechart"]:
+        elif graph_type in ["pie", "piechart", "pieplot"]:
             ax.pie(df[y_col], labels=df[x_col], autopct='%1.1f%%', startangle=90)
+
+        # 6. Box Plot
+        elif graph_type in ["box", "boxplot"]:
+            if y_col:
+                ax.boxplot(df[y_col].dropna())
+            elif x_col:
+                ax.boxplot(df[x_col].dropna())
+
+        # 7. Area Chart
+        elif graph_type in ["area", "areachart", "areaplot"]:
+            plot_df = df.sort_values(by=x_col).reset_index(drop=True)
+            ax.fill_between(plot_df[x_col], plot_df[y_col], alpha=float(config.get("opacity", 0.5)))
+
+        # 8. Heatmap
+        elif graph_type in ["heatmap", "correlationchart"]:
+            numeric_df = df.select_dtypes(include=[np.number])
+            cax = ax.matshow(numeric_df.corr(), cmap='viridis')
+            fig.colorbar(cax)
             
         else:
             plt.close(fig)
-            return {"success": False, "error": f"Matplotlib cannot draw graph type: {graph_type}"}
+            return {"success": False, "error": f"Matplotlib cannot draw graph type: {config.get('graph_type')}"}
             
         # Apply standard settings
         apply_matplotlib_titles_labels(ax, fig, config)
@@ -698,10 +764,13 @@ def apply_matplotlib_titles_labels(ax, fig, config):
     elif subtitle:
         ax.set_title(subtitle, fontsize=float(config.get("font_size", 10)))
         
-    # Rotate tick labels if specified
+    # Rotate tick labels if specified across all axes
     rotation = float(config.get("axis_rotation", 0))
-    if rotation:
-        plt.setp(ax.get_xticklabels(), rotation=rotation, horizontalalignment='right')
+    for a in fig.axes:
+        if rotation > 0:
+            plt.setp(a.get_xticklabels(), rotation=rotation, horizontalalignment='right')
+        else:
+            plt.setp(a.get_xticklabels(), rotation=0, horizontalalignment='center')
         
     # Caption
     if caption:

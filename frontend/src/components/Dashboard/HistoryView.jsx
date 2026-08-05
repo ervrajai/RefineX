@@ -13,12 +13,16 @@ import {
   Trash2,
   AlertTriangle,
   FileText,
-  ChevronDown
+  ChevronDown,
+  Search,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { BouncyAccordion } from "../ui/BouncyAccordion";
 import AnimatedDownloadButton from "../ui/AnimatedDownloadButton";
 import RestoreButton from "../ui/RestoreButton";
 import RefreshButton from "../ui/RefreshButton";
+import { AnimatedSelect } from "../ui/AnimatedSelect";
 
 // Mobile Download Dropdown Component
 function MobileDownloadDropdown({ options }) {
@@ -151,6 +155,54 @@ export default function HistoryView({
   const [clearing, setClearing] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deletingItem, setDeletingItem] = useState(false);
+
+  // Search, Filter & Pagination states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // Reset to page 1 whenever search query or active filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeFilter]);
+
+  // Compute filtered items
+  const filteredHistory = history.filter((item) => {
+    // 1. Category Filter
+    if (activeFilter === "Cleaning") {
+      if (item.type && item.type !== "clean" && item.type !== "cleaning") return false;
+    } else if (activeFilter === "Model Training") {
+      if (item.type !== "training") return false;
+    } else if (activeFilter === "Visualization") {
+      if (item.type !== "visualization") return false;
+    }
+
+    // 2. Search Query Filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const datasetName = (item.dataset_name || item.name || "").toLowerCase();
+      const targetCol = (item.target_column || "").toLowerCase();
+      const bestModel = (item.best_model_name || "").toLowerCase();
+      const chartName = (item.name || "").toLowerCase();
+
+      return (
+        datasetName.includes(q) ||
+        targetCol.includes(q) ||
+        bestModel.includes(q) ||
+        chartName.includes(q)
+      );
+    }
+
+    return true;
+  });
+
+  // Compute pagination values
+  const totalPages = Math.max(1, Math.ceil(filteredHistory.length / ITEMS_PER_PAGE));
+  const paginatedHistory = filteredHistory.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   useEffect(() => {
     fetchHistory();
@@ -425,6 +477,64 @@ export default function HistoryView({
         </div>
       </div>
 
+      {/* Search & Filter Toolbar (Filter Left, Search Right) */}
+      <div className="flex flex-col md:flex-row items-center gap-3 w-full my-4">
+        {/* Left Side: Filter Control */}
+        <div className="w-full md:w-7/12">
+          {/* Desktop & Tablet: 4-Pill Segmented Switcher */}
+          <div className="hidden md:grid grid-cols-4 p-1 rounded-full bg-[#e3e3e8] dark:bg-[#1c1c1e] border border-slate-200/60 dark:border-zinc-800/80 shadow-inner w-full">
+            {[
+              { id: "All", label: "All" },
+              { id: "Cleaning", label: "Cleaning" },
+              { id: "Model Training", label: "Model Training" },
+              { id: "Visualization", label: "Visualization" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveFilter(tab.id)}
+                className={`py-1.5 px-2 text-xs rounded-full transition-all duration-200 cursor-pointer text-center whitespace-nowrap select-none ${
+                  activeFilter === tab.id
+                    ? "bg-white dark:bg-[#3a3a3c] text-[#1c1c1e] dark:text-white shadow-sm font-bold border border-slate-200/60 dark:border-zinc-700/60"
+                    : "text-[#8e8e93] dark:text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white font-semibold"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Mobile Screens: Pill Dropdown */}
+          <div className="block md:hidden w-full">
+            <AnimatedSelect
+              value={activeFilter}
+              onChange={(val) => setActiveFilter(val)}
+              options={[
+                { value: "All", label: "All Categories" },
+                { value: "Cleaning", label: "Cleaning" },
+                { value: "Model Training", label: "Model Training" },
+                { value: "Visualization", label: "Visualization" },
+              ]}
+              placeholder="Filter by category..."
+              className="w-full"
+              triggerClassName="w-full rounded-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 text-slate-900 dark:text-white px-5 py-2.5 text-xs font-semibold shadow-xs"
+            />
+          </div>
+        </div>
+
+        {/* Right Side: Search Bar */}
+        <div className="relative w-full md:w-5/12">
+          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search history by dataset or name..."
+            className="w-full rounded-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 focus:border-[#673AB7] dark:focus:border-[#8b5cf6] focus:ring-4 focus:ring-[#673AB7]/15 dark:focus:ring-[#8b5cf6]/20 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 outline-none transition-all shadow-xs"
+          />
+        </div>
+      </div>
+
       {/* Clear History Confirmation Modal */}
       {showClearModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 dark:bg-black/75 backdrop-blur-xs animate-fade-in">
@@ -497,7 +607,7 @@ export default function HistoryView({
               </p>
               <div className="flex items-center gap-2 text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1.5 rounded-xl border border-amber-500/20">
                 <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                <span>This item will stay in Settings &rarr; Recently Deleted for 10 days before auto-purging.</span>
+                <span>This item will stay in Settings → Recently Deleted for 10 days before auto-purging.</span>
               </div>
             </div>
 
@@ -543,9 +653,28 @@ export default function HistoryView({
             You haven't run any cleaning operations yet. Upload a dataset inside the Clean tab to get started.
           </p>
         </div>
+      ) : filteredHistory.length === 0 ? (
+        <div className="p-10 text-center border border-slate-200 dark:border-zinc-800 rounded-3xl bg-white dark:bg-zinc-900/50 shadow-xs space-y-3">
+          <Search className="w-10 h-10 text-slate-400 mx-auto" />
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">No matching records found</h3>
+          <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-xs mx-auto">
+            No history items matched your search query or selected category filter.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery("");
+              setActiveFilter("All");
+            }}
+            className="px-4 py-2 text-xs font-bold rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition cursor-pointer shadow-xs active:scale-95"
+          >
+            Reset Search & Filter
+          </button>
+        </div>
       ) : (
-        <BouncyAccordion
-          items={history.map((job) => {
+        <div className="space-y-6">
+          <BouncyAccordion
+            items={paginatedHistory.map((job) => {
             const isML = job.type === "training";
             const isVis = job.type === "visualization";
             const itemId = `${job.type || "clean"}-${job.id}`;
@@ -1022,7 +1151,35 @@ export default function HistoryView({
             trigger: "p-5"
           }}
         />
-      )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-zinc-800 text-xs text-slate-500 dark:text-zinc-400 font-semibold select-none">
+            <div>
+              Showing {filteredHistory.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredHistory.length)} of {filteredHistory.length} records (Page {currentPage} of {totalPages})
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                className="px-4 py-2 rounded-full border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer font-bold shadow-xs active:scale-95 flex items-center gap-1"
+              >
+                <ChevronLeft className="w-4 h-4" /> Previous
+              </button>
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                className="px-4 py-2 rounded-full border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer font-bold shadow-xs active:scale-95 flex items-center gap-1"
+              >
+                Next <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )}
 
     </div>
   );

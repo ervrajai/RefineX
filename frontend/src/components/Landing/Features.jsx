@@ -129,9 +129,9 @@ export default function Features() {
   ];
 
   const visualizationSteps = [
-    { name: "Pick Data Points", desc: "Select X and Y axes from your dataset." },
-    { name: "Generate Chart", desc: "Create Bar, Line, Scatter, or Pie graphs." },
-    { name: "Export Assets", desc: "Download the graph image and Python code." }
+    { name: "Pick Data Points", desc: "Select X, Y, and Z axes from your dataset." },
+    { name: "Generate Chart", desc: "Create Plotly, Seaborn & Matplotlib heatmaps, bar, line, or 3D scatter graphs." },
+    { name: "Export Assets", desc: "Download interactive graph images and ready-to-run Python code." }
   ];
 
   return (

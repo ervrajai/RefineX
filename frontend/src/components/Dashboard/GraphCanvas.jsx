@@ -102,8 +102,9 @@ function GraphCanvas({
     );
   }
 
-  // Determine if Plotly interactive HTML is provided
+  // Determine if Plotly interactive HTML or Matplotlib/Seaborn HTML image is provided
   const isInteractive = html && html.includes("plotly");
+  const isHtmlImage = html && (html.includes("<img") || html.includes("<svg"));
 
   return (
     <div
@@ -194,13 +195,18 @@ function GraphCanvas({
               sandbox="allow-scripts"
               className="w-full h-full border-0 min-h-[400px] rounded-xl"
             />
-          ) : (
+          ) : isHtmlImage ? (
+            <div
+              dangerouslySetInnerHTML={{ __html: html }}
+              className="w-full h-full flex items-center justify-center overflow-hidden"
+            />
+          ) : image ? (
             <img
-              src={image || `data:image/svg+xml;base64,${btoa(html)}`}
+              src={image}
               alt="Generated Chart"
               className="w-full h-auto max-h-full object-contain rounded-xl border border-purple-100 dark:border-purple-900/30 shadow-md"
             />
-          )}
+          ) : null}
         </div>
       </div>
     </div>

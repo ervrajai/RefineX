@@ -312,6 +312,29 @@ class ModelTrainingService:
             X = df[features]
             y = df[target]
 
+            # Compute feature encodings and dtypes for frontend prediction dropdowns
+            feature_dtypes = {}
+            feature_encodings = {}
+
+            for col in features:
+                col_series = df[col].dropna()
+                if pd.api.types.is_numeric_dtype(col_series) and col_series.nunique() > 10:
+                    feature_dtypes[col] = "numeric"
+                else:
+                    feature_dtypes[col] = "categorical"
+                    unique_vals = sorted([str(v) for v in col_series.unique() if pd.notna(v)])
+                    mapping = []
+                    for idx, val in enumerate(unique_vals):
+                        mapping.append({
+                            "label": val,
+                            "value": idx
+                        })
+                    feature_encodings[col] = mapping
+
+            job.feature_dtypes = feature_dtypes
+            job.feature_encodings = feature_encodings
+            job.save(update_fields=["feature_dtypes", "feature_encodings"])
+
             problem_type = ModelTrainingService.infer_problem_type(df, target)
 
             # Check target encodings if classification

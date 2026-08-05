@@ -17,6 +17,11 @@ const techs = [
     link: "https://scikit-learn.org/"
   },
   {
+    name: "Seaborn",
+    url: "https://seaborn.pydata.org/_images/logo-mark-lightbg.svg",
+    link: "https://seaborn.pydata.org/"
+  },
+  {
     name: "Matplotlib",
     url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/matplotlib/matplotlib-original.svg",
     link: "https://matplotlib.org/"

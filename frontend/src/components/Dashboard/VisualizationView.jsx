@@ -3,6 +3,7 @@ import api from "../../services/api";
 import FileUpload from "./FileUpload";
 import GraphCanvas from "./GraphCanvas";
 import { AnimatedSelect } from "../ui/AnimatedSelect";
+import AnimatedCheckbox from "../ui/AnimatedCheckbox";
 import visualizationImg from "../../assets/icons/Visualization.png";
 import RecentDatasetPanel from "../ui/RecentDatasetPanel";
 import RefreshButton from "../ui/RefreshButton";
@@ -42,6 +43,57 @@ import {
   X,
   History,
 } from "lucide-react";
+
+// Centralized Visualization Library Capabilities Map
+export const LIBRARY_CAPABILITIES = {
+  // Library-level capabilities
+  libraries: {
+    plotly: {
+      supportsMargins: true,
+      supportsInteractivity: true,
+      supports3DRotation: true,
+    },
+    seaborn: {
+      supportsMargins: false,
+      supportsInteractivity: false,
+      supports3DRotation: false,
+    },
+    matplotlib: {
+      supportsMargins: false,
+      supportsInteractivity: false,
+      supports3DRotation: true,
+    },
+  },
+
+  // Chart-type specific capabilities
+  chartTypes: {
+    // 2D Axis Charts
+    "Bar Chart": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: false, supportsColorPalette: true },
+    "Line Chart": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: true, supportsColorPalette: true },
+    "Scatter Plot": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: true, supportsColorPalette: true },
+    "Histogram": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: false, supportsColorPalette: true },
+    "Box Plot": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsOutliers: true, supportsColorPalette: true },
+    "Violin Plot": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsOutliers: true, supportsColorPalette: true },
+    "Area Chart": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: false, supportsColorPalette: true },
+    "Heatmap": { supportsGrid: false, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsAnnotations: true, supportsSquareCells: true, supportsColorPalette: true },
+    "Scatter Matrix": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsDimensions: true, supportsColorPalette: true },
+
+    // Special / 3D / Non-axis Charts
+    "Pie Chart": { supportsGrid: false, supportsLegend: true, supportsAxisRotation: false, supportsOpacity: true, supportsDonut: true, supportsColorPalette: true },
+    "Network Graph": { supportsGrid: false, supportsLegend: false, supportsAxisRotation: false, supportsOpacity: true, supportsDirected: true, supportsNodeLabels: true },
+    "3D Surface Plot": { supportsGrid: true, supportsLegend: false, supportsAxisRotation: false, supportsOpacity: true, supports3DRotation: true },
+    "3D Scatter Plot": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: false, supportsOpacity: true, supports3DRotation: true, supportsMarkerSize: true },
+  },
+
+  defaultCapabilities: {
+    supportsGrid: true,
+    supportsLegend: true,
+    supportsAxisRotation: true,
+    supportsOpacity: true,
+    supportsFontSize: true,
+    supportsFontFamily: true,
+  },
+};
 
 // Initial Configuration Map
 const initialConfig = {
@@ -254,10 +306,92 @@ export default function VisualizationView({
     }
   };
 
-  // Active config & undo/redo stacks
   const [config, setConfig] = useState(initialConfig);
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
+
+  // Dynamic Feature Validation Helper based on LIBRARY_CAPABILITIES map
+  const isFeatureSupported = useCallback(
+    (featureName) => {
+      const currentLib = config.library || "plotly";
+      const currentGraph = config.graph_type || "Bar Chart";
+
+      // 1. Check Library-level constraints
+      const libCap = LIBRARY_CAPABILITIES.libraries[currentLib] || {};
+      if (featureName === "margins" || featureName === "supportsMargins") {
+        if (!libCap.supportsMargins) return false;
+      }
+      if (featureName === "3dRotation" || featureName === "supports3DRotation") {
+        if (!libCap.supports3DRotation) return false;
+      }
+
+      // 2. Check Chart-type specific constraints
+      const chartCap =
+        LIBRARY_CAPABILITIES.chartTypes[currentGraph] ||
+        LIBRARY_CAPABILITIES.defaultCapabilities;
+
+      if (featureName in chartCap) {
+        return !!chartCap[featureName];
+      }
+
+      // Default fallback
+      return true;
+    },
+    [config.library, config.graph_type]
+  );
+
+  // Auto Reset unsupported configuration state when switching library or graph_type
+  useEffect(() => {
+    const currentLib = config.library || "plotly";
+    const currentGraph = config.graph_type || "Bar Chart";
+
+    let hasChanges = false;
+    const cleanedConfig = { ...config };
+
+    // Reset Margins if library doesn't support them
+    if (!LIBRARY_CAPABILITIES.libraries[currentLib]?.supportsMargins) {
+      if (
+        cleanedConfig.margin_left !== 40 ||
+        cleanedConfig.margin_right !== 40 ||
+        cleanedConfig.margin_top !== 60 ||
+        cleanedConfig.margin_bottom !== 40
+      ) {
+        cleanedConfig.margin_left = 40;
+        cleanedConfig.margin_right = 40;
+        cleanedConfig.margin_top = 60;
+        cleanedConfig.margin_bottom = 40;
+        hasChanges = true;
+      }
+    }
+
+    // Reset Axis Rotation if chart type doesn't support 2D tick rotation
+    const chartCap =
+      LIBRARY_CAPABILITIES.chartTypes[currentGraph] ||
+      LIBRARY_CAPABILITIES.defaultCapabilities;
+
+    if (chartCap.supportsAxisRotation === false && cleanedConfig.axis_rotation !== 0) {
+      cleanedConfig.axis_rotation = 0;
+      hasChanges = true;
+    }
+
+    // Reset 3D camera coordinates if chart is not 3D
+    if (chartCap.supports3DRotation === false) {
+      if (
+        cleanedConfig.camera_x !== 1.25 ||
+        cleanedConfig.camera_y !== 1.25 ||
+        cleanedConfig.camera_z !== 1.25
+      ) {
+        cleanedConfig.camera_x = 1.25;
+        cleanedConfig.camera_y = 1.25;
+        cleanedConfig.camera_z = 1.25;
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      setConfig(cleanedConfig);
+    }
+  }, [config.library, config.graph_type]);
 
   // Result States
   const [chartHtml, setChartHtml] = useState("");
@@ -1470,20 +1604,16 @@ export default function VisualizationView({
                     {/* Scatter Matrix dimension selector */}
                     {config.graph_type === "Scatter Matrix" && (
                       <div>
-                        <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        <label className="text-[10px] font-bold uppercase text-slate-400 dark:text-zinc-500 tracking-wider block mb-1.5">
                           Select Dimensions
                         </label>
-                        <div className="mt-1.5 max-h-36 overflow-y-auto border border-slate-200 dark:border-zinc-800 rounded-lg p-2 bg-slate-50 dark:bg-zinc-900 space-y-1.5">
+                        <div className="max-h-44 overflow-y-auto border border-slate-200 dark:border-zinc-800 rounded-xl p-2.5 bg-slate-50/50 dark:bg-zinc-900/50 space-y-2">
                           {profile.numeric_columns.map((col) => {
                             const dims = config.dimensions || [];
                             const checked = dims.includes(col);
                             return (
-                              <label
-                                key={col}
-                                className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none"
-                              >
-                                <input
-                                  type="checkbox"
+                              <div key={col} className="flex items-center py-0.5">
+                                <AnimatedCheckbox
                                   checked={checked}
                                   onChange={() => {
                                     const updatedDims = checked
@@ -1494,10 +1624,10 @@ export default function VisualizationView({
                                       dimensions: updatedDims,
                                     });
                                   }}
-                                  className="rounded border-slate-300 text-[#673ab7] focus:ring-[#673ab7] cursor-pointer"
+                                  label={col}
+                                  className="font-semibold text-xs text-slate-700 dark:text-zinc-300"
                                 />
-                                {col}
-                              </label>
+                              </div>
                             );
                           })}
                         </div>
@@ -2266,8 +2396,8 @@ export default function VisualizationView({
                   </div>
                 </div>
 
-                {/* Seaborn Palette */}
-                {config.library === "seaborn" && (
+                {/* Color Palette */}
+                {isFeatureSupported("supportsColorPalette") && (
                   <div>
                     <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                       Color Palette
@@ -2291,23 +2421,25 @@ export default function VisualizationView({
                 )}
 
                 {/* Typography */}
-                <div>
-                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                    Font Family
-                  </label>
-                  <AnimatedSelect
-                    value={config.font_family}
-                    onChange={(val) => updateConfig({ ...config, font_family: val })}
-                    options={[
-                      { value: "sans-serif", label: "Modern Sans-Serif" },
-                      { value: "serif", label: "Classic Serif" },
-                      { value: "monospace", label: "Developer Monospace" },
-                      { value: "Inter", label: "Inter (Premium)" },
-                      { value: "Outfit", label: "Outfit (Design)" },
-                    ]}
-                    className="w-full mt-1.5"
-                  />
-                </div>
+                {isFeatureSupported("supportsFontFamily") && (
+                  <div>
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                      Font Family
+                    </label>
+                    <AnimatedSelect
+                      value={config.font_family}
+                      onChange={(val) => updateConfig({ ...config, font_family: val })}
+                      options={[
+                        { value: "sans-serif", label: "Modern Sans-Serif" },
+                        { value: "serif", label: "Classic Serif" },
+                        { value: "monospace", label: "Developer Monospace" },
+                        { value: "Inter", label: "Inter (Premium)" },
+                        { value: "Outfit", label: "Outfit (Design)" },
+                      ]}
+                      className="w-full mt-1.5"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
@@ -2333,29 +2465,33 @@ export default function VisualizationView({
 
                 {/* Grid & Legend */}
                 <div className="flex flex-wrap gap-4 pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                    <input
-                      type="checkbox"
-                      checked={config.grid}
-                      onChange={(e) =>
-                        updateConfig({ ...config, grid: e.target.checked })
-                      }
-                      className="rounded border-slate-300 text-[#673ab7] focus:ring-[#673ab7] cursor-pointer"
-                    />
-                    Show Grid
-                  </label>
+                  {isFeatureSupported("supportsGrid") && (
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                      <input
+                        type="checkbox"
+                        checked={config.grid}
+                        onChange={(e) =>
+                          updateConfig({ ...config, grid: e.target.checked })
+                        }
+                        className="rounded border-slate-300 text-[#673ab7] focus:ring-[#673ab7] cursor-pointer"
+                      />
+                      Show Grid
+                    </label>
+                  )}
 
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                    <input
-                      type="checkbox"
-                      checked={config.legend}
-                      onChange={(e) =>
-                        updateConfig({ ...config, legend: e.target.checked })
-                      }
-                      className="rounded border-slate-300 text-[#673ab7] focus:ring-[#673ab7] cursor-pointer"
-                    />
-                    Show Legend
-                  </label>
+                  {isFeatureSupported("supportsLegend") && (
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                      <input
+                        type="checkbox"
+                        checked={config.legend}
+                        onChange={(e) =>
+                          updateConfig({ ...config, legend: e.target.checked })
+                        }
+                        className="rounded border-slate-300 text-[#673ab7] focus:ring-[#673ab7] cursor-pointer"
+                      />
+                      Show Legend
+                    </label>
+                  )}
                 </div>
 
                 {/* Dimensions */}
@@ -2399,7 +2535,7 @@ export default function VisualizationView({
                 </div>
 
                 {/* Margins */}
-                {config.library === "plotly" && (
+                {isFeatureSupported("supportsMargins") && (
                   <div>
                     <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                       Margins (L / R / T / B)
@@ -2458,51 +2594,55 @@ export default function VisualizationView({
                 )}
 
                 {/* Label Rotation */}
-                <div>
-                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                    Axis Label Rotation
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="90"
-                    value={config.axis_rotation}
-                    onChange={(e) =>
-                      updateConfig({
-                        ...config,
-                        axis_rotation: parseInt(e.target.value),
-                      })
-                    }
-                    className="w-full mt-1.5 accent-[#673ab7]"
-                  />
-                  <span className="text-[10px] text-slate-400 block text-right mt-0.5">
-                    {config.axis_rotation}°
-                  </span>
-                </div>
+                {isFeatureSupported("supportsAxisRotation") && (
+                  <div>
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                      Axis Label Rotation
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="90"
+                      value={config.axis_rotation}
+                      onChange={(e) =>
+                        updateConfig({
+                          ...config,
+                          axis_rotation: parseInt(e.target.value),
+                        })
+                      }
+                      className="w-full mt-1.5 accent-[#673ab7]"
+                    />
+                    <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                      {config.axis_rotation}°
+                    </span>
+                  </div>
+                )}
 
                 {/* Opacity */}
-                <div>
-                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                    Drawing Opacity
-                  </label>
-                  <input
-                    type="range"
-                    min="0.1"
-                    max="1.0"
-                    step="0.05"
-                    value={config.opacity}
-                    onChange={(e) =>
-                      updateConfig({
-                        ...config,
-                        opacity: parseFloat(e.target.value),
-                      })
-                    }
-                    className="w-full mt-1.5 accent-[#673ab7]"
-                  />
-                  <span className="text-[10px] text-slate-400 block text-right mt-0.5">
-                    {Math.round(config.opacity * 100)}%
-                  </span>
-                </div>
+                {isFeatureSupported("supportsOpacity") && (
+                  <div>
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                      Drawing Opacity
+                    </label>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="1.0"
+                      step="0.05"
+                      value={config.opacity}
+                      onChange={(e) =>
+                        updateConfig({
+                          ...config,
+                          opacity: parseFloat(e.target.value),
+                        })
+                      }
+                      className="w-full mt-1.5 accent-[#673ab7]"
+                    />
+                    <span className="text-[10px] text-slate-400 block text-right mt-0.5">
+                      {Math.round(config.opacity * 100)}%
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -2637,38 +2777,15 @@ export default function VisualizationView({
             </div>
           </div>
 
-          {/* Smart Engine Statistics & Insights under the graph */}
+          {/* Dataset Diagnostics Statistics under the graph */}
           {profile && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-              {/* Smart decisions applied */}
-              <div className="p-4 rounded-2xl border border-purple-200 dark:border-purple-900/30 bg-purple-50/40 dark:bg-purple-950/10 text-xs text-purple-900 dark:text-purple-300 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
-                  Engine Decisions Applied
-                </span>
-                {genNotes.length > 0 ? (
-                  genNotes.map((note, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-start gap-1.5 font-medium"
-                    >
-                      <span className="text-slate-400">•</span>
-                      <span>{note}</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-slate-500 font-medium text-xs">
-                    No override decisions active. Rendering default canvas
-                    layout.
-                  </div>
-                )}
-              </div>
-
+            <div className="mt-3">
               {/* Stats Panel */}
               <div className="p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#212121] shadow-sm text-xs space-y-2">
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block pb-1 border-b border-slate-100 dark:border-white/10">
                   Dataset Diagnostics
                 </span>
-                <div className="grid grid-cols-2 gap-4 pt-1 text-slate-600 dark:text-zinc-300">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1 text-slate-600 dark:text-zinc-300">
                   <div>
                     <span className="text-[10px] text-slate-400 block font-bold uppercase">
                       Total Cells
@@ -2691,6 +2808,22 @@ export default function VisualizationView({
                         100
                       ).toFixed(1)}
                       %)
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">
+                      Rows
+                    </span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                      {profile.total_rows?.toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">
+                      Columns
+                    </span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                      {profile.total_columns?.toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -2831,15 +2964,6 @@ export default function VisualizationView({
               <pre className="text-xs font-mono select-all leading-relaxed text-slate-800 dark:text-zinc-200 whitespace-pre">
                 {highlightPythonCode(pythonCode)}
               </pre>
-            </div>
-
-            <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-zinc-800">
-              <button
-                onClick={() => setShowCodeDialog(false)}
-                className="px-4 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300 cursor-pointer"
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>

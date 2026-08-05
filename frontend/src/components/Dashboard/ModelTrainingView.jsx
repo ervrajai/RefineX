@@ -127,6 +127,28 @@ export default function ModelTrainingView({
     }
   }, [datasetId, trainingJobDetail]);
 
+  // Automatically remove uncleaned warnings when dataset has been cleaned
+  useEffect(() => {
+    if (metadata?.status === "cleaned" || preview?.metadata?.status === "cleaned") {
+      setIsClean(true);
+      setWarnings(null);
+    }
+  }, [metadata, preview]);
+
+  // Automatically select all feature columns by default when dataset is loaded
+  useEffect(() => {
+    if (preview?.columns && preview.columns.length > 0) {
+      if (selectedFeatures.length === 0) {
+        const defaultTarget = targetColumn || preview.columns[preview.columns.length - 1];
+        if (!targetColumn) {
+          setTargetColumn(defaultTarget);
+        }
+        const allFeatures = preview.columns.filter((c) => c !== defaultTarget);
+        setSelectedFeatures(allFeatures);
+      }
+    }
+  }, [preview?.columns]);
+
   const handleResetSetup = () => {
     setTrainingMode("decide");
     setTargetColumn("");
@@ -184,6 +206,7 @@ export default function ModelTrainingView({
       const res = await api.post(
         `model-training/jobs/${trainingJobDetail.id}/predict/`,
         {
+          inputs: formattedData,
           data: formattedData,
           model_name: predictAlgo,
         }
@@ -838,9 +861,33 @@ export default function ModelTrainingView({
                 {/* X Columns Selection (Only Manual) */}
                 {trainingMode === "manual" && (
                   <div className="space-y-2">
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                      Feature Variables (X)
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                        Feature Variables (X)
+                      </label>
+                      <div className="flex items-center gap-1">
+                        <AnimatedCheckbox
+                          checked={
+                            preview?.columns &&
+                            selectedFeatures.length ===
+                              preview.columns.filter((c) => c !== targetColumn).length &&
+                            preview.columns.filter((c) => c !== targetColumn).length > 0
+                          }
+                          onChange={() => {
+                            const available = (preview?.columns || []).filter(
+                              (c) => c !== targetColumn
+                            );
+                            if (selectedFeatures.length === available.length) {
+                              setSelectedFeatures([]);
+                            } else {
+                              setSelectedFeatures(available);
+                            }
+                          }}
+                          label="Select All"
+                          className="font-bold text-[11px] text-[#673AB7] dark:text-purple-400"
+                        />
+                      </div>
+                    </div>
                     <div className="max-h-44 overflow-y-auto border border-slate-200 dark:border-zinc-800 rounded-xl p-2.5 bg-slate-50/50 dark:bg-zinc-900/50 space-y-2">
                       {preview?.columns
                         ?.filter((c) => c !== targetColumn)
@@ -1789,34 +1836,69 @@ export default function ModelTrainingView({
               <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
                 {trainingJobDetail.selected_features?.map((feat) => {
                   const hasError = !!predictValidationErrors[feat];
+
+                  // Check if categorical feature with bracketed dropdown encodings
+                  const encodings = trainingJobDetail.feature_encodings?.[feat];
+                  const isCategorical = Array.isArray(encodings) && encodings.length > 0;
+
                   return (
                     <label key={feat} className="block text-left space-y-1.5">
                       <span className="block text-xs font-semibold text-slate-800 dark:text-zinc-200 pl-3">
-                        {feat}
+                        {feat} {isCategorical ? "(Categorical)" : "(Numerical)"}
                       </span>
                       <div className="relative">
-                        <input
-                          type="text"
-                          value={predictFormInputs[feat] !== undefined ? predictFormInputs[feat] : ""}
-                          onChange={(e) => {
-                            setPredictFormInputs({
-                              ...predictFormInputs,
-                              [feat]: e.target.value,
-                            });
-                            if (predictValidationErrors[feat]) {
-                              setPredictValidationErrors({
-                                ...predictValidationErrors,
-                                [feat]: null,
+                        {isCategorical ? (
+                          <AnimatedSelect
+                            value={predictFormInputs[feat] !== undefined ? predictFormInputs[feat] : ""}
+                            onChange={(val) => {
+                              setPredictFormInputs({
+                                ...predictFormInputs,
+                                [feat]: val,
                               });
-                            }
-                          }}
-                          placeholder={`Enter value for ${feat}...`}
-                          className={`w-full rounded-full bg-white dark:bg-zinc-900/60 px-5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 outline-none transition-all duration-200 py-2.5 shadow-sm ${
-                            hasError
-                              ? "border-2 border-rose-500 focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10"
-                              : "border border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500 focus:border-[#673AB7] dark:focus:border-[#8b5cf6] focus:ring-4 focus:ring-[#673AB7]/15 dark:focus:ring-[#8b5cf6]/20"
-                          }`}
-                        />
+                              if (predictValidationErrors[feat]) {
+                                setPredictValidationErrors({
+                                  ...predictValidationErrors,
+                                  [feat]: null,
+                                });
+                              }
+                            }}
+                            options={encodings.map((opt) => ({
+                              value: String(opt.value),
+                              label: `${opt.label} (${opt.value})`,
+                            }))}
+                            placeholder={`Select ${feat}...`}
+                            className="w-full"
+                            triggerClassName={`w-full rounded-full bg-white dark:bg-zinc-900/60 px-5 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 py-2.5 shadow-sm border ${
+                              hasError
+                                ? "border-2 border-rose-500"
+                                : "border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500"
+                            }`}
+                          />
+                        ) : (
+                          <input
+                            type="number"
+                            step="any"
+                            value={predictFormInputs[feat] !== undefined ? predictFormInputs[feat] : ""}
+                            onChange={(e) => {
+                              setPredictFormInputs({
+                                ...predictFormInputs,
+                                [feat]: e.target.value,
+                              });
+                              if (predictValidationErrors[feat]) {
+                                setPredictValidationErrors({
+                                  ...predictValidationErrors,
+                                  [feat]: null,
+                                });
+                              }
+                            }}
+                            placeholder={`Enter numerical value for ${feat}...`}
+                            className={`w-full rounded-full bg-white dark:bg-zinc-900/60 px-5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 outline-none transition-all duration-200 py-2.5 shadow-sm ${
+                              hasError
+                                ? "border-2 border-rose-500 focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10"
+                                : "border border-zinc-300 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500 focus:border-[#673AB7] dark:focus:border-[#8b5cf6] focus:ring-4 focus:ring-[#673AB7]/15 dark:focus:ring-[#8b5cf6]/20"
+                            }`}
+                          />
+                        )}
                       </div>
                       {hasError && (
                         <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-rose-500 dark:text-rose-400 pl-3">

@@ -116,24 +116,37 @@ class DatasetMLTrainView(APIView):
             actual_file_type = dataset.file_type
         df, _ = read_dataframe(file_path, actual_file_type, encoding=dataset.encoding)
         
-        # Check targets validity
+        # 1. Check target column existence
+        if target not in df.columns:
+            return Response({"error": f"Target column '{target}' does not exist in dataset."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 2. Prevent data leakage (Target cannot be in feature columns X)
+        if target in features:
+            return Response({"error": f"Data leakage error: Target column '{target}' cannot be included in selected feature columns (X)."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 3. Check selected feature columns existence
+        for feat in features:
+            if feat not in df.columns:
+                return Response({"error": f"Feature column '{feat}' does not exist in dataset."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 4. Check targets validity and infer problem type
         try:
             problem_type = ModelTrainingService.infer_problem_type(df, target)
         except Exception as e:
             return Response({"error": f"Invalid target selection: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check compatibility between target and algorithms
+        # 5. Check compatibility between target and algorithms
         classification_algos = ["knn_classifier", "decision_tree_classifier", "random_forest_classifier", "svm_classifier"]
         regression_algos = ["linear", "multiple_linear", "polynomial_regression"]
 
         for algo in algorithms:
             if problem_type == "classification" and algo in regression_algos:
                 return Response({
-                    "error": f"Algorithm '{algo}' is incompatible with classification targets. Target column '{target}' contains categorical/class values. Use a Classifier model."
+                    "error": f"Algorithm '{algo}' is incompatible with classification target '{target}'. Target contains discrete classes/categories. Use a Classifier model."
                 }, status=status.HTTP_400_BAD_REQUEST)
             if problem_type == "regression" and algo in classification_algos:
                 return Response({
-                    "error": f"Algorithm '{algo}' is incompatible with regression targets. Target column '{target}' is continuous numeric. Use a Regression model."
+                    "error": f"Algorithm '{algo}' is incompatible with continuous numerical target '{target}'. Strictly use a Regression model (Linear, Multiple Linear, or Polynomial Regression)."
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         # Create Job DB Entry
@@ -202,6 +215,8 @@ class DatasetMLJobDetailView(APIView):
             "target_column": job.target_column,
             "selected_features": job.selected_features,
             "selected_models": job.selected_models,
+            "feature_dtypes": job.feature_dtypes or {},
+            "feature_encodings": job.feature_encodings or {},
             "training_mode": job.training_mode,
             "preprocessing_steps": job.preprocessing_steps,
             "hyperparameters": job.hyperparameters,

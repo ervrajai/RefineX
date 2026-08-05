@@ -9,7 +9,8 @@ export function AnimatedSelect({
   options = [], 
   placeholder = "Select...", 
   disabled = false, 
-  className = "" 
+  className = "",
+  triggerClassName = ""
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropDirection, setDropDirection] = useState("down");
@@ -132,13 +133,17 @@ export function AnimatedSelect({
       {/* Trigger Button */}
       <div
         onClick={handleToggle}
-        className={`flex items-center justify-between w-full px-3 py-2 text-xs rounded-lg border bg-white dark:bg-zinc-900 transition-all cursor-pointer font-semibold select-none ${
+        className={`flex items-center justify-between w-full transition-all cursor-pointer font-semibold select-none ${
+          triggerClassName
+            ? triggerClassName
+            : "px-3 py-2 text-xs rounded-lg border bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 text-slate-900 dark:text-white"
+        } ${
           disabled 
-            ? "opacity-50 cursor-not-allowed border-slate-200 dark:border-zinc-800" 
+            ? "opacity-50 cursor-not-allowed" 
             : isOpen 
-              ? "border-slate-900 ring-4 ring-slate-900/5 dark:border-white dark:ring-white/5" 
-              : "border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700"
-        } text-slate-900 dark:text-white`}
+              ? "border-[#673AB7] ring-4 ring-[#673AB7]/15 dark:border-[#8b5cf6] dark:ring-[#8b5cf6]/20" 
+              : ""
+        }`}
       >
         <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
         <ChevronDown 

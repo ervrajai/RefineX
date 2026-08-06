@@ -182,9 +182,12 @@ export default function ModelTrainingView({
     if (trainingJobDetail?.selected_features) {
       trainingJobDetail.selected_features.forEach((feat) => {
         const val = predictFormInputs[feat];
+        const encodings = trainingJobDetail.feature_encodings?.[feat];
+        const isCategorical = Array.isArray(encodings) && encodings.length > 0;
+
         if (val === undefined || val === null || String(val).trim() === "") {
           errors[feat] = "This field is required";
-        } else if (isNaN(Number(val))) {
+        } else if (!isCategorical && isNaN(Number(val))) {
           errors[feat] = "Must be a valid number";
         }
       });
@@ -672,17 +675,22 @@ export default function ModelTrainingView({
   };
 
   // Direct background download handler without page redirect
-  const handleDownload = async (jobId, type) => {
+  const handleDownload = async (jobId, type, algorithm = null) => {
     if (!jobId) return;
     try {
-      const res = await api.get(`model-training/jobs/${jobId}/download/?type=${type}`, {
+      let url = `model-training/jobs/${jobId}/download/?type=${type}`;
+      if (algorithm && type === "model") {
+        url += `&algorithm=${encodeURIComponent(algorithm)}`;
+      }
+      const res = await api.get(url, {
         responseType: "blob",
       });
-      const ext = type === "model" || type === "pkl" ? "pkl" : type === "predictions" ? "csv" : type === "report" ? "pdf" : "zip";
+      const ext = type === "model" || type === "pkl" ? "joblib" : type === "predictions" ? "csv" : type === "report" ? "pdf" : "zip";
+      const filename = algorithm ? `${algorithm}_model_${jobId}.${ext}` : `model_training_${type}_${jobId}.${ext}`;
       const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.setAttribute("download", `model_training_${type}_${jobId}.${ext}`);
+      link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -1399,7 +1407,7 @@ export default function ModelTrainingView({
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          handleDownload(trainingJobDetail.id, "model");
+                                          handleDownload(trainingJobDetail.id, "model", model.algorithm);
                                           setOpenDownloadDropdownId(null);
                                         }}
                                         className="w-full px-3.5 py-2 text-left hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200 flex items-center gap-2 transition"
@@ -1674,8 +1682,8 @@ export default function ModelTrainingView({
                         </div>
                       </div>
 
-                      {/* CARD 3: Automated Preprocessing (Bottom Left) */}
-                      <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex flex-col justify-between overflow-hidden">
+                      {/* CARD 3: Automated Preprocessing (Full Width Horizontal) */}
+                      <div className="col-span-1 md:col-span-2 p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex flex-col justify-between overflow-hidden">
                         <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-white/10">
                           <Layers className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
                           <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
@@ -1683,24 +1691,24 @@ export default function ModelTrainingView({
                           </h4>
                         </div>
 
-                        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm text-xs leading-relaxed text-slate-700 dark:text-zinc-200 font-medium space-y-2 mt-3 flex-1 flex flex-col justify-start">
-                          <div className="flex items-center gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                          <div className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm text-xs font-medium text-slate-700 dark:text-zinc-200 flex items-center gap-2.5">
                             <Check className="w-4 h-4 text-emerald-500 shrink-0" />
                             <span>Imputed missing numeric fields using Median Strategy</span>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm text-xs font-medium text-slate-700 dark:text-zinc-200 flex items-center gap-2.5">
                             <Check className="w-4 h-4 text-emerald-500 shrink-0" />
                             <span>Encoded categorical variables using sparse OneHotEncoder</span>
                           </div>
                           {selectedModelForModal === "polynomial_regression" && (
-                            <div className="flex items-center gap-2">
+                            <div className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm text-xs font-medium text-slate-700 dark:text-zinc-200 flex items-center gap-2.5">
                               <Check className="w-4 h-4 text-emerald-500 shrink-0" />
                               <span>Generated Polynomial Features (degree=2)</span>
                             </div>
                           )}
                           {(selectedModelForModal === "knn_classifier" ||
                             selectedModelForModal === "svm_classifier") && (
-                            <div className="flex items-center gap-2">
+                            <div className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm text-xs font-medium text-slate-700 dark:text-zinc-200 flex items-center gap-2.5">
                               <Check className="w-4 h-4 text-emerald-500 shrink-0" />
                               <span>Normalized numerical inputs using StandardScaler</span>
                             </div>
@@ -1711,16 +1719,16 @@ export default function ModelTrainingView({
                               "svm_classifier",
                               "polynomial_regression",
                             ].includes(selectedModelForModal) && (
-                              <div className="flex items-center gap-2">
+                              <div className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm text-xs font-medium text-slate-700 dark:text-zinc-200 flex items-center gap-2.5">
                                 <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                                <span>Preserved original numeric scales (no scaling needed for trees)</span>
+                                <span>Preserved original numeric scales (tree-based algorithm)</span>
                               </div>
                             )}
                         </div>
                       </div>
 
-                      {/* CARD 4: Validation Performance Visuals (Bottom Right) */}
-                      <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex flex-col justify-between overflow-hidden">
+                      {/* CARD 4: Validation Performance Visuals (Full Width Underneath Preprocessing) */}
+                      <div className="col-span-1 md:col-span-2 p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] shadow-sm flex flex-col justify-between overflow-hidden">
                         <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-white/10">
                           <Activity className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
                           <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
@@ -1730,61 +1738,64 @@ export default function ModelTrainingView({
 
                         <div className="pt-3 flex-1 flex flex-col justify-start">
                           {isClassification && m.confusion_matrix ? (
-                            <div className="rounded-xl overflow-hidden p-3 border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
-                              <div className="grid grid-cols-2 gap-2 text-center text-xs font-bold text-slate-700 dark:text-zinc-300">
+                            <div className="rounded-xl overflow-hidden p-4 border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
+                              <div className="grid grid-cols-2 gap-3 text-center text-xs font-bold text-slate-700 dark:text-zinc-300 max-w-md mx-auto">
                                 {m.confusion_matrix.map((row, rIdx) =>
                                   row.map((val, cIdx) => {
                                     const isDiag = rIdx === cIdx;
                                     return (
                                       <div
                                         key={`${rIdx}-${cIdx}`}
-                                        className={`p-2.5 rounded-lg border ${
+                                        className={`p-3 rounded-xl border ${
                                           isDiag
                                             ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-extrabold"
                                             : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
                                         }`}
                                       >
-                                        {val}
+                                        <span className="text-[10px] block font-semibold text-slate-400 dark:text-zinc-500 mb-0.5">
+                                          Row #{rIdx} - Col #{cIdx}
+                                        </span>
+                                        <span className="text-sm font-black">{val}</span>
                                       </div>
                                     );
                                   }),
                                 )}
                               </div>
-                              <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 mt-2 px-1">
-                                <span>Predicted Classes</span>
-                                <span>Target Splits</span>
+                              <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 mt-3 px-2 max-w-md mx-auto">
+                                <span>Predicted Classes (X)</span>
+                                <span>Actual Classes (Y)</span>
                               </div>
                             </div>
                           ) : trainingJobDetail.predictions ? (
-                            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm max-h-44 overflow-y-auto">
+                            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm max-h-52 overflow-y-auto">
                               <table className="w-full text-center text-xs">
                                 <thead className="bg-slate-100/70 dark:bg-white/[0.06] font-bold uppercase tracking-wider text-[10px] text-slate-600 dark:text-zinc-400 sticky top-0">
                                   <tr>
-                                    <th className="px-3 py-1.5">Row</th>
-                                    <th className="px-3 py-1.5">Actual</th>
-                                    <th className="px-3 py-1.5">Predicted</th>
-                                    <th className="px-3 py-1.5">Residual</th>
+                                    <th className="px-4 py-2">Row Index</th>
+                                    <th className="px-4 py-2">Actual Target</th>
+                                    <th className="px-4 py-2">Predicted Target</th>
+                                    <th className="px-4 py-2">Residual Error</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06]">
                                   {trainingJobDetail.predictions.actual
-                                    ?.slice(0, 5)
+                                    ?.slice(0, 8)
                                     .map((act, idx) => {
                                       const pred = trainingJobDetail.predictions.predicted[idx];
                                       const res = act - pred;
                                       return (
                                         <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-white/[0.02]">
-                                          <td className="px-3 py-1.5 font-bold text-slate-400 dark:text-zinc-500 text-[10px]">
-                                            #{idx}
+                                          <td className="px-4 py-2 font-bold text-slate-400 dark:text-zinc-500 text-[10px]">
+                                            #{idx + 1}
                                           </td>
-                                          <td className="px-3 py-1.5 font-medium text-slate-700 dark:text-zinc-200">
-                                            {act.toFixed(2)}
+                                          <td className="px-4 py-2 font-medium text-slate-700 dark:text-zinc-200">
+                                            {typeof act === "number" ? act.toFixed(2) : String(act)}
                                           </td>
-                                          <td className="px-3 py-1.5 font-bold text-purple-600 dark:text-purple-400">
-                                            {pred.toFixed(2)}
+                                          <td className="px-4 py-2 font-bold text-purple-600 dark:text-purple-400">
+                                            {typeof pred === "number" ? pred.toFixed(2) : String(pred)}
                                           </td>
-                                          <td className={`px-3 py-1.5 font-bold text-[11px] ${res < 0 ? "text-rose-500" : "text-emerald-500"}`}>
-                                            {res.toFixed(2)}
+                                          <td className={`px-4 py-2 font-bold text-[11px] ${res < 0 ? "text-rose-500" : "text-emerald-500"}`}>
+                                            {typeof res === "number" ? res.toFixed(2) : "-"}
                                           </td>
                                         </tr>
                                       );

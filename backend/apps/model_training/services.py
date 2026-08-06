@@ -362,6 +362,7 @@ class ModelTrainingService:
             job.save()
 
             trained_models_summary = {}
+            all_pipelines = {}
             best_score = -99999.0
             best_model_name = None
             best_pipeline = None
@@ -396,6 +397,7 @@ class ModelTrainingService:
                     best_params = {}
 
                 t_train = time.time() - t0
+                all_pipelines[algo] = pipeline
 
                 # Predict with timing
                 t0_pred = time.time()
@@ -423,9 +425,7 @@ class ModelTrainingService:
                     # Adjusted R2 calculation
                     n_samples = len(y_test)
                     p_features = X_test.shape[1]
-                    adj_r2 = 1 - (1 - r2) * (n_samples - 1) / max(1, (n_samples - p_features - 1))
-
-                    # Generalization index (diff between train and test score)
+                    adj_r2 = 1 - (1 - r2) * (n_samples - 1) / (n_samples - p_features - 1) if n_samples > (p_features + 1) else r2
                     train_score = pipeline.score(X_train, y_train)
                     generalization = float(train_score - r2)
 
@@ -515,6 +515,7 @@ class ModelTrainingService:
             # Package estimator alongside encoders
             saved_bundle = {
                 "pipeline": best_pipeline,
+                "all_pipelines": all_pipelines,
                 "label_encoder": label_encoder,
                 "features": features,
                 "target": target,

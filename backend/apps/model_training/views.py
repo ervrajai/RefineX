@@ -356,6 +356,32 @@ class DatasetMLDownloadView(APIView):
             if not job.trained_model_file or not os.path.exists(job.trained_model_file.path):
                 return Response({"error": "Serialized model file not found."}, status=status.HTTP_404_NOT_FOUND)
             
+            algorithm = request.query_params.get("algorithm")
+            if algorithm:
+                import joblib
+                import io
+                try:
+                    saved_bundle = joblib.load(job.trained_model_file.path)
+                    all_pipelines = saved_bundle.get("all_pipelines", {})
+                    if algorithm in all_pipelines:
+                        specific_bundle = {
+                            "pipeline": all_pipelines[algorithm],
+                            "label_encoder": saved_bundle.get("label_encoder"),
+                            "features": saved_bundle.get("features"),
+                            "target": saved_bundle.get("target"),
+                            "problem_type": saved_bundle.get("problem_type"),
+                            "algorithm": algorithm
+                        }
+                        buf = io.BytesIO()
+                        joblib.dump(specific_bundle, buf)
+                        buf.seek(0)
+                        response = HttpResponse(buf.read(), content_type='application/octet-stream')
+                        filename = f"{algorithm}_job_{job.id}.joblib"
+                        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                        return response
+                except Exception:
+                    pass
+
             response = HttpResponse(open(job.trained_model_file.path, 'rb'), content_type='application/octet-stream')
             filename = os.path.basename(job.trained_model_file.name)
             response['Content-Disposition'] = f'attachment; filename="{filename}"'

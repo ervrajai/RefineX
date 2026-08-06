@@ -328,6 +328,10 @@ export default function HistoryView({
     setRestoreLoading(true);
     setError("");
     try {
+      // Fetch full ML job details to include selected_features, feature_encodings, etc.
+      const jobRes = await api.get(`model-training/jobs/${job.id}/`);
+      const fullJob = jobRes.data;
+
       const res = await api.get(`cleaning/${job.dataset_id}/preview/?offset=0&limit=100`);
       const data = res.data;
       if (onLoadWorkspace) {
@@ -341,7 +345,7 @@ export default function HistoryView({
         );
       }
       if (onLoadTrainingWorkspace) {
-        onLoadTrainingWorkspace(job);
+        onLoadTrainingWorkspace(fullJob);
       }
     } catch (err) {
       setError("Failed to load dataset details for restoration. The file might have been deleted.");

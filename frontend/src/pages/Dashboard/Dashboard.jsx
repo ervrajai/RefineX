@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
@@ -60,6 +60,41 @@ function Dashboard() {
   const [trainingJobDetail, setTrainingJobDetail] = useState(null);
   const [restoredGraph, setRestoredGraph] = useState(null);
 
+  // Lifted Model Training execution states for tab switch persistence & background execution
+  const [activeJobId, setActiveJobId] = useState(null);
+  const [training, setTraining] = useState(false);
+  const [jobStatus, setJobStatus] = useState(null);
+  const notifiedJobsRef = useRef(new Set());
+
+  // Background polling for model training status so training continues seamless polling across tab switches
+  useEffect(() => {
+    let interval = null;
+    if (activeJobId && training) {
+      interval = setInterval(async () => {
+        try {
+          const res = await api.get(`model-training/jobs/${activeJobId}/status/`);
+          setJobStatus(res.data);
+          if (res.data.status === "completed") {
+            setTraining(false);
+            setActiveJobId(null);
+            // Load completed job details
+            const detailRes = await api.get(`model-training/jobs/${activeJobId}/`);
+            setTrainingJobDetail(detailRes.data);
+            fetchInitialHistory();
+          } else if (res.data.status === "failed") {
+            setTraining(false);
+            setActiveJobId(null);
+          }
+        } catch (err) {
+          console.error("Background training polling error:", err);
+        }
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeJobId, training]);
+
   // Lifted Visualization States for RAM caching & mount bypass
   const [chartData, setChartData] = useState(null);
   const [chartConfig, setChartConfig] = useState(null);
@@ -92,11 +127,12 @@ function Dashboard() {
     fetchOverviewData();
   }, []);
 
-  // Central Initial History Fetch (PAGINATED, LIMIT 10)
-  const fetchInitialHistory = async () => {
+  // Central Initial History Fetch (PAGINATED, DYNAMIC REFRESH LIMIT)
+  const fetchInitialHistory = async (targetLimit) => {
     setHistoryLoading(true);
     try {
-      const res = await api.get("history/?limit=10&offset=0");
+      const fetchLimit = targetLimit || Math.max(10, historyList.length || 10);
+      const res = await api.get(`history/?limit=${fetchLimit}&offset=0`);
       const results = res.data.results || (Array.isArray(res.data) ? res.data : []);
       const hasNext = Boolean(res.data.next);
       setHistoryList(results);
@@ -281,6 +317,13 @@ function Dashboard() {
               setCvFolds={setCvFolds}
               trainingJobDetail={trainingJobDetail}
               setTrainingJobDetail={setTrainingJobDetail}
+              activeJobId={activeJobId}
+              setActiveJobId={setActiveJobId}
+              training={training}
+              setTraining={setTraining}
+              jobStatus={jobStatus}
+              setJobStatus={setJobStatus}
+              notifiedJobsRef={notifiedJobsRef}
               onLoadWorkspace={(dsId, meta, bReport, aReport, logs, previewData) => {
                 setDatasetId(dsId);
                 setMetadata(meta);

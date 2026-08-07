@@ -80,6 +80,13 @@ export default function ModelTrainingView({
   setCvFolds,
   trainingJobDetail,
   setTrainingJobDetail,
+  activeJobId,
+  setActiveJobId,
+  training,
+  setTraining,
+  jobStatus,
+  setJobStatus,
+  notifiedJobsRef,
   onLoadWorkspace, // callback to clean tab
   setActiveTab, // function to toggle active tabs in Dashboard
   historyList = [],
@@ -100,9 +107,6 @@ export default function ModelTrainingView({
   const [loadedBytes, setLoadedBytes] = useState(0);
   const [totalBytes, setTotalBytes] = useState(0);
   const [uploadSpeed, setUploadSpeed] = useState(0);
-  const [training, setTraining] = useState(false);
-  const [activeJobId, setActiveJobId] = useState(null);
-  const [jobStatus, setJobStatus] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -401,39 +405,26 @@ export default function ModelTrainingView({
     }
   }, [inferredTaskType]);
 
-  // Polling for training status
+  // React to lifted job status updates (notifies ONCE per job ID and auto-dismisses)
   useEffect(() => {
-    let interval = null;
-    if (activeJobId && training) {
-      interval = setInterval(async () => {
-        try {
-          const res = await api.get(
-            `model-training/jobs/${activeJobId}/status/`,
-          );
-          setJobStatus(res.data);
-          if (res.data.status === "completed") {
-            setTraining(false);
-            setActiveJobId(null);
-            setSuccessMsg("Training completed successfully!");
-            // Load job details
-            const detailRes = await api.get(
-              `model-training/jobs/${activeJobId}/`,
-            );
-            setTrainingJobDetail(detailRes.data);
-          } else if (res.data.status === "failed") {
-            setTraining(false);
-            setActiveJobId(null);
-            setErrorMsg(`Model training failed: ${res.data.error_message}`);
-          }
-        } catch (err) {
-          console.error("Polling error:", err);
-        }
-      }, 1000);
+    if (!jobStatus || !jobStatus.job_id || !notifiedJobsRef?.current) return;
+
+    if (notifiedJobsRef.current.has(jobStatus.job_id)) {
+      return; // Already notified for this job ID (persisted at Dashboard root!)
     }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [activeJobId, training]);
+
+    if (jobStatus.status === "completed") {
+      notifiedJobsRef.current.add(jobStatus.job_id);
+      setSuccessMsg("Training completed successfully!");
+      const timer = setTimeout(() => setSuccessMsg(""), 3500);
+      return () => clearTimeout(timer);
+    } else if (jobStatus.status === "failed") {
+      notifiedJobsRef.current.add(jobStatus.job_id);
+      setErrorMsg(`Model training failed: ${jobStatus.error_message || "Unknown error"}`);
+      const timer = setTimeout(() => setErrorMsg(""), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [jobStatus]);
 
   // Uploader triggers
   const handleDragOver = (e) => e.preventDefault();
@@ -1095,25 +1086,80 @@ export default function ModelTrainingView({
                         ),
                         description: (
                           <div className="pt-3 pb-2 space-y-3.5 text-xs animate-fade-in">
-                            <div className="space-y-1.5">
-                              <div className="flex justify-between font-semibold text-slate-600 dark:text-zinc-400 text-[11px]">
-                                <span>Test Split Size</span>
-                                <span className="text-purple-600 dark:text-purple-400 font-bold">
-                                  {Math.round(testSize * 100)}%
-                                </span>
-                              </div>
-                              <input
-                                type="range"
-                                min="0.1"
-                                max="0.4"
-                                step="0.05"
-                                value={testSize}
-                                onChange={(e) =>
-                                  setTestSize(parseFloat(e.target.value))
-                                }
-                                className="w-full h-1.5 bg-slate-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-purple-600 dark:accent-purple-400"
-                              />
-                            </div>
+                            {/* Interactive Dual-Color Train/Test Split Control */}
+                            {(() => {
+                              const testPct = Math.round(testSize * 100);
+                              const trainPct = Math.round((1 - testSize) * 100);
+                              const totalRowsCount = metadata?.rows_count || metadata?.rows || preview?.rows?.length || 0;
+                              const testRowsEst = totalRowsCount ? Math.round(totalRowsCount * testSize) : null;
+                              const trainRowsEst = totalRowsCount ? Math.round(totalRowsCount * (1 - testSize)) : null;
+                              // Relative thumb fill percentage from 0% (at min 0.1) to 100% (at max 0.4)
+                              const fillPct = Math.min(100, Math.max(0, ((testSize - 0.1) / (0.4 - 0.1)) * 100));
+
+                              return (
+                                <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/70 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-bold text-slate-700 dark:text-zinc-300 tracking-tight">
+                                      Train / Test Split Ratio
+                                    </span>
+                                  </div>
+
+                                  {/* Left (Testing Data) vs Right (Training Data) Header */}
+                                  <div className="flex items-center justify-between px-1">
+                                    {/* Left: Testing Data */}
+                                    <div className="flex flex-col text-left">
+                                      <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                                        Testing Data
+                                      </span>
+                                      <span className="text-sm font-black text-slate-900 dark:text-white">
+                                        {testPct}%
+                                      </span>
+                                    </div>
+
+                                    {/* Right: Training Data */}
+                                    <div className="flex flex-col text-right">
+                                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                        Training Data
+                                      </span>
+                                      <span className="text-sm font-black text-slate-900 dark:text-white">
+                                        {trainPct}%
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Dual-Color Progress Bar Track + 1:1 Mouse Synced Range Slider */}
+                                  <div className="pt-1 pb-1">
+                                    <input
+                                      type="range"
+                                      min="0.1"
+                                      max="0.4"
+                                      step="0.01"
+                                      value={testSize}
+                                      onChange={(e) =>
+                                        setTestSize(parseFloat(e.target.value))
+                                      }
+                                      className="w-full h-3 rounded-full appearance-none cursor-pointer border border-slate-200/80 dark:border-zinc-800 shadow-inner accent-purple-600 dark:accent-purple-400 focus:outline-none transition-all duration-75"
+                                      style={{
+                                        background: `linear-gradient(to right, #a855f7 0%, #a855f7 ${fillPct}%, #10b981 ${fillPct}%, #10b981 100%)`
+                                      }}
+                                    />
+                                  </div>
+
+                                  {/* Grayed-out Row Estimate Description UNDER Slider */}
+                                  <div className="text-[11px] font-medium text-slate-400 dark:text-zinc-500 text-center tracking-tight pt-0.5 font-sans">
+                                    {testRowsEst !== null && trainRowsEst !== null ? (
+                                      <span>
+                                        ~{testRowsEst.toLocaleString()} rows testing &bull; ~{trainRowsEst.toLocaleString()} rows training
+                                      </span>
+                                    ) : (
+                                      <span>
+                                        {testPct}% testing partition &bull; {trainPct}% training partition
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
                             <div className="space-y-1">
                               <label className="block text-[11px] font-semibold text-slate-600 dark:text-zinc-400">

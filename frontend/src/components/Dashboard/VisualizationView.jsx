@@ -54,37 +54,57 @@ export const LIBRARY_CAPABILITIES = {
       supportsMargins: true,
       supportsInteractivity: true,
       supports3DRotation: true,
+      supportsFontFamily: true,
+      supportsFontSize: true,
+      supportsColorPalette: true,
     },
     seaborn: {
       supportsMargins: false,
       supportsInteractivity: false,
       supports3DRotation: false,
+      supportsFontFamily: true,
+      supportsFontSize: true,
+      supportsColorPalette: true,
     },
     matplotlib: {
       supportsMargins: false,
       supportsInteractivity: false,
       supports3DRotation: true,
+      supportsFontFamily: true,
+      supportsFontSize: true,
+      supportsColorPalette: true,
+    },
+    network: {
+      supportsMargins: false,
+      supportsInteractivity: false,
+      supports3DRotation: false,
+      supportsFontFamily: false,
+      supportsFontSize: true,
+      supportsColorPalette: false,
+      supportsGrid: false,
+      supportsLegend: false,
+      supportsAxisRotation: false,
     },
   },
 
   // Chart-type specific capabilities
   chartTypes: {
     // 2D Axis Charts
-    "Bar Chart": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: false, supportsColorPalette: true },
-    "Line Chart": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: true, supportsColorPalette: true },
-    "Scatter Plot": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: true, supportsColorPalette: true },
-    "Histogram": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: false, supportsColorPalette: true },
-    "Box Plot": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsOutliers: true, supportsColorPalette: true },
-    "Violin Plot": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsOutliers: true, supportsColorPalette: true },
-    "Area Chart": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: false, supportsColorPalette: true },
-    "Heatmap": { supportsGrid: false, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsAnnotations: true, supportsSquareCells: true, supportsColorPalette: true },
-    "Scatter Matrix": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsDimensions: true, supportsColorPalette: true },
+    "Bar Chart": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: false, supportsColorPalette: true, supportsFontFamily: true },
+    "Line Chart": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: true, supportsColorPalette: true, supportsFontFamily: true },
+    "Scatter Plot": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: true, supportsColorPalette: true, supportsFontFamily: true },
+    "Histogram": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: false, supportsColorPalette: true, supportsFontFamily: true },
+    "Box Plot": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsOutliers: true, supportsColorPalette: true, supportsFontFamily: true },
+    "Violin Plot": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsOutliers: true, supportsColorPalette: true, supportsFontFamily: true },
+    "Area Chart": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsTrendlines: false, supportsColorPalette: true, supportsFontFamily: true },
+    "Heatmap": { supportsGrid: false, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsAnnotations: true, supportsSquareCells: true, supportsColorPalette: true, supportsFontFamily: true },
+    "Scatter Matrix": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: true, supportsOpacity: true, supportsDimensions: true, supportsColorPalette: true, supportsFontFamily: true },
 
     // Special / 3D / Non-axis Charts
-    "Pie Chart": { supportsGrid: false, supportsLegend: true, supportsAxisRotation: false, supportsOpacity: true, supportsDonut: true, supportsColorPalette: true },
-    "Network Graph": { supportsGrid: false, supportsLegend: false, supportsAxisRotation: false, supportsOpacity: true, supportsDirected: true, supportsNodeLabels: true },
-    "3D Surface Plot": { supportsGrid: true, supportsLegend: false, supportsAxisRotation: false, supportsOpacity: true, supports3DRotation: true },
-    "3D Scatter Plot": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: false, supportsOpacity: true, supports3DRotation: true, supportsMarkerSize: true },
+    "Pie Chart": { supportsGrid: false, supportsLegend: true, supportsAxisRotation: false, supportsOpacity: true, supportsDonut: true, supportsColorPalette: true, supportsFontFamily: true },
+    "Network Graph": { supportsGrid: false, supportsLegend: false, supportsAxisRotation: false, supportsOpacity: true, supportsDirected: true, supportsNodeLabels: true, supportsColorPalette: false, supportsFontFamily: false, supportsMargins: false },
+    "3D Surface Plot": { supportsGrid: true, supportsLegend: false, supportsAxisRotation: false, supportsOpacity: true, supports3DRotation: true, supportsColorPalette: true, supportsFontFamily: true },
+    "3D Scatter Plot": { supportsGrid: true, supportsLegend: true, supportsAxisRotation: false, supportsOpacity: true, supports3DRotation: true, supportsMarkerSize: true, supportsColorPalette: true, supportsFontFamily: true },
   },
 
   defaultCapabilities: {
@@ -94,6 +114,7 @@ export const LIBRARY_CAPABILITIES = {
     supportsOpacity: true,
     supportsFontSize: true,
     supportsFontFamily: true,
+    supportsColorPalette: true,
   },
 };
 
@@ -233,9 +254,6 @@ export default function VisualizationView({
         });
         setDatasetsList(uniqueDatasets);
       }
-    } else {
-      fetchDatasetAnalysis();
-      fetchDatasetRecommendations();
     }
   }, [datasetId, historyList]);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -391,13 +409,14 @@ export default function VisualizationView({
       const currentLib = config.library || "plotly";
       const currentGraph = config.graph_type || "Bar Chart";
 
+      const key = featureName.startsWith("supports")
+        ? featureName
+        : `supports${featureName.charAt(0).toUpperCase()}${featureName.slice(1)}`;
+
       // 1. Check Library-level constraints
       const libCap = LIBRARY_CAPABILITIES.libraries[currentLib] || {};
-      if (featureName === "margins" || featureName === "supportsMargins") {
-        if (!libCap.supportsMargins) return false;
-      }
-      if (featureName === "3dRotation" || featureName === "supports3DRotation") {
-        if (!libCap.supports3DRotation) return false;
+      if (key in libCap && libCap[key] === false) {
+        return false;
       }
 
       // 2. Check Chart-type specific constraints
@@ -405,12 +424,20 @@ export default function VisualizationView({
         LIBRARY_CAPABILITIES.chartTypes[currentGraph] ||
         LIBRARY_CAPABILITIES.defaultCapabilities;
 
-      if (featureName in chartCap) {
-        return !!chartCap[featureName];
+      if (key in chartCap && chartCap[key] === false) {
+        return false;
+      }
+
+      if (key in chartCap) {
+        return !!chartCap[key];
+      }
+
+      if (key in libCap) {
+        return !!libCap[key];
       }
 
       // Default fallback
-      return true;
+      return LIBRARY_CAPABILITIES.defaultCapabilities[key] ?? true;
     },
     [config.library, config.graph_type]
   );
@@ -892,13 +919,13 @@ export default function VisualizationView({
       if (!datasetId) return;
 
       const configStr = JSON.stringify(currentConfig);
-      // Skip API re-fetching if graph is ALREADY plotted for this exact configuration!
-      if (
-        lastGeneratedConfigRef.current === configStr &&
-        (chartHtml || chartImage || chartData?.html || chartData?.image)
-      ) {
+      // Skip API re-fetching if graph has ALREADY been attempted/generated for this exact configuration!
+      if (lastGeneratedConfigRef.current === configStr) {
         return;
       }
+
+      // Record config string immediately to prevent duplicate in-flight triggers
+      lastGeneratedConfigRef.current = configStr;
 
       setGenerating(true);
       if (setIsGraphLoading) setIsGraphLoading(true);
@@ -917,7 +944,6 @@ export default function VisualizationView({
             setGenReason(res.data.reason || "Invalid column configurations.");
             setGenRec(res.data.recommended || "");
             setChartDataPayload("", "", "");
-            lastGeneratedConfigRef.current = null;
           } else {
             setChartDataPayload(
               res.data.html || "",
@@ -929,7 +955,6 @@ export default function VisualizationView({
             setGenError("");
             setGenReason("");
             setGenRec("");
-            lastGeneratedConfigRef.current = configStr;
           }
         })
         .catch((err) => {
@@ -938,14 +963,13 @@ export default function VisualizationView({
           setGenReason(data.reason || "Invalid column configurations.");
           setGenRec(data.recommended || "");
           setChartDataPayload("", "", "");
-          lastGeneratedConfigRef.current = null;
         })
         .finally(() => {
           setGenerating(false);
           if (setIsGraphLoading) setIsGraphLoading(false);
         });
     },
-    [datasetId, chartHtml, chartImage, chartData, setChartDataPayload, setIsGraphLoading],
+    [datasetId, setChartDataPayload, setIsGraphLoading],
   );
 
   useEffect(() => {
@@ -973,6 +997,8 @@ export default function VisualizationView({
 
   // Listen to config changes and run generator debounced
   useEffect(() => {
+    if (!datasetId) return;
+
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
@@ -984,7 +1010,7 @@ export default function VisualizationView({
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-  }, [config, triggerGeneration]);
+  }, [config, datasetId, triggerGeneration]);
 
   const handleApplyRecommendation = (rec) => {
     const cols = rec.recommended_columns || [];
@@ -2536,7 +2562,11 @@ export default function VisualizationView({
                 </div>
 
                 {/* Color Palette */}
-                {isFeatureSupported("supportsColorPalette") && (
+                {isFeatureSupported("supportsColorPalette") &&
+                  (Boolean(config.color_column) ||
+                    ["Heatmap", "Pie Chart", "correlationchart"].includes(
+                      config.graph_type
+                    )) && (
                   <div>
                     <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                       Color Palette

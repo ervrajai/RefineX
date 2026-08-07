@@ -233,6 +233,21 @@ export default function HistoryView({
     currentPage * ITEMS_PER_PAGE
   );
 
+  // Clamp page if currentPage exceeds totalPages (e.g. after deletion)
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  const handleRefreshHistory = async () => {
+    setExpandedJobId(null);
+    setOpenLogsJobId(null);
+    if (onRefreshHistory) {
+      await onRefreshHistory();
+    }
+  };
+
   useEffect(() => {
     if (historyList) {
       setHistory(historyList);
@@ -551,7 +566,7 @@ export default function HistoryView({
         </div>
 
         <div className="flex items-center gap-2.5 self-start sm:self-center shrink-0">
-          <RefreshButton onClick={onRefreshHistory || (() => {})} loading={loading} />
+          <RefreshButton onClick={handleRefreshHistory} loading={loading} />
 
           <button 
             type="button"

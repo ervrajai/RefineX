@@ -99,24 +99,58 @@ export default function CleanView({
     setErrorMsg("");
     setSuccessMsg("");
     try {
-      const res = await api.get(`cleaning/${targetDatasetId}/preview/?offset=0&limit=100`);
-      const data = res.data;
+      const previewRes = await api.get(`cleaning/${targetDatasetId}/preview/?offset=0&limit=100`);
+      const previewData = previewRes.data;
+
+      let analyzeData = {};
+      try {
+        const analyzeRes = await api.get(`cleaning/${targetDatasetId}/analyze/`);
+        analyzeData = analyzeRes.data || {};
+      } catch (e) {
+        console.warn("Analysis fetch error:", e);
+      }
       
       setDatasetId(targetDatasetId);
-      setMetadata(data.metadata);
-      setPreview(data);
-      if (data.report) setReport(data.report);
-      if (job.before_stats) setBeforeReport(job.before_stats);
-      if (job.after_stats) setAfterReport(job.after_stats);
-      if (job.logs) setCleanLogs(job.logs);
+      setMetadata(analyzeData.metadata || previewData.metadata || null);
+      setPreview(previewData);
+      
+      const rep = analyzeData.report || job.after_stats || job.before_stats || previewData.report || null;
+      setReport(rep);
+      setBeforeReport(job.before_stats || analyzeData.before_stats || rep);
+      setAfterReport(job.after_stats || analyzeData.after_stats || rep);
+      setCleanLogs(job.logs || analyzeData.logs || []);
 
-      setSuccessMsg(`Loaded uploaded dataset "${job.dataset_name || job.name || data.metadata?.name}"!`);
+      setSuccessMsg(`Loaded uploaded dataset "${job.dataset_name || job.name || previewData.metadata?.name}"!`);
     } catch (err) {
       setErrorMsg("Failed to load historical dataset details. The file might have been deleted.");
     } finally {
       setProcessing(false);
     }
   };
+
+  // Auto-fetch profile report if datasetId is loaded without a report
+  useEffect(() => {
+    if (datasetId && !report) {
+      const fetchAnalysisReport = async () => {
+        try {
+          const res = await api.get(`cleaning/${datasetId}/analyze/`);
+          const data = res.data;
+          if (data) {
+            if (data.metadata) setMetadata(data.metadata);
+            const rep = data.report || data.after_stats || data.before_stats;
+            if (rep) {
+              setReport(rep);
+              setBeforeReport(prev => prev || rep);
+              setAfterReport(prev => prev || rep);
+            }
+          }
+        } catch (err) {
+          console.warn("Auto-fetching dataset analysis report failed:", err);
+        }
+      };
+      fetchAnalysisReport();
+    }
+  }, [datasetId, report]);
 
   // Table pagination, search, sort
   const [rowsPerPage, setRowsPerPage] = useState(10);

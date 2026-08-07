@@ -154,6 +154,7 @@ class CleaningHistoryView(APIView):
                     "created_at": graph.created_at,
                     "graph_type": graph.graph_type,
                     "library": graph.library,
+                    "config": graph.config,
                     "python_code": graph.python_code,
                     "preview_data": graph.preview_data,
                     "download_count": graph.download_count,
@@ -170,7 +171,7 @@ class CleaningHistoryView(APIView):
                 Dataset.objects.filter(guest_id=guest_id, user__isnull=True).update(user=request.user)
                 CleaningJob.objects.filter(dataset__guest_id=guest_id, user__isnull=True).update(user=request.user)
 
-            user_datasets = Dataset.objects.filter(user=request.user, is_deleted=False, status="cleaned").distinct()
+            user_datasets = Dataset.objects.filter(user=request.user, is_deleted=False).distinct()
             # OPTIMIZATION: select_related('dataset') and defer heavy text logs
             clean_jobs = CleaningJob.objects.filter(
                 (Q(user=request.user) | Q(dataset__user=request.user)) & Q(is_deleted=False)
@@ -186,12 +187,12 @@ class CleaningHistoryView(APIView):
         else:
             guest_id = request.query_params.get("guest_id") or request.headers.get("X-Guest-ID")
             if guest_id:
-                user_datasets = Dataset.objects.filter(guest_id=guest_id, is_deleted=False, status="cleaned").distinct()
+                user_datasets = Dataset.objects.filter(guest_id=guest_id, is_deleted=False).distinct()
                 clean_jobs = CleaningJob.objects.filter(dataset__guest_id=guest_id, is_deleted=False).select_related('dataset').defer('logs').distinct()
                 ml_jobs = ModelTrainingJob.objects.filter(dataset__guest_id=guest_id, is_deleted=False).select_related('dataset').distinct()
                 vis_graphs = SavedGraph.objects.filter(dataset__guest_id=guest_id, is_deleted=False).select_related('dataset').distinct()
             else:
-                user_datasets = Dataset.objects.filter(is_deleted=False, status="cleaned")
+                user_datasets = Dataset.objects.filter(is_deleted=False)
                 clean_jobs = CleaningJob.objects.filter(is_deleted=False).select_related('dataset').defer('logs')
                 ml_jobs = ModelTrainingJob.objects.filter(is_deleted=False).select_related('dataset')
                 vis_graphs = SavedGraph.objects.filter(is_deleted=False).select_related('dataset')
@@ -252,6 +253,7 @@ class CleaningHistoryView(APIView):
                 "created_at": graph.created_at,
                 "graph_type": graph.graph_type,
                 "library": graph.library,
+                "config": graph.config,
                 "is_favorite": graph.is_favorite
             })
 

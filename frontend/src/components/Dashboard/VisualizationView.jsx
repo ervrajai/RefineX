@@ -23,6 +23,8 @@ import {
   Undo2,
   Redo2,
   Info,
+  FileText,
+  FileSpreadsheet,
   Calendar,
   AlertCircle,
   Settings,
@@ -174,6 +176,14 @@ const initialConfig = {
   camera_z: 1.25,
 };
 
+const formatSize = (bytes) => {
+  if (!bytes) return "N/A";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+};
+
 export default function VisualizationView({
   datasetId,
   setDatasetId,
@@ -195,7 +205,8 @@ export default function VisualizationView({
   chartConfig,
   setChartConfig,
   isGraphLoading,
-  setIsGraphLoading
+  setIsGraphLoading,
+  onRefreshHistory
 }) {
   // App States
   const [profile, setProfile] = useState(null);
@@ -543,12 +554,20 @@ export default function VisualizationView({
   };
 
   const handleLoadSavedGraphIntoStudio = async (graph) => {
-    if (graph.config) {
-      setConfig({
-        ...initialConfig,
-        ...graph.config,
-      });
+    const targetConfig = graph.config ? { ...initialConfig, ...graph.config } : config;
+    setConfig(targetConfig);
+
+    const html = graph.html || graph.chart_html || "";
+    const img = graph.preview_data || graph.image || "";
+    const py = graph.python_code || "";
+
+    if (html || img) {
+      setChartDataPayload(html, img, py);
+      lastGeneratedConfigRef.current = JSON.stringify(targetConfig);
+    } else {
+      lastGeneratedConfigRef.current = null;
     }
+
     const dsId = graph.dataset || graph.dataset_id;
     if (dsId) {
       setLoadingDatasetId(dsId);
@@ -561,6 +580,11 @@ export default function VisualizationView({
         setPreview(previewData);
         setProfile(analyzeRes.data);
         setReport(analyzeRes.data);
+
+        if (html || img) {
+          setChartDataPayload(html, img, py);
+          lastGeneratedConfigRef.current = JSON.stringify(targetConfig);
+        }
       } catch (err) {
         console.error("Failed to load dataset details for saved graph:", err);
       } finally {
@@ -856,10 +880,25 @@ export default function VisualizationView({
     updateConfig(initialConfig);
   };
 
+  const lastGeneratedConfigRef = useRef(
+    (chartData?.html || chartData?.image || chartHtml || chartImage) && chartConfig
+      ? JSON.stringify(chartConfig)
+      : null
+  );
+
   // Trigger chart generation with debouncing & mount bypass check
   const triggerGeneration = useCallback(
     (currentConfig) => {
       if (!datasetId) return;
+
+      const configStr = JSON.stringify(currentConfig);
+      // Skip API re-fetching if graph is ALREADY plotted for this exact configuration!
+      if (
+        lastGeneratedConfigRef.current === configStr &&
+        (chartHtml || chartImage || chartData?.html || chartData?.image)
+      ) {
+        return;
+      }
 
       setGenerating(true);
       if (setIsGraphLoading) setIsGraphLoading(true);
@@ -878,6 +917,7 @@ export default function VisualizationView({
             setGenReason(res.data.reason || "Invalid column configurations.");
             setGenRec(res.data.recommended || "");
             setChartDataPayload("", "", "");
+            lastGeneratedConfigRef.current = null;
           } else {
             setChartDataPayload(
               res.data.html || "",
@@ -889,6 +929,7 @@ export default function VisualizationView({
             setGenError("");
             setGenReason("");
             setGenRec("");
+            lastGeneratedConfigRef.current = configStr;
           }
         })
         .catch((err) => {
@@ -897,26 +938,38 @@ export default function VisualizationView({
           setGenReason(data.reason || "Invalid column configurations.");
           setGenRec(data.recommended || "");
           setChartDataPayload("", "", "");
+          lastGeneratedConfigRef.current = null;
         })
         .finally(() => {
           setGenerating(false);
           if (setIsGraphLoading) setIsGraphLoading(false);
         });
     },
-    [datasetId, setChartDataPayload, setIsGraphLoading],
+    [datasetId, chartHtml, chartImage, chartData, setChartDataPayload, setIsGraphLoading],
   );
 
   useEffect(() => {
     if (restoredGraph) {
-      if (restoredGraph.config) {
-        setConfig({
-          ...initialConfig,
-          ...restoredGraph.config,
-        });
+      const graphConfig = restoredGraph.config || restoredGraph.chart_config || {};
+      const mergedConfig = {
+        ...config,
+        ...graphConfig,
+      };
+      if (graphConfig && Object.keys(graphConfig).length > 0) {
+        setConfig(mergedConfig);
+      }
+
+      const html = restoredGraph.html || restoredGraph.chart_html || "";
+      const img = restoredGraph.preview_data || restoredGraph.image || "";
+      const py = restoredGraph.python_code || "";
+
+      if (html || img) {
+        setChartDataPayload(html, img, py);
+        lastGeneratedConfigRef.current = JSON.stringify(mergedConfig);
       }
       setRestoredGraph(null);
     }
-  }, [restoredGraph, setRestoredGraph]);
+  }, [restoredGraph, setRestoredGraph, setChartDataPayload]);
 
   // Listen to config changes and run generator debounced
   useEffect(() => {
@@ -1137,6 +1190,10 @@ export default function VisualizationView({
                 items={datasetsList}
                 onSelect={(ds) => handleSelectHistoryDataset(ds)}
                 onViewAll={() => setActiveTab("history")}
+                onRefresh={() => {
+                  if (fetchUserDatasets) fetchUserDatasets();
+                  if (onRefreshHistory) onRefreshHistory();
+                }}
                 loadingId={loadingDatasetId}
               />
             </div>
@@ -1260,7 +1317,7 @@ export default function VisualizationView({
   }
 
   return (
-    <div className="space-y-6 text-slate-800 dark:text-zinc-100 font-sans pb-10 max-w-7xl mx-auto">
+    <div className={`space-y-6 text-slate-800 dark:text-zinc-100 pb-10 animate-fade-in font-sans ${!datasetId ? "max-w-7xl mx-auto" : "max-w-full"}`}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-0 py-1 mb-6">
         <div className="flex flex-col">
@@ -1272,19 +1329,37 @@ export default function VisualizationView({
           </p>
         </div>
 
-        <RefreshButton
-          label="Switch Dataset"
-          title="Switch to another dataset"
-          onClick={() => {
-            setDatasetId(null);
-            setProfile(null);
-            setRecommendations([]);
-            setChartHtml("");
-            setChartImage("");
-            setPythonCode("");
-          }}
-        />
+        {datasetId && (
+          <div className="flex flex-col items-start sm:items-end gap-2.5">
+            <RefreshButton
+              label="Switch Dataset"
+              title="Switch to another dataset"
+              onClick={() => {
+                setDatasetId(null);
+                setProfile(null);
+                setRecommendations([]);
+                setChartHtml("");
+                setChartImage("");
+                setPythonCode("");
+              }}
+            />
+          </div>
+        )}
       </div>
+
+      {/* Active Dataset Title Bar (Matching Clean & ML Model Modules) */}
+      {datasetId && (metadata || preview) && (
+        <div className="space-y-3.5 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 text-purple-600 dark:text-purple-400 bg-purple-500/10 rounded-xl flex items-center justify-center shrink-0 border border-purple-500/20 shadow-xs">
+              <FileSpreadsheet className="w-4 h-4" />
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate tracking-tight">
+              {metadata?.name || preview?.name || "Loaded Dataset.csv"}
+            </h2>
+          </div>
+        </div>
+      )}
 
       {/* Dataset Profile Auto-Analysis Info Summary */}
       {profile && (

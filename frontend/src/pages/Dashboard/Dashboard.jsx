@@ -65,10 +65,8 @@ function Dashboard() {
   const [chartConfig, setChartConfig] = useState(null);
   const [isGraphLoading, setIsGraphLoading] = useState(false);
 
-  // Reset visualization states when datasetId changes (prevents data bleed across datasets)
+  // Reset visualization loading state when datasetId changes
   useEffect(() => {
-    setChartData(null);
-    setChartConfig(null);
     setIsGraphLoading(false);
   }, [datasetId]);
 
@@ -250,6 +248,7 @@ function Dashboard() {
               setCleanLogs={setCleanLogs}
               setActiveTab={setActiveTab}
               historyList={historyList}
+              onRefreshHistory={fetchInitialHistory}
             />
           )}
 
@@ -293,6 +292,7 @@ function Dashboard() {
               }}
               setActiveTab={setActiveTab}
               historyList={historyList}
+              onRefreshHistory={fetchInitialHistory}
             />
           )}
 
@@ -314,6 +314,7 @@ function Dashboard() {
               restoredGraph={restoredGraph}
               setRestoredGraph={setRestoredGraph}
               historyList={historyList}
+              onRefreshHistory={fetchInitialHistory}
               chartData={chartData}
               setChartData={setChartData}
               chartConfig={chartConfig}

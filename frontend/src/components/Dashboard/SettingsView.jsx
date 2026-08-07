@@ -165,7 +165,7 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
 
   useEffect(() => {
     const syncTheme = () => {
-      const savedTheme = localStorage.getItem("theme") || (document.documentElement.classList.contains("dark") ? "dark" : "light");
+      const savedTheme = localStorage.getItem("theme") || "auto";
       setThemeMode(savedTheme);
     };
     syncTheme();
@@ -174,15 +174,20 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
   }, []);
 
   const changeTheme = (mode) => {
-    const targetMode = mode === "dark" ? "dark" : "light";
-    setThemeMode(targetMode);
-    localStorage.setItem("theme", targetMode);
+    setThemeMode(mode);
+    localStorage.setItem("theme", mode);
 
     const root = document.documentElement;
-    if (targetMode === "dark") {
+    if (mode === "dark") {
       root.classList.add("dark");
-    } else {
+    } else if (mode === "light") {
       root.classList.remove("dark");
+    } else {
+      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
     }
     window.dispatchEvent(new Event("themeChange"));
   };
@@ -764,14 +769,15 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
             </div>
           </div>
 
-          {/* Full width grid for Light and Dark modes */}
-          <div className="grid grid-cols-2 gap-1.5 bg-slate-200/60 dark:bg-[#1c1c1e] p-1.5 rounded-2xl border border-slate-300/40 dark:border-zinc-800/60 w-full">
+          {/* Full width grid, slightly taller padding (p-1.5) */}
+          <div className="grid grid-cols-3 gap-1.5 bg-slate-200/60 dark:bg-[#1c1c1e] p-1.5 rounded-2xl border border-slate-300/40 dark:border-zinc-800/60 w-full">
             {[
               { id: "light", label: "Light", icon: Sun },
               { id: "dark", label: "Dark", icon: Moon },
+              { id: "auto", label: "Auto", icon: TvMinimal },
             ].map((mode) => {
               const Icon = mode.icon;
-              const isSelected = (themeMode === mode.id) || (mode.id === "dark" && document.documentElement.classList.contains("dark") && themeMode !== "light");
+              const isSelected = themeMode === mode.id;
               
               return (
                 <button

@@ -58,7 +58,8 @@ export default function CleanView({
   setCleanLogs,
   setActiveTab,
   isGuest = false,
-  historyList = []
+  historyList = [],
+  onRefreshHistory
 }) {
 
   // Loading and alerts
@@ -1253,6 +1254,7 @@ export default function CleanView({
                 items={cleanHistoryList}
                 onSelect={(item) => handleUseFromHistory(item)}
                 onViewAll={() => setActiveTab("history")}
+                onRefresh={onRefreshHistory}
               />
             </div>
           )}

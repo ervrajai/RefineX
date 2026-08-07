@@ -1,6 +1,10 @@
 import io
 import json
 import base64
+import time
+import hashlib
+import logging
+from django.core.cache import cache
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
@@ -10,6 +14,8 @@ from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from apps.accounts.views import CsrfExemptSessionAuthentication
+
+logger = logging.getLogger(__name__)
 
 from apps.cleaning.models import Dataset
 from apps.cleaning.utils import read_dataframe, make_json_safe
@@ -100,6 +106,18 @@ class GraphGenerationView(APIView):
             }, status=status.HTTP_200_OK)
             
         dataset = get_object_or_404(Dataset, pk=dataset_id)
+
+        # 1. RAM Caching Key with dataset updated_at timestamp (CRITICAL for cache busting on clean)
+        updated_str = dataset.updated_at.isoformat() if dataset.updated_at else ""
+        config_str = json.dumps(config, sort_keys=True)
+        config_hash = hashlib.md5(f"{updated_str}_{config_str}".encode('utf-8')).hexdigest()
+        cache_key = f"vis_graph_{dataset_id}_{config_hash}"
+
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            logger.info(f"[CACHE HIT] Returned graph visualization from RAM cache for key: {cache_key}")
+            return Response(cached_response, status=status.HTTP_200_OK)
+
         analysis = get_dataset_analysis(dataset)
         
         graph_type = config.get("graph_type")
@@ -110,7 +128,7 @@ class GraphGenerationView(APIView):
                 "reason": "Please select a chart type."
             }, status=status.HTTP_200_OK)
             
-        # First, run validation
+        # Run config validation
         is_valid, err_msg, rec_type = validate_graph_config(
             analysis,
             graph_type,
@@ -132,21 +150,30 @@ class GraphGenerationView(APIView):
             }, status=status.HTTP_200_OK)
             
         try:
-            # Read dataset file
+            # 2. Execution Profiling: Step 1 - Disk Read
+            t_start_read = time.time()
             file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
             df, _ = read_dataframe(file_path, dataset.file_type, encoding=dataset.encoding)
-            
-            # Apply decisions (sampling, aggregation)
+            t_read = time.time() - t_start_read
+            logger.info(f"[PROFILING] 1. Disk Read Time: {t_read:.4f}s for dataset_id={dataset_id}")
+
+            # Execution Profiling: Step 2 - Data Processing & Aggregation
+            t_start_proc = time.time()
             processed_df, notes = apply_smart_decisions(df, config)
+            t_proc = time.time() - t_start_proc
+            logger.info(f"[PROFILING] 2. Data Processing Time: {t_proc:.4f}s")
             
-            # Record if it was sampled
             config["sampled"] = len(processed_df) < len(df)
             config["file_type"] = dataset.file_type
             config["encoding"] = dataset.encoding
             config["dataset_name"] = dataset.name
             
-            # Generate graph
+            # Execution Profiling: Step 3 - Vectorized Graph Generation & Serialization
+            t_start_gen = time.time()
             result = generate_graph(processed_df, config)
+            python_code = compile_python_code(config)
+            t_gen = time.time() - t_start_gen
+            logger.info(f"[PROFILING] 3. Graph Generation & Serialization Time: {t_gen:.4f}s (Total: {t_read + t_proc + t_gen:.4f}s)")
             
             if not result.get("success"):
                 return Response({
@@ -155,16 +182,19 @@ class GraphGenerationView(APIView):
                     "reason": result.get("error", "Please modify your graph settings.")
                 }, status=status.HTTP_200_OK)
                 
-            # Compile Python code
-            python_code = compile_python_code(config)
-            
-            return Response({
+            response_data = {
                 "success": True,
                 "html": result.get("html"),
                 "image": result.get("image"),
                 "python_code": python_code,
                 "notes": notes + result.get("notes", [])
-            }, status=status.HTTP_200_OK)
+            }
+
+            # Store in RAM cache for 1 hour
+            cache.set(cache_key, response_data, timeout=3600)
+            logger.info(f"[CACHE SET] Stored graph visualization in RAM for key: {cache_key}")
+
+            return Response(response_data, status=status.HTTP_200_OK)
             
         except Exception as e:
             return Response({

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import logoImg from "../../assets/logo/refinex_logo.png";
 import { 
   LayoutDashboard, 
@@ -7,7 +8,9 @@ import {
   LineChart,
   History,
   Cog, 
-  LogOut
+  LogOut,
+  Sun,
+  Moon
 } from "lucide-react";
 
 // Inline helper to combine Tailwind classes cleanly
@@ -33,6 +36,41 @@ const MOBILE_LABELS = {
 };
 
 function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingOut, isCollapsed, setIsCollapsed }) {
+  // Dark/Light Theme state and toggle logic
+  const [theme, setThemeState] = useState(() => {
+    const stored = localStorage.getItem("theme");
+    if (stored) return stored;
+    return document.documentElement.classList.contains("dark") ? "dark" : "light";
+  });
+
+  useEffect(() => {
+    const syncTheme = () => {
+      const stored = localStorage.getItem("theme") || (document.documentElement.classList.contains("dark") ? "dark" : "light");
+      setThemeState(stored);
+    };
+    window.addEventListener("themeChange", syncTheme);
+    return () => window.removeEventListener("themeChange", syncTheme);
+  }, []);
+
+  const isDarkMode = theme === "dark" || (theme === "auto" && document.documentElement.classList.contains("dark"));
+
+  const toggleTheme = (newTheme) => {
+    let mode = newTheme;
+    if (!mode) {
+      mode = isDarkMode ? "light" : "dark";
+    }
+    const targetMode = mode === "dark" ? "dark" : "light";
+    localStorage.setItem("theme", targetMode);
+    setThemeState(targetMode);
+
+    if (targetMode === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    window.dispatchEvent(new Event("themeChange"));
+  };
+
   // Sidebar Resizing Logic
   const MIN_WIDTH = 90;
   const MAX_WIDTH = 280;
@@ -228,6 +266,69 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
           font-weight: 900;
           font-style: normal;
         }
+
+        /* From Uiverse.io by Madflows */ 
+        .toggle-switch {
+          position: relative;
+          width: 100px;
+          height: 50px;
+          --light: #d8dbe0;
+          --dark: #28292c;
+          --link: rgb(27, 129, 112);
+          --link-hover: rgb(24, 94, 82);
+        }
+
+        .switch-label {
+          position: absolute;
+          width: 100%;
+          height: 50px;
+          background-color: var(--dark);
+          border-radius: 25px;
+          cursor: pointer;
+          border: 3px solid var(--dark);
+        }
+
+        .checkbox {
+          position: absolute;
+          display: none;
+        }
+
+        .slider {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          border-radius: 25px;
+          -webkit-transition: 0.3s;
+          transition: 0.3s;
+        }
+
+        .checkbox:checked ~ .slider {
+          background-color: var(--light);
+        }
+
+        .slider::before {
+          content: "";
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          width: 25px;
+          height: 25px;
+          border-radius: 50%;
+          -webkit-box-shadow: inset 12px -4px 0px 0px var(--light);
+          box-shadow: inset 12px -4px 0px 0px var(--light);
+          background-color: var(--dark);
+          -webkit-transition: 0.3s;
+          transition: 0.3s;
+        }
+
+        .checkbox:checked ~ .slider::before {
+          -webkit-transform: translateX(50px);
+          -ms-transform: translateX(50px);
+          transform: translateX(50px);
+          background-color: var(--dark);
+          -webkit-box-shadow: none;
+          box-shadow: none;
+        }
         .hamburger {
           cursor: pointer;
           display: flex;
@@ -357,6 +458,63 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
               );
             })}
           </nav>
+        </div>
+
+        {/* --- THEME TOGGLE SECTION (CLOSED VS OPENED) --- */}
+        <div className="px-3.5 py-3 border-t border-slate-200 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-900/50 transition-colors duration-300">
+          {isCollapsed ? (
+            /* CLOSED SIDEBAR: Uiverse.io Toggle Switch */
+            <div className="w-full flex items-center justify-center py-1">
+              <div className="toggle-switch transform scale-[0.40] origin-center -my-3.5 -mx-7 shrink-0" title="Toggle Light/Dark Theme">
+                <label className="switch-label">
+                  <input
+                    type="checkbox"
+                    className="checkbox"
+                    checked={!isDarkMode}
+                    onChange={() => toggleTheme(!isDarkMode ? "dark" : "light")}
+                  />
+                  <span className="slider"></span>
+                </label>
+              </div>
+            </div>
+          ) : (
+            /* OPENED SIDEBAR: Pill-Shaped Segmented Control (Exact login/signup style) */
+            <div className="relative flex w-full items-center rounded-full border border-slate-200/80 dark:border-zinc-800/90 bg-slate-200/70 dark:bg-[#1c1c1e] p-1 shadow-inner">
+              <motion.div
+                className="absolute inset-y-1 rounded-full bg-white dark:bg-[#3a3a3c] shadow-sm border border-slate-200/80 dark:border-zinc-700/80"
+                initial={false}
+                animate={{
+                  left: isDarkMode ? "50%" : "4px",
+                  width: "calc(50% - 4px)",
+                }}
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+
+              <button
+                type="button"
+                onClick={() => toggleTheme("light")}
+                className={`relative z-10 w-1/2 py-1.5 text-center text-xs font-bold flex items-center justify-center gap-1.5 transition-colors duration-200 cursor-pointer ${
+                  !isDarkMode
+                    ? "text-[#1c1c1e] dark:text-white"
+                    : "text-slate-500 dark:text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white"
+                }`}
+              >
+                <Sun className="w-3.5 h-3.5" /> Light
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleTheme("dark")}
+                className={`relative z-10 w-1/2 py-1.5 text-center text-xs font-bold flex items-center justify-center gap-1.5 transition-colors duration-200 cursor-pointer ${
+                  isDarkMode
+                    ? "text-[#1c1c1e] dark:text-white"
+                    : "text-slate-500 dark:text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white"
+                }`}
+              >
+                <Moon className="w-3.5 h-3.5" /> Dark
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="p-4 border-t border-slate-200 dark:border-zinc-800/80 bg-slate-50 dark:bg-zinc-900 transition-colors duration-300 ease-in-out">

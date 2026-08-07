@@ -52,38 +52,32 @@ const pieChartConfig = {
   },
 };
 
-function OverviewView({ user, onQuickResume, setActiveTab }) {
-  const [data, setData] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
+function OverviewView({
+  user,
+  onQuickResume,
+  setActiveTab,
+  historyList = [],
+  overviewData = null,
+  overviewLoading = false,
+  onRefreshOverview
+}) {
+  const [data, setData] = useState(overviewData);
+  const [history, setHistory] = useState(historyList);
+  const [loading, setLoading] = useState(!overviewData && overviewLoading);
   const [error, setError] = useState("");
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [statsRes, historyRes] = await Promise.allSettled([
-        api.get("dashboard/stats/"),
-        api.get("history/")
-      ]);
-
-      if (statsRes.status === "fulfilled") {
-        setData(statsRes.value.data);
-      }
-      if (historyRes.status === "fulfilled") {
-        setHistory(historyRes.value.data || []);
-      }
-    } catch (err) {
-      console.error("Dashboard stats error:", err);
-      setError("Failed to load dashboard statistics.");
-    } finally {
+  useEffect(() => {
+    if (overviewData) {
+      setData(overviewData);
       setLoading(false);
     }
-  };
+  }, [overviewData]);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (historyList && historyList.length > 0) {
+      setHistory(historyList);
+    }
+  }, [historyList]);
 
   const formatDate = (isoStr) => {
     if (!isoStr) return "Recently";

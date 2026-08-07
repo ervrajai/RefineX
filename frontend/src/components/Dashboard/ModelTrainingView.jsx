@@ -70,9 +70,9 @@ export default function ModelTrainingView({
   cvFolds,
   setCvFolds,
   trainingJobDetail,
-  setTrainingJobDetail,
   onLoadWorkspace, // callback to clean tab
   setActiveTab, // function to toggle active tabs in Dashboard
+  historyList = []
 }) {
   // Dataset states (lifted to parent)
   const [isClean, setIsClean] = useState(true);
@@ -301,17 +301,9 @@ export default function ModelTrainingView({
   const [loadingCleanHistory, setLoadingCleanHistory] = useState(false);
 
   useEffect(() => {
-    if (!datasetId) {
-      fetchCleanHistory();
-    }
-  }, [datasetId]);
-
-  const fetchCleanHistory = async () => {
-    setLoadingCleanHistory(true);
-    try {
-      const res = await api.get("history/");
+    if (!datasetId && historyList) {
       const seen = new Set();
-      const userDatasets = (res.data || [])
+      const userDatasets = (historyList || [])
         .filter((job) => job.dataset_id || job.id)
         .filter((job) => {
           const id = job.dataset_id || job.id;
@@ -320,12 +312,8 @@ export default function ModelTrainingView({
           return true;
         });
       setCleanHistoryList(userDatasets);
-    } catch (err) {
-      console.error("Failed to load dataset history:", err);
-    } finally {
-      setLoadingCleanHistory(false);
     }
-  };
+  }, [datasetId, historyList]);
 
   const handleUseFromHistory = async (job) => {
     setUploading(true);

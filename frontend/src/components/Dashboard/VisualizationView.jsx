@@ -189,12 +189,44 @@ export default function VisualizationView({
   setActiveTab,
   restoredGraph,
   setRestoredGraph,
+  historyList = [],
+  chartData,
+  setChartData,
+  chartConfig,
+  setChartConfig,
+  isGraphLoading,
+  setIsGraphLoading
 }) {
   // App States
   const [profile, setProfile] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
   const [datasetsList, setDatasetsList] = useState([]);
   const [loadingDatasets, setLoadingDatasets] = useState(false);
+
+  // Load guest/history datasets list if datasetId is null
+  useEffect(() => {
+    if (!datasetId) {
+      if (historyList) {
+        const uniqueDatasets = [];
+        const seenIds = new Set();
+        (historyList || []).forEach((item) => {
+          const dsId = item.dataset_id || item.id;
+          if (dsId && !seenIds.has(dsId)) {
+            seenIds.add(dsId);
+            uniqueDatasets.push({
+              id: dsId,
+              name: item.dataset_name || item.name || "Dataset",
+              created_at: item.created_at,
+            });
+          }
+        });
+        setDatasetsList(uniqueDatasets);
+      }
+    } else {
+      fetchDatasetAnalysis();
+      fetchDatasetRecommendations();
+    }
+  }, [datasetId, historyList]);
   const [profileLoading, setProfileLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState("");
@@ -306,7 +338,39 @@ export default function VisualizationView({
     }
   };
 
-  const [config, setConfig] = useState(initialConfig);
+  const [config, setConfigState] = useState(chartConfig || initialConfig);
+  const [chartHtml, setChartHtmlState] = useState(chartData?.html || "");
+  const [chartImage, setChartImageState] = useState(chartData?.image || "");
+  const [pythonCode, setPythonCodeState] = useState(chartData?.python_code || "");
+
+  const setConfig = useCallback((val) => {
+    const nextVal = typeof val === "function" ? val(config) : val;
+    setConfigState(nextVal);
+    if (setChartConfig) setChartConfig(nextVal);
+  }, [config, setChartConfig]);
+
+  const setChartDataPayload = useCallback((html, image, pyCode, notes = []) => {
+    setChartHtmlState(html || "");
+    setChartImageState(image || "");
+    setPythonCodeState(pyCode || "");
+    if (setChartData) {
+      setChartData({
+        html: html || "",
+        image: image || "",
+        python_code: pyCode || "",
+        notes: notes || []
+      });
+    }
+  }, [setChartData]);
+
+  useEffect(() => {
+    if (chartConfig) setConfigState(chartConfig);
+    if (chartData) {
+      setChartHtmlState(chartData.html || "");
+      setChartImageState(chartData.image || "");
+      setPythonCodeState(chartData.python_code || "");
+    }
+  }, [chartConfig, chartData]);
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
 
@@ -393,11 +457,6 @@ export default function VisualizationView({
     }
   }, [config.library, config.graph_type]);
 
-  // Result States
-  const [chartHtml, setChartHtml] = useState("");
-  const [chartImage, setChartImage] = useState("");
-  const [pythonCode, setPythonCode] = useState("");
-
   // UI states
   const [activeSubTab, setActiveSubTab] = useState("data"); // data, properties, customization
   const [copiedCode, setCopiedCode] = useState(false);
@@ -434,7 +493,9 @@ export default function VisualizationView({
   };
 
   useEffect(() => {
-    fetchSavedGraphs();
+    if (!savedGraphs || savedGraphs.length === 0) {
+      fetchSavedGraphs();
+    }
   }, []);
 
   const fetchSavedGraphs = async () => {
@@ -795,12 +856,13 @@ export default function VisualizationView({
     updateConfig(initialConfig);
   };
 
-  // Trigger chart generation with debouncing
+  // Trigger chart generation with debouncing & mount bypass check
   const triggerGeneration = useCallback(
     (currentConfig) => {
       if (!datasetId) return;
 
       setGenerating(true);
+      if (setIsGraphLoading) setIsGraphLoading(true);
       setGenError("");
       setGenReason("");
       setGenRec("");
@@ -815,12 +877,14 @@ export default function VisualizationView({
             setGenError(res.data.error || "Failed to generate graph.");
             setGenReason(res.data.reason || "Invalid column configurations.");
             setGenRec(res.data.recommended || "");
-            setChartHtml("");
-            setChartImage("");
+            setChartDataPayload("", "", "");
           } else {
-            setChartHtml(res.data.html || "");
-            setChartImage(res.data.image || "");
-            setPythonCode(res.data.python_code || "");
+            setChartDataPayload(
+              res.data.html || "",
+              res.data.image || "",
+              res.data.python_code || "",
+              res.data.notes || []
+            );
             setGenNotes(res.data.notes || []);
             setGenError("");
             setGenReason("");
@@ -832,14 +896,14 @@ export default function VisualizationView({
           setGenError(data.error || "Failed to generate graph.");
           setGenReason(data.reason || "Invalid column configurations.");
           setGenRec(data.recommended || "");
-          setChartHtml("");
-          setChartImage("");
+          setChartDataPayload("", "", "");
         })
         .finally(() => {
           setGenerating(false);
+          if (setIsGraphLoading) setIsGraphLoading(false);
         });
     },
-    [datasetId],
+    [datasetId, setChartDataPayload, setIsGraphLoading],
   );
 
   useEffect(() => {

@@ -57,7 +57,8 @@ export default function CleanView({
   cleanLogs,
   setCleanLogs,
   setActiveTab,
-  isGuest = false
+  isGuest = false,
+  historyList = []
 }) {
 
   // Loading and alerts
@@ -75,17 +76,9 @@ export default function CleanView({
   const [loadingCleanHistory, setLoadingCleanHistory] = useState(false);
 
   useEffect(() => {
-    if (!datasetId) {
-      fetchCleanHistory();
-    }
-  }, [datasetId]);
-
-  const fetchCleanHistory = async () => {
-    setLoadingCleanHistory(true);
-    try {
-      const res = await api.get("history/");
+    if (!datasetId && historyList) {
       const seen = new Set();
-      const userDatasets = (res.data || [])
+      const userDatasets = (historyList || [])
         .filter((job) => job.dataset_id || job.id)
         .filter((job) => {
           const id = job.dataset_id || job.id;
@@ -94,12 +87,8 @@ export default function CleanView({
           return true;
         });
       setCleanHistoryList(userDatasets);
-    } catch (err) {
-      console.error("Failed to load dataset history:", err);
-    } finally {
-      setLoadingCleanHistory(false);
     }
-  };
+  }, [datasetId, historyList]);
 
   const handleUseFromHistory = async (job) => {
     const targetDatasetId = job.dataset_id || job.id;

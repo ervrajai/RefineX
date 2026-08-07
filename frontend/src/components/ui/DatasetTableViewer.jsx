@@ -104,8 +104,34 @@ export default function DatasetTableViewer({
               ))
             ) : (
               <tr>
-                <td colSpan={preview?.columns?.length || 1} className="text-center py-10 text-slate-400 dark:text-zinc-500 font-semibold">
-                  No matching records found.
+                <td colSpan={preview?.columns?.length || 1} className="text-center py-12 px-4">
+                  <div className="flex flex-col items-center justify-center max-w-md mx-auto space-y-3">
+                    <div className="p-3 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 shadow-inner">
+                      <Search className="w-6 h-6 stroke-[2.5]" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-zinc-200">
+                        {searchQuery ? `No records found matching "${searchQuery}"` : "No table records available"}
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+                        {searchQuery
+                          ? "We couldn't find any rows matching your search query. Try typing a different keyword or column value."
+                          : "This dataset preview does not contain any data rows to display."}
+                      </p>
+                    </div>
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setCurrentPage(1);
+                        }}
+                        className="mt-1 px-4 py-1.5 text-xs font-bold rounded-full bg-purple-600 hover:bg-purple-500 text-white transition duration-150 shadow-xs cursor-pointer active:scale-95"
+                      >
+                        Clear Search Filter
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             )}

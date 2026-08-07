@@ -138,14 +138,20 @@ function DeleteButton({ onClick, title = "Delete item" }) {
 }
 
 export default function HistoryView({ 
+  historyList = [],
+  historyHasMore = false,
+  historyLoading = false,
+  historyLoadingMore = false,
+  onFetchMoreHistory,
+  onRefreshHistory,
   onLoadWorkspace, 
   onRestoreRedirect, 
   onTrainModelRedirect,
   onLoadTrainingWorkspace,
   onLoadVisualizationWorkspace
 }) {
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState(historyList);
+  const [loading, setLoading] = useState(historyLoading);
   const [restoreLoading, setRestoreLoading] = useState(false);
   const [activeRestoringId, setActiveRestoringId] = useState(null);
   const [error, setError] = useState("");
@@ -155,6 +161,7 @@ export default function HistoryView({
   const [clearing, setClearing] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deletingItem, setDeletingItem] = useState(false);
+  const [itemDetails, setItemDetails] = useState({});
 
   // Search, Filter & Pagination states
   const [searchQuery, setSearchQuery] = useState("");
@@ -205,20 +212,55 @@ export default function HistoryView({
   );
 
   useEffect(() => {
-    fetchHistory();
-  }, []);
-
-  const fetchHistory = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await api.get("history/");
-      setHistory(res.data);
-    } catch (err) {
-      setError("Failed to retrieve execution records. Please refresh.");
-    } finally {
-      setLoading(false);
+    if (historyList) {
+      setHistory(historyList);
     }
+  }, [historyList]);
+
+  useEffect(() => {
+    setLoading(historyLoading);
+  }, [historyLoading]);
+
+  // Infinite Scroll Event Listener
+  useEffect(() => {
+    const handleScroll = () => {
+      if (historyLoadingMore || !historyHasMore) return;
+      const container = document.getElementById("main-scroll-container");
+      if (!container) return;
+
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+      if (isNearBottom && onFetchMoreHistory) {
+        onFetchMoreHistory();
+      }
+    };
+
+    const container = document.getElementById("main-scroll-container");
+    if (container) {
+      container.addEventListener("scroll", handleScroll);
+      return () => container.removeEventListener("scroll", handleScroll);
+    }
+  }, [historyLoadingMore, historyHasMore, onFetchMoreHistory]);
+
+  // Deferred Detail Fetching for a single history item
+  const fetchItemDetail = async (item) => {
+    if (!item || !item.id) return null;
+    if (itemDetails[item.id]) return itemDetails[item.id];
+    try {
+      const res = await api.get(`history/${item.id}/`);
+      setItemDetails((prev) => ({ ...prev, [item.id]: res.data }));
+      return res.data;
+    } catch (err) {
+      console.error("Failed to fetch item detail:", err);
+      return null;
+    }
+  };
+
+  // Toggle Logs with Deferred Fetching
+  const toggleLogs = async (jobId) => {
+    if (openLogsJobId !== jobId) {
+      await fetchItemDetail({ id: jobId });
+    }
+    setOpenLogsJobId((prev) => (prev === jobId ? null : jobId));
   };
 
   const handleClearHistory = async () => {
@@ -319,10 +361,6 @@ export default function HistoryView({
     }
   };
 
-  const toggleLogs = (jobId) => {
-    setOpenLogsJobId(prev => (prev === jobId ? null : jobId));
-  };
-
   const handleRestoreMLJob = async (job, itemId) => {
     if (itemId) setActiveRestoringId(itemId);
     setRestoreLoading(true);
@@ -360,22 +398,34 @@ export default function HistoryView({
     setRestoreLoading(true);
     setError("");
     try {
-      const res = await api.get(`cleaning/${job.dataset_id}/preview/?offset=0&limit=100`);
+      const detail = await fetchItemDetail(job);
+      const targetJob = detail || job;
+      const targetDatasetId = targetJob.dataset_id || targetJob.id;
+
+      // Fetch dataset profile report and preview
+      const res = await api.get(`cleaning/${targetDatasetId}/analyze/`);
       const data = res.data;
+
+      const profileReport = data.report || targetJob.after_stats || targetJob.before_stats;
+      const beforeRep = targetJob.before_stats || profileReport;
+      const afterRep = targetJob.after_stats || profileReport;
+      const logs = targetJob.logs || [];
+
       if (onLoadWorkspace) {
         onLoadWorkspace(
-          job.dataset_id,
+          targetDatasetId,
           data.metadata,
-          job.before_stats,
-          job.after_stats,
-          job.logs,
-          data
+          beforeRep,
+          afterRep,
+          logs,
+          data.preview || data
         );
       }
       if (onRestoreRedirect) {
         onRestoreRedirect();
       }
     } catch (err) {
+      console.error("Restore dataset error:", err);
       setError("Failed to load dataset details for restoration. The file might have been deleted.");
     } finally {
       setRestoreLoading(false);
@@ -468,7 +518,7 @@ export default function HistoryView({
         </div>
 
         <div className="flex items-center gap-2.5 self-start sm:self-center shrink-0">
-          <RefreshButton onClick={fetchHistory} loading={loading} />
+          <RefreshButton onClick={onRefreshHistory || (() => {})} loading={loading} />
 
           <button 
             type="button"
@@ -678,7 +728,8 @@ export default function HistoryView({
       ) : (
         <div className="space-y-6">
           <BouncyAccordion
-            items={paginatedHistory.map((job) => {
+            items={paginatedHistory.map((itemRaw) => {
+            const job = itemDetails[itemRaw.id] || itemRaw;
             const isML = job.type === "training";
             const isVis = job.type === "visualization";
             const itemId = `${job.type || "clean"}-${job.id}`;
@@ -1001,32 +1052,45 @@ export default function HistoryView({
                 <div className="space-y-5">
                   {/* DESKTOP VIEW */}
                   <div className="hidden sm:block space-y-5">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Rows Change</span>
-                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                          {job.before_stats?.rows} <span className="text-slate-400">→</span> {job.after_stats?.rows}
-                        </span>
-                      </div>
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Columns Change</span>
-                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                          {job.before_stats?.columns} <span className="text-slate-400">→</span> {job.after_stats?.columns}
-                        </span>
-                      </div>
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Missing Cells</span>
-                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                          {job.before_stats?.missing_summary?.total_missing} <span className="text-slate-400">→</span> {job.after_stats?.missing_summary?.total_missing}
-                        </span>
-                      </div>
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
-                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Duplicate Rows</span>
-                        <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
-                          {job.before_stats?.duplicate_summary?.duplicate_rows_count} <span className="text-slate-400">→</span> {job.after_stats?.duplicate_summary?.duplicate_rows_count}
-                        </span>
-                      </div>
-                    </div>
+                    {(() => {
+                      const beforeRows = job.before_stats?.rows ?? job.before_stats?.overview?.rows ?? job.rows ?? "-";
+                      const afterRows = job.after_stats?.rows ?? job.after_stats?.overview?.rows ?? job.rows ?? "-";
+                      const beforeCols = job.before_stats?.columns ?? job.before_stats?.overview?.columns ?? job.columns ?? "-";
+                      const afterCols = job.after_stats?.columns ?? job.after_stats?.overview?.columns ?? job.columns ?? "-";
+                      const beforeMissing = job.before_stats?.missing_summary?.total_missing ?? job.before_stats?.overview?.total_missing ?? job.before_stats?.total_missing ?? 0;
+                      const afterMissing = job.after_stats?.missing_summary?.total_missing ?? job.after_stats?.overview?.total_missing ?? job.after_stats?.total_missing ?? 0;
+                      const beforeDups = job.before_stats?.duplicate_summary?.duplicate_rows_count ?? job.before_stats?.overview?.duplicate_rows ?? job.before_stats?.duplicate_rows ?? 0;
+                      const afterDups = job.after_stats?.duplicate_summary?.duplicate_rows_count ?? job.after_stats?.overview?.duplicate_rows ?? job.after_stats?.duplicate_rows ?? 0;
+
+                      return (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 block">Rows Change</span>
+                            <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                              {beforeRows} <span className="text-slate-400">→</span> {afterRows}
+                            </span>
+                          </div>
+                          <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 block">Columns Change</span>
+                            <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                              {beforeCols} <span className="text-slate-400">→</span> {afterCols}
+                            </span>
+                          </div>
+                          <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 block">Missing Cells</span>
+                            <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                              {beforeMissing} <span className="text-slate-400">→</span> {afterMissing}
+                            </span>
+                          </div>
+                          <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 block">Duplicate Rows</span>
+                            <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
+                              {beforeDups} <span className="text-slate-400">→</span> {afterDups}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {job.logs && job.logs.length > 0 && (
                       <div className="flex items-center justify-end pt-3 border-t border-slate-200 dark:border-zinc-800">
@@ -1067,32 +1131,45 @@ export default function HistoryView({
                   {/* MOBILE VIEW */}
                   <div className="block sm:hidden space-y-4">
                     {/* 1. [ | | | ] 4-Column Row for Cleaning */}
-                    <div className="grid grid-cols-4 gap-1 sm:gap-1.5">
-                      <div className="p-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
-                        <span className="text-[8px] uppercase font-bold text-slate-500 block truncate">Rows</span>
-                        <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 mt-0.5 block truncate">
-                          {job.before_stats?.rows}→{job.after_stats?.rows}
-                        </span>
-                      </div>
-                      <div className="p-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
-                        <span className="text-[8px] uppercase font-bold text-slate-500 block truncate">Cols</span>
-                        <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 mt-0.5 block truncate">
-                          {job.before_stats?.columns}→{job.after_stats?.columns}
-                        </span>
-                      </div>
-                      <div className="p-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
-                        <span className="text-[8px] uppercase font-bold text-slate-500 block truncate">Missing</span>
-                        <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 mt-0.5 block truncate">
-                          {job.before_stats?.missing_summary?.total_missing}→{job.after_stats?.missing_summary?.total_missing}
-                        </span>
-                      </div>
-                      <div className="p-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
-                        <span className="text-[8px] uppercase font-bold text-slate-500 block truncate">Dups</span>
-                        <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 mt-0.5 block truncate">
-                          {job.before_stats?.duplicate_summary?.duplicate_rows_count}→{job.after_stats?.duplicate_summary?.duplicate_rows_count}
-                        </span>
-                      </div>
-                    </div>
+                    {(() => {
+                      const beforeRows = job.before_stats?.rows ?? job.before_stats?.overview?.rows ?? job.rows ?? "-";
+                      const afterRows = job.after_stats?.rows ?? job.after_stats?.overview?.rows ?? job.rows ?? "-";
+                      const beforeCols = job.before_stats?.columns ?? job.before_stats?.overview?.columns ?? job.columns ?? "-";
+                      const afterCols = job.after_stats?.columns ?? job.after_stats?.overview?.columns ?? job.columns ?? "-";
+                      const beforeMissing = job.before_stats?.missing_summary?.total_missing ?? job.before_stats?.overview?.total_missing ?? job.before_stats?.total_missing ?? 0;
+                      const afterMissing = job.after_stats?.missing_summary?.total_missing ?? job.after_stats?.overview?.total_missing ?? job.after_stats?.total_missing ?? 0;
+                      const beforeDups = job.before_stats?.duplicate_summary?.duplicate_rows_count ?? job.before_stats?.overview?.duplicate_rows ?? job.before_stats?.duplicate_rows ?? 0;
+                      const afterDups = job.after_stats?.duplicate_summary?.duplicate_rows_count ?? job.after_stats?.overview?.duplicate_rows ?? job.after_stats?.duplicate_rows ?? 0;
+
+                      return (
+                        <div className="grid grid-cols-4 gap-1 sm:gap-1.5">
+                          <div className="p-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                            <span className="text-[8px] uppercase font-bold text-slate-500 block truncate">Rows</span>
+                            <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 mt-0.5 block truncate">
+                              {beforeRows}→{afterRows}
+                            </span>
+                          </div>
+                          <div className="p-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                            <span className="text-[8px] uppercase font-bold text-slate-500 block truncate">Cols</span>
+                            <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 mt-0.5 block truncate">
+                              {beforeCols}→{afterCols}
+                            </span>
+                          </div>
+                          <div className="p-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                            <span className="text-[8px] uppercase font-bold text-slate-500 block truncate">Missing</span>
+                            <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 mt-0.5 block truncate">
+                              {beforeMissing}→{afterMissing}
+                            </span>
+                          </div>
+                          <div className="p-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                            <span className="text-[8px] uppercase font-bold text-slate-500 block truncate">Dups</span>
+                            <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 mt-0.5 block truncate">
+                              {beforeDups}→{afterDups}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* 2. Action Log Button */}
                     {job.logs && job.logs.length > 0 && (

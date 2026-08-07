@@ -62,45 +62,144 @@ def purge_expired_deleted_items():
         pass
 
 
+from rest_framework.pagination import LimitOffsetPagination
+from .serializers import HistoryListSerializer, HistoryDetailSerializer
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class CleaningHistoryView(APIView):
     authentication_classes = [CsrfExemptSessionAuthentication]
+    pagination_class = LimitOffsetPagination
 
-    def get(self, request, *args, **kwargs):
+    def get_serializer_class(self, is_detail=False):
+        return HistoryDetailSerializer if is_detail else HistoryListSerializer
+
+    def get(self, request, item_id=None, *args, **kwargs):
         purge_expired_deleted_items()
 
+        # Handle Deferred Detail Retrieval for a specific history item
+        if item_id:
+            target_id = str(item_id).replace("dataset_", "")
+            
+            # Check Datasets
+            ds = Dataset.objects.filter(id=target_id).first()
+            if ds:
+                item_data = {
+                    "id": ds.id,
+                    "type": "uploaded_dataset",
+                    "dataset_id": ds.id,
+                    "dataset_name": ds.name,
+                    "name": ds.name,
+                    "created_at": ds.created_at,
+                    "file_type": ds.file_type,
+                    "file_size": ds.file_size,
+                    "rows": ds.rows_count,
+                    "columns": ds.cols_count,
+                    "before_stats": {"rows": ds.rows_count, "columns": ds.cols_count},
+                    "after_stats": None,
+                    "status": ds.status
+                }
+                return Response(HistoryDetailSerializer(item_data).data, status=status.HTTP_200_OK)
+            
+            # Check CleaningJobs
+            job = CleaningJob.objects.filter(id=target_id).select_related('dataset').first()
+            if job:
+                item_data = {
+                    "id": job.id,
+                    "type": "cleaning",
+                    "dataset_id": job.dataset.id if job.dataset else None,
+                    "dataset_name": job.dataset.name if job.dataset else "Dataset",
+                    "created_at": job.created_at,
+                    "config": job.cleaning_config,
+                    "before_stats": job.before_stats,
+                    "after_stats": job.after_stats,
+                    "logs": job.logs,
+                    "rows": job.after_stats.get("rows") if job.after_stats else None,
+                    "columns": job.after_stats.get("columns") if job.after_stats else None,
+                    "status": "cleaned"
+                }
+                return Response(HistoryDetailSerializer(item_data).data, status=status.HTTP_200_OK)
+            
+            # Check ModelTrainingJobs
+            ml_job = ModelTrainingJob.objects.filter(id=target_id).select_related('dataset').first()
+            if ml_job:
+                item_data = {
+                    "id": ml_job.id,
+                    "type": "training",
+                    "dataset_id": ml_job.dataset.id if ml_job.dataset else None,
+                    "dataset_name": ml_job.dataset_name,
+                    "created_at": ml_job.created_at,
+                    "target_column": ml_job.target_column,
+                    "best_model_name": ml_job.best_model_name,
+                    "best_model_score": ml_job.best_model_score,
+                    "status": ml_job.status,
+                    "evaluation_metrics": ml_job.evaluation_metrics,
+                    "preprocessing_steps": ml_job.preprocessing_steps,
+                    "hyperparameters": ml_job.hyperparameters,
+                    "training_duration": ml_job.training_duration,
+                    "notes": ml_job.notes,
+                    "tags": ml_job.tags
+                }
+                return Response(HistoryDetailSerializer(item_data).data, status=status.HTTP_200_OK)
+
+            # Check SavedGraphs
+            graph = SavedGraph.objects.filter(id=target_id).select_related('dataset').first()
+            if graph:
+                item_data = {
+                    "id": graph.id,
+                    "type": "visualization",
+                    "dataset_id": graph.dataset.id if graph.dataset else None,
+                    "dataset_name": graph.dataset_name,
+                    "name": graph.name or "Saved Visualization",
+                    "created_at": graph.created_at,
+                    "graph_type": graph.graph_type,
+                    "library": graph.library,
+                    "python_code": graph.python_code,
+                    "preview_data": graph.preview_data,
+                    "download_count": graph.download_count,
+                    "is_favorite": graph.is_favorite
+                }
+                return Response(HistoryDetailSerializer(item_data).data, status=status.HTTP_200_OK)
+
+            return Response({"error": "History item not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Listing endpoint with optimization: select_related & defer
         if request.user.is_authenticated:
             guest_id = request.query_params.get("guest_id") or request.headers.get("X-Guest-ID")
             if guest_id:
                 Dataset.objects.filter(guest_id=guest_id, user__isnull=True).update(user=request.user)
                 CleaningJob.objects.filter(dataset__guest_id=guest_id, user__isnull=True).update(user=request.user)
 
-            user_datasets = Dataset.objects.filter(user=request.user, is_deleted=False).distinct()
+            user_datasets = Dataset.objects.filter(user=request.user, is_deleted=False, status="cleaned").distinct()
+            # OPTIMIZATION: select_related('dataset') and defer heavy text logs
             clean_jobs = CleaningJob.objects.filter(
                 (Q(user=request.user) | Q(dataset__user=request.user)) & Q(is_deleted=False)
-            ).distinct()
+            ).select_related('dataset').defer('logs').distinct()
+
             ml_jobs = ModelTrainingJob.objects.filter(
                 (Q(user=request.user) | Q(dataset__user=request.user)) & Q(is_deleted=False)
-            ).distinct()
+            ).select_related('dataset').distinct()
+
             vis_graphs = SavedGraph.objects.filter(
                 (Q(user=request.user) | Q(dataset__user=request.user)) & Q(is_deleted=False)
-            ).distinct()
+            ).select_related('dataset').distinct()
         else:
             guest_id = request.query_params.get("guest_id") or request.headers.get("X-Guest-ID")
             if guest_id:
-                user_datasets = Dataset.objects.filter(guest_id=guest_id, is_deleted=False).distinct()
-                clean_jobs = CleaningJob.objects.filter(dataset__guest_id=guest_id, is_deleted=False).distinct()
-                ml_jobs = ModelTrainingJob.objects.filter(dataset__guest_id=guest_id, is_deleted=False).distinct()
-                vis_graphs = SavedGraph.objects.filter(dataset__guest_id=guest_id, is_deleted=False).distinct()
+                user_datasets = Dataset.objects.filter(guest_id=guest_id, is_deleted=False, status="cleaned").distinct()
+                clean_jobs = CleaningJob.objects.filter(dataset__guest_id=guest_id, is_deleted=False).select_related('dataset').defer('logs').distinct()
+                ml_jobs = ModelTrainingJob.objects.filter(dataset__guest_id=guest_id, is_deleted=False).select_related('dataset').distinct()
+                vis_graphs = SavedGraph.objects.filter(dataset__guest_id=guest_id, is_deleted=False).select_related('dataset').distinct()
             else:
-                user_datasets = Dataset.objects.filter(is_deleted=False)
-                clean_jobs = CleaningJob.objects.filter(is_deleted=False)
-                ml_jobs = ModelTrainingJob.objects.filter(is_deleted=False)
-                vis_graphs = SavedGraph.objects.filter(is_deleted=False)
+                user_datasets = Dataset.objects.filter(is_deleted=False, status="cleaned")
+                clean_jobs = CleaningJob.objects.filter(is_deleted=False).select_related('dataset').defer('logs')
+                ml_jobs = ModelTrainingJob.objects.filter(is_deleted=False).select_related('dataset')
+                vis_graphs = SavedGraph.objects.filter(is_deleted=False).select_related('dataset')
 
         results = []
 
         for ds in user_datasets:
+            stats = {"rows": ds.rows_count, "columns": ds.cols_count, "total_missing": 0, "duplicate_rows": 0}
             results.append({
                 "id": ds.id,
                 "type": "uploaded_dataset",
@@ -112,7 +211,8 @@ class CleaningHistoryView(APIView):
                 "file_size": ds.file_size,
                 "rows": ds.rows_count,
                 "columns": ds.cols_count,
-                "before_stats": {"rows": ds.rows_count, "columns": ds.cols_count},
+                "before_stats": stats,
+                "after_stats": stats,
                 "status": ds.status
             })
 
@@ -123,10 +223,10 @@ class CleaningHistoryView(APIView):
                 "dataset_id": job.dataset.id if job.dataset else None,
                 "dataset_name": job.dataset.name if job.dataset else "Dataset",
                 "created_at": job.created_at,
-                "config": job.cleaning_config,
                 "before_stats": job.before_stats,
                 "after_stats": job.after_stats,
-                "logs": job.logs
+                "config": job.cleaning_config,
+                "status": "cleaned"
             })
 
         for job in ml_jobs:
@@ -139,13 +239,7 @@ class CleaningHistoryView(APIView):
                 "target_column": job.target_column,
                 "best_model_name": job.best_model_name,
                 "best_model_score": job.best_model_score,
-                "status": job.status,
-                "evaluation_metrics": job.evaluation_metrics,
-                "preprocessing_steps": job.preprocessing_steps,
-                "hyperparameters": job.hyperparameters,
-                "training_duration": job.training_duration,
-                "notes": job.notes,
-                "tags": job.tags
+                "status": job.status
             })
 
         for graph in vis_graphs:
@@ -155,19 +249,25 @@ class CleaningHistoryView(APIView):
                 "dataset_id": graph.dataset.id if graph.dataset else None,
                 "dataset_name": graph.dataset_name,
                 "name": graph.name or "Saved Visualization",
-                "graph_name": graph.name or "Saved Visualization",
                 "created_at": graph.created_at,
                 "graph_type": graph.graph_type,
                 "library": graph.library,
-                "config": graph.config,
-                "python_code": graph.python_code,
-                "preview_data": graph.preview_data,
-                "download_count": graph.download_count,
                 "is_favorite": graph.is_favorite
             })
 
         results.sort(key=lambda x: x["created_at"], reverse=True)
-        return Response(make_json_safe(results), status=status.HTTP_200_OK)
+
+        # DRF LimitOffsetPagination
+        paginator = LimitOffsetPagination()
+        paginator.default_limit = 10
+        page = paginator.paginate_queryset(results, request)
+        
+        serializer = HistoryListSerializer(page if page is not None else results, many=True)
+        if page is not None:
+            return paginator.get_paginated_response(serializer.data)
+        
+        return Response({"count": len(results), "next": None, "previous": None, "results": serializer.data}, status=status.HTTP_200_OK)
+
 
     def delete(self, request, item_id=None, *args, **kwargs):
         """

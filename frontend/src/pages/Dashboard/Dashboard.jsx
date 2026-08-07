@@ -22,14 +22,21 @@ import {
 
 function Dashboard() {
   const navigate = useNavigate();
-  const { setLoggedOut } = useAuth();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user: authUser, setLoggedOut } = useAuth();
+  const [user, setUser] = useState(authUser);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+
+  // Centralized History & Dataset Pagination State
+  const [historyList, setHistoryList] = useState([]);
+  const [historyHasMore, setHistoryHasMore] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
+  const [historyOffset, setHistoryOffset] = useState(0);
 
   // Persisted Dataset Workspace states
   const [datasetId, setDatasetId] = useState(null);
@@ -53,6 +60,79 @@ function Dashboard() {
   const [trainingJobDetail, setTrainingJobDetail] = useState(null);
   const [restoredGraph, setRestoredGraph] = useState(null);
 
+  // Lifted Visualization States for RAM caching & mount bypass
+  const [chartData, setChartData] = useState(null);
+  const [chartConfig, setChartConfig] = useState(null);
+  const [isGraphLoading, setIsGraphLoading] = useState(false);
+
+  // Reset visualization states when datasetId changes (prevents data bleed across datasets)
+  useEffect(() => {
+    setChartData(null);
+    setChartConfig(null);
+    setIsGraphLoading(false);
+  }, [datasetId]);
+
+  // Centralized Overview Statistics Cache State
+  const [overviewData, setOverviewData] = useState(null);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+
+  // Central Initial Overview Fetch (cached in state, refetched only on page refresh or explicit update)
+  const fetchOverviewData = async (force = false) => {
+    if (overviewData && !force) return;
+    setOverviewLoading(true);
+    try {
+      const res = await api.get("dashboard/stats/");
+      setOverviewData(res.data);
+    } catch (err) {
+      console.error("Dashboard stats error:", err);
+    } finally {
+      setOverviewLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOverviewData();
+  }, []);
+
+  // Central Initial History Fetch (PAGINATED, LIMIT 10)
+  const fetchInitialHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await api.get("history/?limit=10&offset=0");
+      const results = res.data.results || (Array.isArray(res.data) ? res.data : []);
+      const hasNext = Boolean(res.data.next);
+      setHistoryList(results);
+      setHistoryOffset(results.length);
+      setHistoryHasMore(hasNext);
+    } catch (err) {
+      console.error("Failed to fetch initial history:", err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Fetch Next Page for Infinite Scroll
+  const fetchMoreHistory = async () => {
+    if (historyLoadingMore || !historyHasMore) return;
+    setHistoryLoadingMore(true);
+    try {
+      const res = await api.get(`history/?limit=10&offset=${historyOffset}`);
+      const newResults = res.data.results || [];
+      const hasNext = Boolean(res.data.next);
+      setHistoryList((prev) => [...prev, ...newResults]);
+      setHistoryOffset((prev) => prev + newResults.length);
+      setHistoryHasMore(hasNext);
+    } catch (err) {
+      console.error("Failed to load more history:", err);
+    } finally {
+      setHistoryLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInitialHistory();
+  }, []);
+
   // Theme Sync on Mount
   useEffect(() => {
     const storedTheme = localStorage.getItem("theme") || "auto";
@@ -71,24 +151,6 @@ function Dashboard() {
       }
     };
     applyTheme(storedTheme);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .get("accounts/me/")
-      .then((res) => {
-        if (!cancelled) setUser(res.data);
-      })
-      .catch(() => {
-        if (!cancelled) setError("Could not load profile. Please refresh.");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   const handleLogout = async () => {
@@ -162,12 +224,15 @@ function Dashboard() {
               user={user}
               setActiveTab={setActiveTab}
               onQuickResume={handleQuickResume}
+              historyList={historyList}
+              overviewData={overviewData}
+              overviewLoading={overviewLoading}
+              onRefreshOverview={() => fetchOverviewData(true)}
             />
           )}
 
-
-          {/* TAB 2: CLEAN */}
-          <div className={activeTab === "clean" ? "" : "hidden"}>
+          {/* TAB 2: CLEAN - Strict Conditional Rendering (No CSS hidden class) */}
+          {activeTab === "clean" && (
             <CleanView
               datasetId={datasetId}
               setDatasetId={setDatasetId}
@@ -184,11 +249,12 @@ function Dashboard() {
               cleanLogs={cleanLogs}
               setCleanLogs={setCleanLogs}
               setActiveTab={setActiveTab}
+              historyList={historyList}
             />
-          </div>
+          )}
 
-          {/* TAB 3: MODEL TRAINING */}
-          <div className={activeTab === "model-training" ? "" : "hidden"}>
+          {/* TAB 3: MODEL TRAINING - Strict Conditional Rendering */}
+          {activeTab === "model-training" && (
             <ModelTrainingView
               datasetId={datasetId}
               setDatasetId={setDatasetId}
@@ -226,11 +292,12 @@ function Dashboard() {
                 setPreview(previewData);
               }}
               setActiveTab={setActiveTab}
+              historyList={historyList}
             />
-          </div>
+          )}
 
-          {/* TAB 4: VISUALIZATION */}
-          <div className={activeTab === "visualization" ? "" : "hidden"}>
+          {/* TAB 4: VISUALIZATION - Strict Conditional Rendering */}
+          {activeTab === "visualization" && (
             <VisualizationView
               datasetId={datasetId}
               setDatasetId={setDatasetId}
@@ -246,12 +313,25 @@ function Dashboard() {
               setActiveTab={setActiveTab}
               restoredGraph={restoredGraph}
               setRestoredGraph={setRestoredGraph}
+              historyList={historyList}
+              chartData={chartData}
+              setChartData={setChartData}
+              chartConfig={chartConfig}
+              setChartConfig={setChartConfig}
+              isGraphLoading={isGraphLoading}
+              setIsGraphLoading={setIsGraphLoading}
             />
-          </div>
- 
+          )}
+
           {/* TAB 5: HISTORY */}
           {activeTab === "history" && (
             <HistoryView
+              historyList={historyList}
+              historyHasMore={historyHasMore}
+              historyLoading={historyLoading}
+              historyLoadingMore={historyLoadingMore}
+              onFetchMoreHistory={fetchMoreHistory}
+              onRefreshHistory={fetchInitialHistory}
               onLoadWorkspace={(dsId, meta, bReport, aReport, logs, previewData) => {
                 setDatasetId(dsId);
                 setMetadata(meta);
@@ -298,11 +378,7 @@ function Dashboard() {
             />
           )}
 
-
         </main>
-
-        {/* Footer info banner */}
-
       </div>
     </div>
   );

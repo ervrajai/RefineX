@@ -62,19 +62,25 @@ class DatasetUploadView(APIView):
             # Create a temp buffer to read
             buffer = io.BytesIO(temp_content)
             if file_type == 'csv':
-                # Try UTF-8 first
-                try:
-                    df = pd.read_csv(io.BytesIO(temp_content), encoding='utf-8', nrows=100)
-                    detected_encoding = 'utf-8'
-                except UnicodeDecodeError:
+                encodings_to_try = ['utf-8', 'latin-1', 'cp1252', 'utf-16']
+                df_full = None
+                detected_encoding = 'utf-8'
+                
+                for enc in encodings_to_try:
                     try:
-                        df = pd.read_csv(io.BytesIO(temp_content), encoding='latin-1', nrows=100)
-                        detected_encoding = 'latin-1'
+                        df_full = pd.read_csv(io.BytesIO(temp_content), encoding=enc, sep=None, engine='python', on_bad_lines='skip')
+                        detected_encoding = enc
+                        break
                     except Exception:
-                        detected_encoding = 'utf-8'
-                        
-                # Read full file to count rows/cols safely
-                df_full = pd.read_csv(io.BytesIO(temp_content), encoding=detected_encoding)
+                        try:
+                            df_full = pd.read_csv(io.BytesIO(temp_content), encoding=enc, on_bad_lines='skip')
+                            detected_encoding = enc
+                            break
+                        except Exception:
+                            continue
+
+                if df_full is None:
+                    return Response({"error": "Failed to upload and parse dataset. Check delimiter, rows format, or file corruption."}, status=status.HTTP_400_BAD_REQUEST)
             else:
                 detected_encoding = 'UTF-8'
                 df_full = pd.read_excel(io.BytesIO(temp_content))

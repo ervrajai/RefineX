@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { 
-  FiMenu, 
-  FiX, 
-  FiDatabase, 
-  FiSun, 
-  FiMoon, 
+import {
+  FiMenu,
+  FiX,
+  FiDatabase,
+  FiSun,
+  FiMoon,
   FiMonitor,
   FiChevronDown,
   FiHome,
@@ -20,8 +20,8 @@ import logoImg from "../../assets/logo/refinex_logo.png";
 const NAV_LINKS = [
   { name: "Home", href: "/#home" },
   { name: "Dashboard", href: "/#dashboard" },
-  { name: "Features", href: "/#features" }, 
-  { name: "Library", href: "/#library" },   
+  { name: "Features", href: "/#features" },
+  { name: "Library", href: "/#library" },
   { name: "About", href: "/#about" },
 ];
 
@@ -38,11 +38,11 @@ function Navbar() {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
-    
+
     window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", handleScroll);
     handleScroll(); // Initial check
-    
+
     return () => {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
@@ -76,7 +76,7 @@ function Navbar() {
       if (theme === "auto") applyTheme("auto");
     };
     mediaQuery.addEventListener("change", handleChange);
-    
+
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, [theme]);
 
@@ -111,20 +111,19 @@ function Navbar() {
     <>
       {/* ══════════════════ NAV ══════════════════ */}
       <nav
-        className={`fixed top-0 z-50 w-full transition-all duration-300 border-b ${
-          isScrolled
+        className={`fixed top-0 z-50 w-full transition-all duration-300 border-b ${isScrolled
             ? "bg-white/80 dark:bg-[#0F0F0F]/80 backdrop-blur-md border-lightBorder/50 dark:border-gray-800"
-            : "bg-white dark:bg-[#0F0F0F] border-transparent" 
-        }`}
+            : "bg-white dark:bg-[#0F0F0F] border-transparent"
+          }`}
       >
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex justify-between items-center relative">
-          
+
           {/* Logo */}
           <a href="/" className="flex items-center gap-2 shrink-0">
             {/* Using the imported image here */}
-            <img 
-              src={logoImg} 
-              alt="RefineX Logo" 
+            <img
+              src={logoImg}
+              alt="RefineX Logo"
               className="w-9 h-9 md:w-10 md:h-10 object-cover rounded-xl shadow-sm"
             />
             <span className="sidebar-refine text-xl md:text-2xl tracking-wider inline-flex items-center text-slate-900 dark:text-white whitespace-nowrap">
@@ -134,14 +133,14 @@ function Navbar() {
 
           {/* Desktop Links (Animated Outline Container) */}
           <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <ul 
+            <ul
               className="flex items-center p-1.5 rounded-[40px] bg-[#FFFFFF]/80 dark:bg-[#212121]/80 border border-lightBorder/50 dark:border-gray-800/80 relative"
               onMouseLeave={() => setHoveredLink(null)}
             >
               {NAV_LINKS.map((link) => (
                 <li key={link.name} className="relative z-10">
-                  <a 
-                    href={link.href} 
+                  <a
+                    href={link.href}
                     onMouseEnter={() => setHoveredLink(link.name)}
                     className="block relative px-5 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors z-20 hover:text-brand dark:hover:text-white"
                   >
@@ -163,22 +162,22 @@ function Navbar() {
 
           {/* Right Controls */}
           <div className="flex items-center gap-3 md:gap-5 shrink-0">
-            <a 
-              href="/login" 
+            <a
+              href="/login"
               className="hidden md:block font-bold text-sm text-gray-900 dark:text-white hover:text-brand dark:hover:text-brand transition-colors"
             >
               Log in
             </a>
 
 
-            <a 
-              href="/signup" 
+            <a
+              href="/signup"
               className="hidden sm:flex items-center gap-2.5 px-6 py-2.5 bg-[#673ab7] hover:bg-[#111111] dark:hover:bg-white text-white font-bold text-sm rounded-[20px] transition-colors duration-200 group shadow-sm"
             >
               <span className="text-white group-hover:text-white dark:group-hover:text-black transition-colors duration-200">
                 Sign Up
               </span>
-              
+
               <div className="flex justify-center items-center">
                 <div className="relative w-[10px] h-[2px] bg-[#673ab7] group-hover:bg-white dark:group-hover:bg-black transition-colors duration-200 mt-[1px]">
                   <div className="absolute top-[-3px] right-[3px] group-hover:right-0 p-[3px] border-solid border-white dark:group-hover:border-black border-b-[2px] border-r-[2px] transform -rotate-45 transition-all duration-200 box-border"></div>
@@ -226,17 +225,15 @@ function Navbar() {
       {/* ══════════════════ MOBILE DRAWER ══════════════════ */}
       {/* Overlay */}
       <div
-        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden transition-opacity duration-300 ${
-          isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden transition-opacity duration-300 ${isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          }`}
         onClick={closeMobileMenu}
       ></div>
 
       {/* Panel */}
       <div
-        className={`fixed top-0 right-0 h-full w-[60%] max-w-xs z-50 bg-[#FFFFFF] dark:bg-[#212121] border-l border-lightBorder/50 dark:border-gray-800 shadow-2xl flex flex-col lg:hidden transition-transform duration-300 ease-in-out ${
-          isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed top-0 right-0 h-full w-[60%] max-w-xs z-50 bg-[#FFFFFF] dark:bg-[#212121] border-l border-lightBorder/50 dark:border-gray-800 shadow-2xl flex flex-col lg:hidden transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-lightBorder/50 dark:border-gray-800">
           <span className="sidebar-refine text-lg tracking-wider inline-flex items-center text-slate-900 dark:text-white whitespace-nowrap">
@@ -249,7 +246,7 @@ function Navbar() {
             <FiX className="w-5 h-5" />
           </button>
         </div>
-        
+
         <nav className="flex flex-col px-3 py-4 gap-0.5 flex-1 overflow-y-auto">
           <a onClick={closeMobileMenu} href="#home" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-brand dark:hover:text-brand hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
             <FiHome className="w-4 h-4 shrink-0 text-gray-400" /> Home
@@ -266,9 +263,9 @@ function Navbar() {
           <a onClick={closeMobileMenu} href="#about" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-brand dark:hover:text-brand hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
             <FiInfo className="w-4 h-4 shrink-0 text-gray-400" /> About
           </a>
-          
+
           <div className="border-t border-gray-100 dark:border-gray-800 my-2"></div>
-          
+
           <a onClick={closeMobileMenu} href="/login" className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-brand dark:hover:text-brand hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors">
             <FiLogIn className="w-4 h-4 shrink-0 text-gray-400" /> Log in
           </a>

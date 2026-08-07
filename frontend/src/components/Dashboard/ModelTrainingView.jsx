@@ -17,6 +17,7 @@ import {
   RefreshCw,
   FileDown,
   Info,
+  FileText,
   CheckCircle,
   AlertTriangle,
   ArrowUpDown,
@@ -44,6 +45,14 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+const formatSize = (bytes) => {
+  if (!bytes) return "N/A";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+};
+
 export default function ModelTrainingView({
   datasetId,
   setDatasetId,
@@ -70,9 +79,11 @@ export default function ModelTrainingView({
   cvFolds,
   setCvFolds,
   trainingJobDetail,
+  setTrainingJobDetail,
   onLoadWorkspace, // callback to clean tab
   setActiveTab, // function to toggle active tabs in Dashboard
-  historyList = []
+  historyList = [],
+  onRefreshHistory
 }) {
   // Dataset states (lifted to parent)
   const [isClean, setIsClean] = useState(true);
@@ -121,7 +132,7 @@ export default function ModelTrainingView({
 
   // Clear previous training results if datasetId changes to a different dataset
   useEffect(() => {
-    if (trainingJobDetail && datasetId && trainingJobDetail.dataset_id !== datasetId) {
+    if (trainingJobDetail && datasetId && String(trainingJobDetail.dataset_id) !== String(datasetId)) {
       setTrainingJobDetail(null);
       setCenterViewMode("table");
     }
@@ -784,12 +795,77 @@ export default function ModelTrainingView({
                   items={cleanHistoryList}
                   onSelect={(item) => handleUseFromHistory(item)}
                   onViewAll={() => setActiveTab("history")}
+                  onRefresh={onRefreshHistory}
                 />
               </div>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="space-y-4">
+            {/* DATASET METADATA TILES (In Air Layout - Same as Clean Module) */}
+            {datasetId && (metadata || preview) && (
+              <div className="space-y-3.5 mb-6">
+                {/* Active CSV Title Bar */}
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 text-purple-600 dark:text-purple-400 bg-purple-500/10 rounded-xl flex items-center justify-center shrink-0 border border-purple-500/20">
+                    <FileSpreadsheet className="w-4 h-4" />
+                  </div>
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate tracking-tight">
+                    {metadata?.name || preview?.name || "Loaded Dataset.csv"}
+                  </h2>
+                </div>
+
+                {/* Rectangular Data Tiles Grid (In Air - matches Cleaning Module) */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+                      Type
+                    </span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
+                      {(metadata?.file_type || preview?.file_type || "CSV").toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+                      Total Rows
+                    </span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
+                      {(metadata?.rows ?? preview?.rows?.length ?? 0).toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+                      Total Columns
+                    </span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
+                      {(metadata?.columns ?? preview?.columns?.length ?? 0).toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+                      File Size
+                    </span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
+                      {metadata?.file_size ? formatSize(metadata.file_size) : "N/A"}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 block">
+                      Encoding
+                    </span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block uppercase">
+                      {(metadata?.encoding || "UTF-8").toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* CONFIGURATION SIDEBAR (LEFT) */}
             <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-4 z-10 max-h-[calc(100vh-60px)] overflow-y-auto pr-0.5">
               <div className="p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-4">
@@ -1471,7 +1547,8 @@ export default function ModelTrainingView({
               )}
             </div>
           </div>
-        )}
+        </div>
+      )}
       </div>
 
       {/* CENTERED DETAILED EVALUATION MODAL */}

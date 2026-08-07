@@ -1,12 +1,25 @@
-import React from "react";
-import { History, FileSpreadsheet, ChevronRight } from "lucide-react";
+import React, { useState } from "react";
+import { History, FileSpreadsheet, ChevronRight, RotateCw } from "lucide-react";
 
 export default function RecentDatasetPanel({
   items = [],
   onSelect,
   onViewAll,
+  onRefresh,
+  refreshing = false,
   loadingId = null,
 }) {
+  const [isSpinning, setIsSpinning] = useState(false);
+
+  const handleRefresh = (e) => {
+    e.stopPropagation();
+    setIsSpinning(true);
+    setTimeout(() => setIsSpinning(false), 600);
+    if (onRefresh) {
+      onRefresh();
+    }
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return "Recently";
     try {
@@ -26,21 +39,36 @@ export default function RecentDatasetPanel({
     <div className="w-full p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-md dark:shadow-black/40 flex flex-col justify-between h-[380px] min-h-[380px] max-h-[380px] overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800/80 mb-3 shrink-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <History className="w-4 h-4 lg:w-5 lg:h-5 text-purple-600 dark:text-purple-400 shrink-0" />
-          <h3 className="text-sm lg:text-base font-bold text-slate-900 dark:text-white tracking-tight">
+          <h3 className="text-sm lg:text-base font-bold text-slate-900 dark:text-white tracking-tight truncate">
             Recent Dataset
           </h3>
         </div>
-        {onViewAll && (
+        <div className="flex items-center gap-2.5 shrink-0">
           <button
             type="button"
-            onClick={onViewAll}
-            className="text-[11px] lg:text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title="Refresh recent datasets"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center bg-slate-100 dark:bg-zinc-800/80 text-slate-500 dark:text-zinc-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:border-purple-200 dark:hover:border-purple-800/60 border border-slate-200/80 dark:border-zinc-700/60 shadow-2xs transition-all duration-200 cursor-pointer active:scale-90 disabled:opacity-50"
           >
-            View All →
+            <RotateCw
+              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-500 ease-in-out ${
+                isSpinning || refreshing ? "animate-spin text-purple-600 dark:text-purple-400" : ""
+              }`}
+            />
           </button>
-        )}
+          {onViewAll && (
+            <button
+              type="button"
+              onClick={onViewAll}
+              className="text-[11px] lg:text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
+            >
+              View All →
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Dataset List - Fixed height locked at max-h-[295px] matching 380px outer box */}

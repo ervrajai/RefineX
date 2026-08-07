@@ -172,7 +172,29 @@ export default function HistoryView({
   // Reset to page 1 whenever search query or active filter changes
   useEffect(() => {
     setCurrentPage(1);
+    setExpandedJobId(null);
+    setOpenLogsJobId(null);
   }, [searchQuery, activeFilter]);
+
+  // Reset expanded item and open logs when page changes, and scroll scroll container to top
+  useEffect(() => {
+    setExpandedJobId(null);
+    setOpenLogsJobId(null);
+    const container = document.getElementById("main-scroll-container");
+    if (container) {
+      container.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [currentPage]);
+
+  // Next page pagination handler (fetches more from backend if needed)
+  const handleNextPage = async () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    } else if (historyHasMore && onFetchMoreHistory) {
+      await onFetchMoreHistory();
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
 
   // Compute filtered items
   const filteredHistory = history.filter((item) => {
@@ -438,17 +460,27 @@ export default function HistoryView({
     setRestoreLoading(true);
     setError("");
     try {
-      let previewData = job.preview_data;
+      let fullGraph = job;
+      if (job.id) {
+        try {
+          const detailRes = await api.get(`history/${job.id}/?type=visualization`);
+          fullGraph = detailRes.data || job;
+        } catch (e) {
+          fullGraph = job;
+        }
+      }
+
+      let previewData = fullGraph.preview_data;
       let metaData = null;
-      if (job.dataset_id) {
-        const res = await api.get(`cleaning/${job.dataset_id}/preview/?offset=0&limit=100`);
+      if (fullGraph.dataset_id) {
+        const res = await api.get(`cleaning/${fullGraph.dataset_id}/preview/?offset=0&limit=100`);
         previewData = res.data;
-        metaData = res.data.metadata;
+        metaData = res.data?.metadata;
       }
       
       if (onLoadWorkspace) {
         onLoadWorkspace(
-          job.dataset_id,
+          fullGraph.dataset_id,
           metaData,
           null,
           null,
@@ -458,9 +490,10 @@ export default function HistoryView({
       }
       
       if (onLoadVisualizationWorkspace) {
-        onLoadVisualizationWorkspace(job);
+        onLoadVisualizationWorkspace(fullGraph);
       }
     } catch (err) {
+      console.error("Restore visualization error:", err);
       setError("Failed to restore chart. The dataset file might have been deleted.");
     } finally {
       setRestoreLoading(false);
@@ -728,6 +761,7 @@ export default function HistoryView({
       ) : (
         <div className="space-y-6">
           <BouncyAccordion
+            key={`history-accordion-p${currentPage}-f${activeFilter}-q${searchQuery}`}
             items={paginatedHistory.map((itemRaw) => {
             const job = itemDetails[itemRaw.id] || itemRaw;
             const isML = job.type === "training";
@@ -1234,15 +1268,15 @@ export default function HistoryView({
         />
 
         {/* Pagination Controls */}
-        {totalPages > 1 && (
+        {(totalPages > 1 || historyHasMore) && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-zinc-800 text-xs text-slate-500 dark:text-zinc-400 font-semibold select-none">
             <div>
-              Showing {filteredHistory.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredHistory.length)} of {filteredHistory.length} records (Page {currentPage} of {totalPages})
+              Showing {filteredHistory.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredHistory.length)} of {filteredHistory.length}{historyHasMore ? "+" : ""} records (Page {currentPage} of {totalPages})
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || historyLoadingMore}
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 className="px-4 py-2 rounded-full border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer font-bold shadow-xs active:scale-95 flex items-center gap-1"
               >
@@ -1250,11 +1284,17 @@ export default function HistoryView({
               </button>
               <button
                 type="button"
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={(currentPage === totalPages && !historyHasMore) || historyLoadingMore}
+                onClick={handleNextPage}
                 className="px-4 py-2 rounded-full border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer font-bold shadow-xs active:scale-95 flex items-center gap-1"
               >
-                Next <ChevronRight className="w-4 h-4" />
+                {historyLoadingMore ? (
+                  <span className="animate-pulse">Loading...</span>
+                ) : (
+                  <>
+                    Next <ChevronRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </div>
           </div>

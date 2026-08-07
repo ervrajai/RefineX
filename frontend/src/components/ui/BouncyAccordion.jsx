@@ -58,12 +58,16 @@ function BouncyAccordionRow({
   useLayoutEffect(() => {
     const node = contentRef.current;
     if (!node) return;
-    const updateHeight = () => setContentHeight(node.offsetHeight);
+    const updateHeight = () => {
+      if (node.offsetHeight > 0) {
+        setContentHeight(node.offsetHeight);
+      }
+    };
     updateHeight();
     const observer = new ResizeObserver(updateHeight);
     observer.observe(node);
     return () => observer.disconnect();
-  }, []);
+  }, [open, item]);
 
   return (
     <motion.div

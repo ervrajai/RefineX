@@ -50,9 +50,11 @@ def read_dataframe(file_path, file_type, encoding='UTF-8'):
 
     if file_type.lower() == 'csv':
         detected_encoding = encoding
-        encodings_to_try = [encoding, 'utf-8', 'latin-1', 'cp1252', 'utf-16']
+        encodings_to_try = [encoding, 'utf-8-sig', 'utf-8', 'latin-1', 'cp1252', 'utf-16']
+        seen_enc = set()
+        unique_encodings = [x for x in encodings_to_try if not (x.lower() in seen_enc or seen_enc.add(x.lower()))]
         df = None
-        for enc in encodings_to_try:
+        for enc in unique_encodings:
             try:
                 # Read sample to sniff delimiter
                 with open(file_path, 'rb') as f:
@@ -62,7 +64,7 @@ def read_dataframe(file_path, file_type, encoding='UTF-8'):
                 try:
                     dialect = csv.Sniffer().sniff(sample)
                     delimiter = dialect.delimiter
-                    if delimiter not in [',', ';', '\t', '|']:
+                    if delimiter not in [',', ';', '\t', '|', ':']:
                         delimiter = ','
                 except Exception:
                     # Fallback separator counts
@@ -70,23 +72,90 @@ def read_dataframe(file_path, file_type, encoding='UTF-8'):
                         delimiter = ';'
                     elif '\t' in sample:
                         delimiter = '\t'
+                    elif '|' in sample and sample.count('|') > sample.count(','):
+                        delimiter = '|'
                     else:
                         delimiter = ','
 
-                df = pd.read_csv(file_path, encoding=enc, sep=delimiter, on_bad_lines='skip')
+                df = pd.read_csv(file_path, encoding=enc, sep=delimiter, on_bad_lines='skip', engine='python')
                 detected_encoding = enc
                 break
             except Exception:
-                continue
+                try:
+                    df = pd.read_csv(file_path, encoding=enc, on_bad_lines='skip')
+                    detected_encoding = enc
+                    break
+                except Exception:
+                    continue
                 
         if df is None:
-            raise ValueError("Could not decode CSV file using standard encodings. The file might be corrupted.")
+            raise ValueError("Could not decode CSV file using standard encodings. Check delimiter, rows format, or file corruption.")
             
         df.columns = make_columns_unique(df.columns)
         return df, detected_encoding
     elif file_type.lower() in ['xlsx', 'xls']:
         try:
             df = pd.read_excel(file_path)
+            df.columns = make_columns_unique(df.columns)
+            return df, 'UTF-8'
+        except Exception as e:
+            raise ValueError(f"Could not read Excel file: {str(e)}")
+    else:
+        raise ValueError(f"Unsupported file type: {file_type}")
+
+
+def read_dataframe_from_bytes(content_bytes, file_type, encoding='UTF-8'):
+    """
+    Safely reads raw dataset bytes into a Pandas DataFrame, handling encodings, BOM, and delimiter sniffing.
+    """
+    if not content_bytes or len(content_bytes.strip()) == 0:
+        raise ValueError("The uploaded dataset is empty.")
+
+    if file_type.lower() == 'csv':
+        encodings_to_try = [encoding, 'utf-8-sig', 'utf-8', 'latin-1', 'cp1252', 'utf-16']
+        seen_enc = set()
+        unique_encodings = [x for x in encodings_to_try if not (x.lower() in seen_enc or seen_enc.add(x.lower()))]
+
+        df = None
+        detected_encoding = encoding
+
+        for enc in unique_encodings:
+            try:
+                sample = content_bytes[:10240].decode(enc, errors='ignore')
+                try:
+                    dialect = csv.Sniffer().sniff(sample)
+                    delimiter = dialect.delimiter
+                    if delimiter not in [',', ';', '\t', '|', ':']:
+                        delimiter = ','
+                except Exception:
+                    if ';' in sample and sample.count(';') > sample.count(','):
+                        delimiter = ';'
+                    elif '\t' in sample:
+                        delimiter = '\t'
+                    elif '|' in sample and sample.count('|') > sample.count(','):
+                        delimiter = '|'
+                    else:
+                        delimiter = ','
+
+                df = pd.read_csv(io.BytesIO(content_bytes), encoding=enc, sep=delimiter, on_bad_lines='skip', engine='python')
+                detected_encoding = enc
+                break
+            except Exception:
+                try:
+                    df = pd.read_csv(io.BytesIO(content_bytes), encoding=enc, on_bad_lines='skip')
+                    detected_encoding = enc
+                    break
+                except Exception:
+                    continue
+
+        if df is None:
+            raise ValueError("Failed to parse CSV dataset. Check delimiter, rows format, or file corruption.")
+
+        df.columns = make_columns_unique(df.columns)
+        return df, detected_encoding
+    elif file_type.lower() in ['xlsx', 'xls']:
+        try:
+            df = pd.read_excel(io.BytesIO(content_bytes))
             df.columns = make_columns_unique(df.columns)
             return df, 'UTF-8'
         except Exception as e:

@@ -378,12 +378,13 @@ export default function CleanView({
       setManualTypes(mapping);
 
       setSuccessMsg("File uploaded and profiled successfully!");
-      fetchCleanHistory();
+      if (onRefreshHistory) onRefreshHistory();
     } catch (err) {
       if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || (err.message && err.message.includes("canceled"))) {
         setErrorMsg("Upload canceled.");
       } else {
-        setErrorMsg(err.response?.data?.error || "Failed to upload and parse dataset. Check delimiter, rows format, or file corruption.");
+        const apiError = err.response?.data?.error || err.response?.data?.message || err.response?.data?.detail || (typeof err.response?.data === "string" ? err.response.data : null) || err.message;
+        setErrorMsg(apiError || "Failed to upload and parse dataset. Check delimiter, rows format, or file corruption.");
       }
     } finally {
       setUploading(false);

@@ -332,7 +332,8 @@ export default function VisualizationView({
       if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || (err.message && err.message.includes("canceled"))) {
         setErrorMsg("Upload canceled.");
       } else {
-        setErrorMsg(err.response?.data?.error || "Failed to upload dataset for visualization.");
+        const apiError = err.response?.data?.error || err.response?.data?.message || err.response?.data?.detail || (typeof err.response?.data === "string" ? err.response.data : null) || err.message;
+        setErrorMsg(apiError || "Failed to upload dataset for visualization.");
       }
     } finally {
       setUploading(false);

@@ -17,7 +17,7 @@ from django.utils import timezone
 from apps.accounts.views import CsrfExemptSessionAuthentication
 
 from .models import Dataset, CleaningJob, GuestUsage
-from .utils import profile_dataset, clean_dataset, auto_clean_dataset, make_json_safe, read_dataframe
+from .utils import profile_dataset, clean_dataset, auto_clean_dataset, make_json_safe, read_dataframe, read_dataframe_from_bytes
 from apps.core.services import ActivityService
 
 
@@ -54,36 +54,15 @@ class DatasetUploadView(APIView):
             return Response({"error": "Unsupported file format. Please upload CSV or Excel files."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Create a temporary file to parse and count dimensions
+            # Ensure seek pointer is at start before reading content
+            file_obj.seek(0)
             temp_content = file_obj.read()
             file_obj.seek(0)
-            
-            # Read into DataFrame to compute stats and confirm it is not corrupted
-            # Create a temp buffer to read
-            buffer = io.BytesIO(temp_content)
-            if file_type == 'csv':
-                encodings_to_try = ['utf-8', 'latin-1', 'cp1252', 'utf-16']
-                df_full = None
-                detected_encoding = 'utf-8'
-                
-                for enc in encodings_to_try:
-                    try:
-                        df_full = pd.read_csv(io.BytesIO(temp_content), encoding=enc, sep=None, engine='python', on_bad_lines='skip')
-                        detected_encoding = enc
-                        break
-                    except Exception:
-                        try:
-                            df_full = pd.read_csv(io.BytesIO(temp_content), encoding=enc, on_bad_lines='skip')
-                            detected_encoding = enc
-                            break
-                        except Exception:
-                            continue
 
-                if df_full is None:
-                    return Response({"error": "Failed to upload and parse dataset. Check delimiter, rows format, or file corruption."}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                detected_encoding = 'UTF-8'
-                df_full = pd.read_excel(io.BytesIO(temp_content))
+            try:
+                df_full, detected_encoding = read_dataframe_from_bytes(temp_content, file_type)
+            except ValueError as ve:
+                return Response({"error": str(ve)}, status=status.HTTP_400_BAD_REQUEST)
 
             # Basic dimensions
             rows_count = len(df_full)
@@ -98,7 +77,10 @@ class DatasetUploadView(APIView):
                 purge_expired_guest_data()
                 allowed, err_resp = check_guest_usage_limit(request)
                 if not allowed:
-                    return Response(err_resp, status=status.HTTP_403_FORBIDDEN)
+                    resp_data = err_resp.copy() if isinstance(err_resp, dict) else {"error": str(err_resp)}
+                    if "message" in resp_data and "error" not in resp_data:
+                        resp_data["error"] = resp_data["message"]
+                    return Response(resp_data, status=status.HTTP_403_FORBIDDEN)
 
             # Save dataset model
             dataset = Dataset.objects.create(
@@ -761,19 +743,14 @@ class GuestUploadAndCleanView(APIView):
             return Response({"error": "Unsupported file format. Please upload CSV or Excel files."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
+            file_obj.seek(0)
             temp_content = file_obj.read()
             file_obj.seek(0)
             
-            if file_type == "csv":
-                try:
-                    df_full = pd.read_csv(io.BytesIO(temp_content), encoding="utf-8")
-                    detected_encoding = "utf-8"
-                except UnicodeDecodeError:
-                    df_full = pd.read_csv(io.BytesIO(temp_content), encoding="latin-1")
-                    detected_encoding = "latin-1"
-            else:
-                detected_encoding = "UTF-8"
-                df_full = pd.read_excel(io.BytesIO(temp_content))
+            try:
+                df_full, detected_encoding = read_dataframe_from_bytes(temp_content, file_type)
+            except ValueError as ve:
+                return Response({"error": str(ve)}, status=status.HTTP_400_BAD_REQUEST)
 
             rows_count = len(df_full)
             cols_count = len(df_full.columns)

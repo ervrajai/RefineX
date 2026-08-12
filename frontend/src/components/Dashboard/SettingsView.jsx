@@ -29,6 +29,7 @@ import {
   BrushCleaning,
   ArrowLeft,
   ChevronRight,
+  Filter,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
@@ -38,6 +39,7 @@ import { validatePassword } from "../../utils/passwordPolicy";
 import { useAuth } from "../../context/AuthContext";
 import { BouncyAccordion } from "../ui/BouncyAccordion";
 import { AnimatedCheckbox } from "../ui/AnimatedCheckbox";
+import { AnimatedSelect } from "../ui/AnimatedSelect";
 
 function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
   const navigate = useNavigate();
@@ -102,11 +104,24 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
   const filteredTrashItems = recentlyDeleted.filter((item) => {
     // 1. Category Filter
     if (trashActiveFilter === "Cleaning") {
-      if (item.type !== "clean" && item.type !== "cleaning") return false;
+      const isCleaningType = 
+        item.type === "clean" || 
+        item.type === "cleaning" || 
+        item.type === "uploaded_dataset" || 
+        item.type === "dataset";
+      if (!isCleaningType) return false;
     } else if (trashActiveFilter === "Model Training") {
-      if (item.type !== "training" && item.type !== "model_training") return false;
+      const isTrainingType = 
+        item.type === "training" || 
+        item.type === "model_training" || 
+        item.type === "ml";
+      if (!isTrainingType) return false;
     } else if (trashActiveFilter === "Visualization") {
-      if (item.type !== "visualization" && item.type !== "chart") return false;
+      const isVisType = 
+        item.type === "visualization" || 
+        item.type === "chart" || 
+        item.type === "graph";
+      if (!isVisType) return false;
     }
 
     // 2. Search Query Filter
@@ -1233,8 +1248,24 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
               <div className="flex flex-col gap-4">
                 {/* Control Bar: Category Filter, Search Bar & Empty Trash / Select Toggle */}
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 pb-4 mb-1 border-b border-slate-200/60 dark:border-zinc-800">
-                  {/* Left Side: 4-Pill Segmented Category Filter with proper paddings & margins */}
-                  <div className="flex items-center p-1.5 rounded-full bg-[#e3e3e8] dark:bg-[#1c1c1e] border border-slate-200/60 dark:border-zinc-800/80 shadow-inner w-full lg:w-auto overflow-x-auto scrollbar-none shrink-0">
+                  {/* Left Side: Responsive Category Filter */}
+                  {/* 1. Mobile Custom AnimatedSelect Filter (Visible on screens < sm) */}
+                  <div className="block sm:hidden w-full">
+                    <AnimatedSelect
+                      value={trashActiveFilter}
+                      onChange={(val) => setTrashActiveFilter(val)}
+                      options={[
+                        { value: "All", label: "Filter: All Categories" },
+                        { value: "Cleaning", label: "Filter: Cleaning" },
+                        { value: "Model Training", label: "Filter: Model Training" },
+                        { value: "Visualization", label: "Filter: Visualization" },
+                      ]}
+                      triggerClassName="w-full px-3.5 py-2 text-xs font-bold rounded-full bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-slate-900 dark:text-white shadow-2xs flex items-center justify-between"
+                    />
+                  </div>
+
+                  {/* 2. Desktop/Tablet Segmented 4-Pill Switcher (Visible on sm:flex and above) */}
+                  <div className="hidden sm:flex items-center p-1.5 rounded-full bg-[#e3e3e8] dark:bg-[#1c1c1e] border border-slate-200/60 dark:border-zinc-800/80 shadow-inner w-full lg:w-auto overflow-x-auto scrollbar-none shrink-0">
                     {[
                       { id: "All", label: "All" },
                       { id: "Cleaning", label: "Cleaning" },
@@ -1392,9 +1423,9 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                       const isRestoring = restoringId === `${item.type}-${item.id}`;
                       const isPurging = purgingId === `${item.type}-${item.id}`;
 
-                      const isCleaning = item.type === "cleaning" || item.type === "clean";
-                      const isTraining = item.type === "training" || item.type === "model_training";
-                      const isVis = item.type === "visualization" || item.type === "chart";
+                      const isCleaning = item.type === "cleaning" || item.type === "clean" || item.type === "uploaded_dataset" || item.type === "dataset";
+                      const isTraining = item.type === "training" || item.type === "model_training" || item.type === "ml";
+                      const isVis = item.type === "visualization" || item.type === "chart" || item.type === "graph";
 
                       return (
                         <div
@@ -1405,7 +1436,7 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                               : "border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20"
                           }`}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             {/* Animated Checkbox when in selection mode */}
                             {trashSelectionMode && (
                               <div
@@ -1429,55 +1460,66 @@ function SettingsView({ user, loading, handleLogout, onProfileUpdate }) {
                             {isVis && <LineChart className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0 ml-0.5" />}
                             {!isCleaning && !isTraining && !isVis && <FileText className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0 ml-0.5" />}
 
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-zinc-100 truncate">
                                   {item.name}
                                 </h4>
-                                <span className="capitalize text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-slate-200/70 dark:bg-zinc-700 text-slate-600 dark:text-zinc-300">
+                                <span className="capitalize text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-slate-200/70 dark:bg-zinc-700 text-slate-600 dark:text-zinc-300 shrink-0">
                                   {isCleaning ? "Cleaning" : isTraining ? "Model Training" : isVis ? "Visualization" : item.type}
                                 </span>
                               </div>
-                              <p className="text-[11px] text-slate-400 dark:text-zinc-500 truncate">
+                              <p className="text-[11px] font-medium text-slate-400 dark:text-zinc-500 truncate mt-0.5">
                                 Dataset: {item.dataset_name || "N/A"}
                               </p>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/50 dark:border-zinc-800">
-                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                              <Clock className="w-3 h-3 shrink-0" />
-                              <span>{item.days_remaining} {item.days_remaining === 1 ? "day" : "days"} left</span>
-                            </div>
+                          {/* Days Left & Action Buttons Row */}
+                          {(() => {
+                            const daysLeftNum = item.days_remaining !== undefined && item.days_remaining !== null 
+                              ? item.days_remaining 
+                              : (item.days_left !== undefined && item.days_left !== null ? item.days_left : 10);
 
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                disabled={isRestoring || isPurging}
-                                onClick={() => handleRestoreItem(item.id, item.type)}
-                                className="px-3 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95 disabled:opacity-50"
-                              >
-                                {isRestoring ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                  <>
-                                    <RotateCcw className="w-3.5 h-3.5" />
-                                    <span>Restore</span>
-                                  </>
-                                )}
-                              </button>
+                            return (
+                              <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 shrink-0 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 dark:border-white/10 w-full sm:w-auto">
+                                {/* Days Remaining Pill */}
+                                <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-amber-600 dark:text-amber-400 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 whitespace-nowrap shrink-0">
+                                  <Clock className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                                  <span>{daysLeftNum} {daysLeftNum === 1 ? "day" : "days"} left</span>
+                                </div>
 
-                              <button
-                                type="button"
-                                disabled={isRestoring || isPurging}
-                                onClick={() => setItemToPurge(item)}
-                                className="px-3 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95 disabled:opacity-50"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Delete</span>
-                              </button>
-                            </div>
-                          </div>
+                                {/* Action Buttons: Restore & Delete */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <button
+                                    type="button"
+                                    disabled={isRestoring || isPurging}
+                                    onClick={() => handleRestoreItem(item.id, item.type)}
+                                    className="px-3.5 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50 border border-emerald-500/20 shadow-2xs whitespace-nowrap"
+                                  >
+                                    {isRestoring ? (
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                        <span>Restore</span>
+                                      </>
+                                    )}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    disabled={isRestoring || isPurging}
+                                    onClick={() => setItemToPurge(item)}
+                                    className="px-3.5 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50 border border-rose-500/20 shadow-2xs whitespace-nowrap"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>Delete</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       );
                     })}

@@ -1,0 +1,31 @@
+  Full Name#$  ,first   name,email_address,email_address,income,income_dup,salary,discount_percentage,numeric_string,datetime_string,Age,Department,Years_of_Experience,Joining_Date,Company_Name,Middle_Name,low_variance_num,Email_Address,Phone_Number,temp_id,Score
+  Alice Smith  ,Alice,alice@example.com,alice_dup@example.com,5000,5000,"$5,000",10%,12.5,12-08-2026,28,HR,2,01-01-2025,Acme Corp,Robert,5.0001,alice@example.com,1234567890,1,85.12345
+<div>Jane <b>Doe</b></div>,Jane,jane@example.com,jane_dup@example.com,6000,6000,"$6,200",15%,14.8,13-08-2026,na,none,3,05-12-2024,Acme Corp,,5,invalid-email,12,2,92.6789
+Charlie Brown 🐍✨,Charlie,charlie@example.com,charlie_dup@example.com,7000,7000,"€7,000.50",5%,15.2,08/14/2026,35,Engineering,4,12/25/2023,Acme Corp,-,5.0002,bob@example.com,9876543210,3,78.45601
+David\tMiller\nStaff,David,david@example.com,david_dup@example.com,8000,8000,"£8,000",20%,16,15-08-2026,-5,Sales,3,15-08-2026,Acme Corp,n/a,5,user@com,phone-number-abc,4,89.11111
+Eva   Green,Eva,eva@example.com,eva_dup@example.com,9000,9000,9000,12%,17.1,16-08-2026,150,Engineering,5,16-08-2026,Acme Corp,unknown,5.0001,charlie@example.com,+1 555-0199,5,90.22222
+frank is a MANAGER,Frank,frank@example.com,frank_dup@example.com,10000,10000,"$10,000",8%,18.3,17-08-2026,42,,2,17-08-2026,Acme Corp,null,5,john@doe.,55,6,91.33333
+Grace Taylor,Grace,grace@example.com,grace_dup@example.com,11000,11000,"$11,000",15%,19.4,08/18/2026,null,Engineering,100,08/18/2026,Acme Corp,--,5.0002,david@example.com,+44 20 7946 0958,7,92.44444
+Henry Wilson,Henry,henry@example.com,henry_dup@example.com,12000,12000,"-$2,000",25%,20.5,19-08-2026,48,HR,3,19-08-2026,Acme Corp,,5,henry@example.com,-899,8,93.55555
+Henry Wilson,Henry,henry@example.com,henry_dup@example.com,12000,12000,"-$2,000",25%,20.5,19-08-2026,48,HR,3,19-08-2026,Acme Corp,,5,henry@example.com,-899,8,93.55555
+Henry Wilson,Henry,henry@example.com,henry_dup@example.com,12000,12000,"-$2,000",25%,20.5,19-08-2026,48,HR,3,19-08-2026,Acme Corp,,5,henry@example.com,-899,8,93.55555
+Isabella Jones,Isabella,isabella@example.com,isabella_dup@example.com,13000,13000,"$13,000",10%,21.6,20-08-2026,29,Sales,4,20-08-2026,Acme Corp,,5.0001,isabella@example.com,1234567891,9,86.54321
+Jack Miller,Jack,jack@example.com,jack_dup@example.com,14000,14000,"$14,000",15%,22.7,21-08-2026,31,Engineering,5,21-08-2026,Acme Corp,,5.0002,jack@example.com,1234567892,10,87.65432
+Karen Davis,Karen,karen@example.com,karen_dup@example.com,15000,15000,"$15,000",20%,23.8,08/22/2026,33,HR,6,08/22/2026,Acme Corp,,5,karen@example.com,1234567893,11,88.76543
+Liam Rodriguez,Liam,liam@example.com,liam_dup@example.com,16000,16000,"$16,000",5%,24.9,23-08-2026,35,Sales,3,23-08-2026,Acme Corp,,5.0001,liam@example.com,1234567894,12,89.87654
+Mia Martinez,Mia,mia@example.com,mia_dup@example.com,17000,17000,"$17,000",10%,26,24-08-2026,37,Engineering,4,24-08-2026,Acme Corp,,5.0002,mia@example.com,1234567895,13,90.98765
+Noah Garcia,Noah,noah@example.com,noah_dup@example.com,18000,18000,"$18,000",12%,27.1,25-08-2026,39,HR,5,25-08-2026,Acme Corp,,5,noah@example.com,1234567896,14,91.09876
+Olivia Martinez,Olivia,olivia@example.com,olivia_dup@example.com,19000,19000,"$19,000",18%,28.2,08/26/2026,41,Sales,6,08/26/2026,Acme Corp,,5.0001,olivia@example.com,1234567897,15,92.20987
+Peter Robinson,Peter,peter@example.com,peter_dup@example.com,20000,20000,"$20,000",14%,29.3,27-08-2026,43,Engineering,7,27-08-2026,Acme Corp,,5.0002,peter@example.com,1234567898,16,93.32098
+Quinn Clark,Quinn,quinn@example.com,quinn_dup@example.com,21000,21000,"$21,000",16%,30.4,28-08-2026,45,HR,8,28-08-2026,Acme Corp,,5,quinn@example.com,1234567899,17,94.43209
+Rachel Lewis,Rachel,rachel@example.com,rachel_dup@example.com,22000,22000,"$22,000",22%,31.5,29-08-2026,47,Sales,9,29-08-2026,Acme Corp,,5.0001,rachel@example.com,1234567800,18,95.5432
+Samuel Walker,Samuel,samuel@example.com,samuel_dup@example.com,23000,23000,"$23,000",25%,32.6,08/30/2026,49,Engineering,100,08/30/2026,Acme Corp,,5.0002,samuel@example.com,1234567801,19,96.65431
+Taylor Hall,Taylor,taylor@example.com,taylor_dup@example.com,24000,24000,"$24,000",30%,33.7,31-08-2026,51,HR,3,31-08-2026,Acme Corp,,5,taylor@example.com,1234567802,20,97.76542
+Taylor Hall,Taylor,taylor@example.com,taylor_dup@example.com,24000,24000,"$24,000",30%,33.7,31-08-2026,51,HR,3,31-08-2026,Acme Corp,,5,taylor@example.com,1234567802,20,97.76542
+Victor Young,Victor,victor@example.com,victor_dup@example.com,25000,25000,"$25,000",10%,34.8,01-09-2026,53,Sales,4,01-09-2026,Acme Corp,,5.0001,victor@example.com,1234567803,21,98.87653
+Wendy Allen,Wendy,wendy@example.com,wendy_dup@example.com,26000,26000,"$26,000",15%,35.9,02-09-2026,55,Engineering,5,02-09-2026,Acme Corp,,5.0002,wendy@example.com,1234567804,22,99.98764
+Xavier King,Xavier,xavier@example.com,xavier_dup@example.com,27000,27000,"$27,000",20%,37,09-03-2026,57,HR,6,09-03-2026,Acme Corp,,5,xavier@example.com,1234567805,23,100
+Yolanda Wright,Yolanda,yolanda@example.com,yolanda_dup@example.com,28000,28000,"$28,000",5%,38.1,04-09-2026,59,Sales,3,04-09-2026,Acme Corp,,5.0001,yolanda@example.com,1234567806,24,80.12345
+Zachary Scott,Zachary,zachary@example.com,zachary_dup@example.com,29000,29000,"$29,000",10%,39.2,05-09-2026,61,Engineering,4,05-09-2026,Acme Corp,,5.0002,zachary@example.com,1234567807,25,81.23456
+Alpha Centauri,Alpha,alpha@example.com,alpha_dup@example.com,30000,30000,"$30,000",12%,40.3,06-09-2026,63,HR,5,06-09-2026,Acme Corp,,5,alpha@example.com,1234567808,26,82.34567
+Beta Orionis,Beta,beta@example.com,beta_dup@example.com,31000,31000,"$31,000",15%,41.4,09-07-2026,65,Sales,6,09-07-2026,Acme Corp,,5.0001,beta@example.com,1234567809,27,83.45678

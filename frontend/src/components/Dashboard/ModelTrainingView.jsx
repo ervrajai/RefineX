@@ -1080,15 +1080,22 @@ export default function ModelTrainingView({
                       {
                         id: "advanced-config",
                         title: (
-                          <div className="flex items-center gap-2">
-                            <SlidersHorizontal className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-zinc-300">
-                              Advanced Configurations
-                            </span>
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
+                              <SlidersHorizontal className="w-4 h-4" />
+                            </div>
+                            <div className="flex flex-col text-left">
+                              <span className="text-xs font-bold text-slate-900 dark:text-white tracking-tight">
+                                Advanced Configurations
+                              </span>
+                              <span className="text-[10px] font-medium text-slate-400 dark:text-zinc-500">
+                                Split ratio, seed, CV folds & shuffle
+                              </span>
+                            </div>
                           </div>
                         ),
                         description: (
-                          <div className="pt-3 pb-2 space-y-3.5 text-xs animate-fade-in">
+                          <div className="pt-2 pb-1 space-y-3.5 text-xs animate-fade-in">
                             {/* Interactive Dual-Color Train/Test Split Control */}
                             {(() => {
                               const testPct = Math.round(testSize * 100);
@@ -1216,9 +1223,10 @@ export default function ModelTrainingView({
                     collapsible={true}
                     className="space-y-0"
                     classNames={{
-                      item: "bg-transparent shadow-none border-none",
-                      trigger: "px-0 py-1 hover:bg-transparent",
-                      content: "border-t-0 bg-transparent overflow-visible",
+                      item: "rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] shadow-sm hover:shadow-md dark:hover:shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition-all duration-200 overflow-hidden",
+                      trigger: "px-3.5 py-3 min-h-[50px] flex items-center justify-between w-full",
+                      content: "p-3 sm:p-4 border-t border-slate-100 dark:border-white/10 bg-slate-50/40 dark:bg-black/20",
+                      chevron: "w-7 h-7 p-1 rounded-lg border-none bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300"
                     }}
                   />
                 </div>

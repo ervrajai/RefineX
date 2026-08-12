@@ -36,6 +36,41 @@ def make_columns_unique(columns):
             new_cols.append(col_str)
     return new_cols
 
+def clean_numeric_series(series):
+    """
+    Cleans currency symbols ($, ₹, €, £, ¥, ₩, ฿, ₫, ₱, ¢, ¤, etc.),
+    currency codes/words (rs, rs., Rs, RS, USD, INR, EUR, GBP, JPY, AUD, CAD, CHF, CNY, SGD, NZD, AED, SAR, BRL, RUB, etc.),
+    accounting negative formats '(100.50)', percentage signs (%), spaces, and thousand-separator commas.
+    Returns a float numeric pandas Series (with NaN for unparsable values).
+    """
+    if series is None or len(series) == 0:
+        return series
+        
+    s = series.astype(str).str.strip()
+    
+    # 1. Detect accounting negative format e.g. ($100.50) or (100 rs)
+    is_parenthesized = s.str.match(r'^\(.*\)$', na=False)
+    s = s.str.replace(r'^\((.*)\)$', r'\1', regex=True).str.strip()
+    
+    # 2. Strip common currency symbols ($, ₹, €, £, ¥, ₩, ฿, ₫, ₱, ¢, ¤, %)
+    s = s.str.replace(r'[$₹€£¥₩฿₫₱¢¤%]', '', regex=True)
+    
+    # 3. Strip currency word codes/prefixes/suffixes (case-insensitive, optional trailing dot for Rs.)
+    currency_words_regex = r'(?i)\b(rs|inr|usd|eur|gbp|jpy|aud|cad|chf|cny|sgd|nzd|aed|sar|brl|rub)\b\.?'
+    s = s.str.replace(currency_words_regex, '', regex=True)
+    
+    # 4. Strip thousand separator commas and extra spaces
+    s = s.str.replace(',', '', regex=False).str.strip()
+    
+    # 5. Parse to numeric
+    numeric_s = pd.to_numeric(s, errors='coerce')
+    
+    # 6. Apply negative sign for parenthesized accounting format
+    if is_parenthesized.any():
+        numeric_s = numeric_s.mask(is_parenthesized & numeric_s.notna(), -numeric_s.abs())
+        
+    return numeric_s
+
 def read_dataframe(file_path, file_type, encoding='UTF-8'):
     """
     Safely reads a dataset into a Pandas DataFrame, handling common encoding formats and delimiter sniffing.
@@ -381,11 +416,11 @@ def profile_dataset(df):
             
             # Check if it could be numeric
             try:
-                # Remove symbols and check
-                cleaned = df[col].dropna().head(20).astype(str).str.replace(r'[\$,₹,€,£,%, ]', '', regex=True)
-                numeric_parsed = pd.to_numeric(cleaned, errors='coerce')
-                if numeric_parsed.notna().sum() == len(cleaned) and len(cleaned) > 0:
-                    sug_type = 'float64'
+                sample = df[col].dropna().head(20)
+                if len(sample) > 0:
+                    cleaned = clean_numeric_series(sample)
+                    if (cleaned.notna().sum() / len(sample)) >= 0.7:
+                        sug_type = 'float64'
             except:
                 pass
 
@@ -855,24 +890,20 @@ def clean_dataset(df, config):
     # Step 8, 9, 10: Clean Numeric Values (Detect, Remove Currency & Thousand Separators)
     if config.get("clean_numeric_values", False):
         numeric_cleaned_count = 0
-        currency_chars = r'[\$,₹,€,£,USD,INR,%, ]'
         
         for col in cleaned_df.columns:
-            # Only clean if it's an object column but looks like it contains numbers with symbols
-            if cleaned_df[col].dtype == object:
+            # Clean non-numeric columns (object / string) that contain numeric values with currency or symbols
+            if not is_numeric_column(cleaned_df[col]):
                 # Check sample of non-null values
-                sample = cleaned_df[col].dropna().head(30).astype(str)
+                sample = cleaned_df[col].dropna().head(30)
                 if len(sample) > 0:
-                    # Strip common currency and separators
-                    cleaned_sample = sample.str.replace(currency_chars, '', regex=True).str.replace(',', '', regex=False)
-                    numeric_parsed = pd.to_numeric(cleaned_sample, errors='coerce')
-                    non_null_parsed = numeric_parsed.notna().sum()
+                    cleaned_sample = clean_numeric_series(sample)
+                    non_null_parsed = cleaned_sample.notna().sum()
                     
-                    # If >70% of non-nulls parse to float, we treat this as a numeric column
+                    # If >=70% of non-nulls parse to float, we treat this as a numeric column
                     if (non_null_parsed / len(sample)) >= 0.7:
                         # Clean entire column
-                        cleaned_col = cleaned_df[col].astype(str).str.replace(currency_chars, '', regex=True).str.replace(',', '', regex=False)
-                        cleaned_df[col] = pd.to_numeric(cleaned_col, errors='coerce')
+                        cleaned_df[col] = clean_numeric_series(cleaned_df[col])
                         numeric_cleaned_count += 1
                         logs.append(f"✓ Cleaned numeric symbols (currency, commas, %) from column '{col}'")
                         

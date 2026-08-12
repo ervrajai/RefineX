@@ -16,13 +16,16 @@ import {
   ChevronDown,
   Search,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Check,
+  X
 } from "lucide-react";
 import { BouncyAccordion } from "../ui/BouncyAccordion";
 import AnimatedDownloadButton from "../ui/AnimatedDownloadButton";
 import RestoreButton from "../ui/RestoreButton";
 import RefreshButton from "../ui/RefreshButton";
 import { AnimatedSelect } from "../ui/AnimatedSelect";
+import { AnimatedCheckbox } from "../ui/AnimatedCheckbox";
 
 // Mobile Download Dropdown Component
 function MobileDownloadDropdown({ options }) {
@@ -163,6 +166,12 @@ export default function HistoryView({
   const [deletingItem, setDeletingItem] = useState(false);
   const [itemDetails, setItemDetails] = useState({});
 
+  // Selection & Batch Delete States
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedItemIds, setSelectedItemIds] = useState(new Set());
+  const [showConfirmDeleteSelectedModal, setShowConfirmDeleteSelectedModal] = useState(false);
+  const [deletingSelected, setDeletingSelected] = useState(false);
+
   // Search, Filter & Pagination states
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
@@ -298,6 +307,91 @@ export default function HistoryView({
       await fetchItemDetail({ id: jobId });
     }
     setOpenLogsJobId((prev) => (prev === jobId ? null : jobId));
+  };
+
+  const getItemUniqueId = (item) => `${item.type || "clean"}-${item.id}`;
+
+  const handleStartSelectionMode = () => {
+    setIsSelectionMode(true);
+    // Initially select ALL current/filtered items by default
+    const targetList = filteredHistory.length > 0 ? filteredHistory : history;
+    const allIds = new Set(targetList.map((item) => getItemUniqueId(item)));
+    setSelectedItemIds(allIds);
+  };
+
+  const handleExitSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedItemIds(new Set());
+  };
+
+  const isAllFilteredSelected =
+    filteredHistory.length > 0 &&
+    filteredHistory.every((item) => selectedItemIds.has(getItemUniqueId(item)));
+
+  const handleToggleSelectAll = () => {
+    if (isAllFilteredSelected) {
+      setSelectedItemIds(new Set());
+    } else {
+      const newSet = new Set(selectedItemIds);
+      filteredHistory.forEach((item) => newSet.add(getItemUniqueId(item)));
+      setSelectedItemIds(newSet);
+    }
+  };
+
+  const handleToggleSelectItem = (e, item) => {
+    if (e) e.stopPropagation();
+    const id = getItemUniqueId(item);
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleDeleteSelectedItems = async () => {
+    if (selectedItemIds.size === 0) return;
+    setDeletingSelected(true);
+    setError("");
+    try {
+      const selectedItems = history.filter((item) =>
+        selectedItemIds.has(getItemUniqueId(item))
+      );
+
+      if (selectedItems.length >= history.length && history.length > 0) {
+        await api.delete("history/");
+        setHistory([]);
+      } else {
+        await Promise.all(
+          selectedItems.map((item) =>
+            api.delete(`history/${item.id}/?type=${item.type}`)
+          )
+        );
+        setHistory((prev) =>
+          prev.filter((item) => !selectedItemIds.has(getItemUniqueId(item)))
+        );
+      }
+
+      setSelectedItemIds(new Set());
+      setIsSelectionMode(false);
+      setShowConfirmDeleteSelectedModal(false);
+
+      if (onRefreshHistory) {
+        await onRefreshHistory();
+      }
+    } catch (err) {
+      console.error("Delete selected history items error:", err);
+      setShowConfirmDeleteSelectedModal(false);
+      setError(
+        err.response?.data?.detail ||
+          "Failed to delete selected history records. Please try again."
+      );
+    } finally {
+      setDeletingSelected(false);
+    }
   };
 
   const handleClearHistory = async () => {
@@ -568,16 +662,77 @@ export default function HistoryView({
         <div className="flex items-center gap-2.5 self-start sm:self-center shrink-0">
           <RefreshButton onClick={handleRefreshHistory} loading={loading} />
 
-          <button 
-            type="button"
-            onClick={() => setShowClearModal(true)}
-            className="group flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-full bg-transparent text-slate-800 dark:text-zinc-200 border border-slate-300 dark:border-zinc-700 hover:text-rose-500 dark:hover:text-rose-400 hover:border-rose-500 dark:hover:border-rose-400 focus:text-rose-500 focus:border-rose-500 transition-all duration-300 ease-in-out cursor-pointer text-center shadow-xs whitespace-nowrap select-none active:scale-95"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors duration-300" />
-            <span>Clear History</span>
-          </button>
+          {isSelectionMode ? (
+            <button 
+              type="button"
+              onClick={handleExitSelectionMode}
+              className="group flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/40 hover:bg-amber-500/20 transition-all duration-300 ease-in-out cursor-pointer text-center shadow-xs whitespace-nowrap select-none active:scale-95"
+            >
+              <X className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Exit Selection</span>
+            </button>
+          ) : (
+            <button 
+              type="button"
+              disabled={history.length === 0}
+              onClick={handleStartSelectionMode}
+              className="group flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-full bg-transparent text-slate-800 dark:text-zinc-200 border border-slate-300 dark:border-zinc-700 hover:text-rose-500 dark:hover:text-rose-400 hover:border-rose-500 dark:hover:border-rose-400 focus:text-rose-500 focus:border-rose-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 ease-in-out cursor-pointer text-center shadow-xs whitespace-nowrap select-none active:scale-95"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors duration-300" />
+              <span>Clear History</span>
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Batch Selection Toolbar Panel */}
+      {isSelectionMode && (
+        <div className="p-4 sm:p-4.5 rounded-3xl bg-amber-500/10 dark:bg-amber-500/10 border border-amber-500/30 dark:border-amber-500/30 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3.5 animate-fade-in my-3">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            {/* Select All Checkbox Button */}
+            <div
+              onClick={handleToggleSelectAll}
+              className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 hover:border-amber-500 dark:hover:border-amber-500 transition cursor-pointer select-none text-xs font-bold text-slate-800 dark:text-zinc-100 shadow-xs active:scale-95"
+            >
+              <AnimatedCheckbox
+                checked={isAllFilteredSelected}
+                onChange={() => {}}
+                size={18}
+                color="#f59e0b"
+                className="pointer-events-none"
+              />
+              <span>Select All</span>
+            </div>
+
+            {/* Selected Count Indicator */}
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-zinc-300 bg-white/80 dark:bg-zinc-900/80 px-3.5 py-2 rounded-2xl border border-slate-200/80 dark:border-zinc-800/80">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span>Selected: <strong className="text-amber-600 dark:text-amber-400 font-extrabold">{selectedItemIds.size}</strong> of {filteredHistory.length} items</span>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              onClick={handleExitSelectionMode}
+              className="px-4 py-2 text-xs font-bold rounded-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer active:scale-95 shadow-xs"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              disabled={selectedItemIds.size === 0}
+              onClick={() => setShowConfirmDeleteSelectedModal(true)}
+              className="flex items-center gap-2 px-4.5 py-2 text-xs font-bold rounded-full bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition cursor-pointer shadow-sm active:scale-95 select-none"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Selected ({selectedItemIds.size})</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Search & Filter Toolbar (Filter Left, Search Right) */}
       <div className="flex flex-col md:flex-row items-center gap-3 w-full my-4">
@@ -636,6 +791,60 @@ export default function HistoryView({
           />
         </div>
       </div>
+
+      {/* Batch Selection Deletion Modal */}
+      {showConfirmDeleteSelectedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 dark:bg-black/75 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-white dark:bg-[#1c1c21] border border-slate-200 dark:border-zinc-800 shadow-xl flex flex-col gap-5 relative">
+            <div className="flex items-center gap-3 text-amber-500">
+              <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Move {selectedItemIds.size} {selectedItemIds.size === 1 ? "Item" : "Items"} to Recently Deleted?
+                </h3>
+                <p className="text-[11px] text-slate-400 dark:text-zinc-400">10-Day Retention Period</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-100 dark:border-zinc-800 text-xs text-slate-600 dark:text-zinc-300 leading-relaxed space-y-2">
+              <p>
+                You are about to move <strong className="text-slate-900 dark:text-white font-bold">{selectedItemIds.size} selected history {selectedItemIds.size === 1 ? "record" : "records"}</strong> to Recently Deleted.
+              </p>
+              <div className="flex items-center gap-2 text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1.5 rounded-xl border border-amber-500/20">
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span>Items will stay in Settings → Recently Deleted for 10 days before auto-purging.</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-1">
+              <button
+                disabled={deletingSelected}
+                onClick={() => setShowConfirmDeleteSelectedModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer active:scale-95"
+              >
+                Cancel
+              </button>
+
+              <button
+                disabled={deletingSelected}
+                onClick={handleDeleteSelectedItems}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                {deletingSelected ? (
+                  <span className="animate-pulse">Moving Selected...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Move Selected ({selectedItemIds.size})
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Clear History Confirmation Modal */}
       {showClearModal && (
@@ -781,16 +990,34 @@ export default function HistoryView({
             const job = itemDetails[itemRaw.id] || itemRaw;
             const isML = job.type === "training";
             const isVis = job.type === "visualization";
-            const itemId = `${job.type || "clean"}-${job.id}`;
+            const itemId = getItemUniqueId(job);
+            const isSelected = selectedItemIds.has(itemId);
 
             // Visualization Module Accordion Item
             if (isVis) {
               return {
                 id: itemId,
-                customClass: "border-slate-200 dark:border-zinc-800",
+                customClass: isSelectionMode && isSelected 
+                  ? "border-amber-500/50 dark:border-amber-500/50 bg-amber-500/5 dark:bg-amber-500/5 shadow-xs" 
+                  : "border-slate-200 dark:border-white/10 dark:bg-white/[0.02]",
                 title: (
                   <div className="flex items-center justify-between gap-4 w-full pr-1">
-                    <div className="flex items-center gap-4 sm:gap-4.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-3 sm:gap-4.5 min-w-0 flex-1">
+                      {isSelectionMode && (
+                        <div
+                          onClick={(e) => handleToggleSelectItem(e, job)}
+                          className="shrink-0 p-1 cursor-pointer select-none"
+                          title={isSelected ? "Unselect item" : "Select item"}
+                        >
+                          <AnimatedCheckbox
+                            checked={isSelected}
+                            onChange={() => {}}
+                            size={18}
+                            color="#f59e0b"
+                            className="pointer-events-none"
+                          />
+                        </div>
+                      )}
                       <LineChart className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0 ml-0.5" />
                       <div className="min-w-0 flex-1">
                         <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate leading-snug">
@@ -831,21 +1058,21 @@ export default function HistoryView({
                           </div>
                         )}
                         <div className="flex-1 flex flex-col justify-between gap-3 w-full">
-                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
                             <span className="text-[10px] uppercase font-bold text-slate-500 block">Chart Name</span>
                             <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block truncate">
                               {job.name || "Untitled Chart"}
                             </span>
                           </div>
 
-                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
                             <span className="text-[10px] uppercase font-bold text-slate-500 block">Target Library</span>
                             <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block capitalize">
                               {job.library || "Plotly"}
                             </span>
                           </div>
 
-                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
                             <span className="text-[10px] uppercase font-bold text-slate-500 block">Columns Plotted</span>
                             <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
                               X: <span className="text-purple-600 dark:text-purple-400 font-extrabold">{job.config?.x_column || "N/A"}</span>
@@ -880,19 +1107,19 @@ export default function HistoryView({
 
                       {/* 2. [ | | ] 3-Column Row for Visualize */}
                       <div className="grid grid-cols-3 gap-1.5">
-                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-xs text-center min-w-0">
                           <span className="text-[9px] uppercase font-bold text-slate-500 block truncate">Chart Name</span>
                           <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 mt-1 block truncate">
                             {job.name || "Chart"}
                           </span>
                         </div>
-                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-xs text-center min-w-0">
                           <span className="text-[9px] uppercase font-bold text-slate-500 block truncate">Library</span>
                           <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 mt-1 block capitalize truncate">
                             {job.library || "Plotly"}
                           </span>
                         </div>
-                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-xs text-center min-w-0">
                           <span className="text-[9px] uppercase font-bold text-slate-500 block truncate">Columns</span>
                           <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 mt-1 block truncate">
                             {job.config?.x_column || "X"} / {job.config?.y_column || "Y"}
@@ -938,10 +1165,27 @@ export default function HistoryView({
 
               return {
                 id: itemId,
-                customClass: "border-slate-200 dark:border-zinc-800",
+                customClass: isSelectionMode && isSelected 
+                  ? "border-amber-500/50 dark:border-amber-500/50 bg-amber-500/5 dark:bg-amber-500/5 shadow-xs" 
+                  : "border-slate-200 dark:border-white/10 dark:bg-white/[0.02]",
                 title: (
                   <div className="flex items-center justify-between gap-4 w-full pr-1">
-                    <div className="flex items-center gap-4 sm:gap-4.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-3 sm:gap-4.5 min-w-0 flex-1">
+                      {isSelectionMode && (
+                        <div
+                          onClick={(e) => handleToggleSelectItem(e, job)}
+                          className="shrink-0 p-1 cursor-pointer select-none"
+                          title={isSelected ? "Unselect item" : "Select item"}
+                        >
+                          <AnimatedCheckbox
+                            checked={isSelected}
+                            onChange={() => {}}
+                            size={18}
+                            color="#f59e0b"
+                            className="pointer-events-none"
+                          />
+                        </div>
+                      )}
                       <BrainCircuit className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0 ml-0.5" />
                       <div className="min-w-0 flex-1">
                         <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate leading-snug">
@@ -976,19 +1220,19 @@ export default function HistoryView({
                     {/* DESKTOP VIEW */}
                     <div className="hidden sm:block space-y-5">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
                           <span className="text-[10px] uppercase font-bold text-slate-500 block">Champion Model</span>
                           <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block capitalize truncate">
                             {job.best_model_name?.replace('_', ' ') || "N/A"}
                           </span>
                         </div>
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
                           <span className="text-[10px] uppercase font-bold text-slate-500 block">Evaluation Score</span>
                           <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 block">
                             {(bestScore * 100).toFixed(2)}%
                           </span>
                         </div>
-                        <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                        <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
                           <span className="text-[10px] uppercase font-bold text-slate-500 block">Training Duration</span>
                           <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
                             {job.training_duration ? `${job.training_duration.toFixed(2)}s` : "N/A"}
@@ -1010,19 +1254,19 @@ export default function HistoryView({
                     <div className="block sm:hidden space-y-4">
                       {/* 1. [ | | ] 3-Column Row for ML */}
                       <div className="grid grid-cols-3 gap-1.5">
-                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-xs text-center min-w-0">
                           <span className="text-[9px] uppercase font-bold text-slate-500 block truncate">Model</span>
                           <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 mt-1 block capitalize truncate">
                             {job.best_model_name?.replace('_', ' ') || "N/A"}
                           </span>
                         </div>
-                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-xs text-center min-w-0">
                           <span className="text-[9px] uppercase font-bold text-slate-500 block truncate">Score</span>
                           <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1 block truncate">
                             {(bestScore * 100).toFixed(1)}%
                           </span>
                         </div>
-                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-xs text-center min-w-0">
+                        <div className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-xs text-center min-w-0">
                           <span className="text-[9px] uppercase font-bold text-slate-500 block truncate">Duration</span>
                           <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 mt-1 block truncate">
                             {job.training_duration ? `${job.training_duration.toFixed(1)}s` : "N/A"}
@@ -1063,10 +1307,27 @@ export default function HistoryView({
             // Data Cleaning Module Accordion Item
             return {
               id: itemId,
-              customClass: "border-slate-200 dark:border-zinc-800",
+              customClass: isSelectionMode && isSelected 
+                ? "border-amber-500/50 dark:border-amber-500/50 bg-amber-500/5 dark:bg-amber-500/5 shadow-xs" 
+                : "border-slate-200 dark:border-white/10 dark:bg-white/[0.02]",
               title: (
                 <div className="flex items-center justify-between gap-4 w-full pr-1">
-                  <div className="flex items-center gap-4 sm:gap-4.5 min-w-0 flex-1">
+                  <div className="flex items-center gap-3 sm:gap-4.5 min-w-0 flex-1">
+                    {isSelectionMode && (
+                      <div
+                        onClick={(e) => handleToggleSelectItem(e, job)}
+                        className="shrink-0 p-1 cursor-pointer select-none"
+                        title={isSelected ? "Unselect item" : "Select item"}
+                      >
+                        <AnimatedCheckbox
+                          checked={isSelected}
+                          onChange={() => {}}
+                          size={18}
+                          color="#f59e0b"
+                          className="pointer-events-none"
+                        />
+                      </div>
+                    )}
                     <BrushCleaning className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0 ml-0.5" />
                     <div className="min-w-0 flex-1">
                       <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate leading-snug">
@@ -1113,25 +1374,25 @@ export default function HistoryView({
 
                       return (
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                          <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                          <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
                             <span className="text-[10px] uppercase font-bold text-slate-500 block">Rows Change</span>
                             <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
                               {beforeRows} <span className="text-slate-400">→</span> {afterRows}
                             </span>
                           </div>
-                          <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                          <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
                             <span className="text-[10px] uppercase font-bold text-slate-500 block">Columns Change</span>
                             <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
                               {beforeCols} <span className="text-slate-400">→</span> {afterCols}
                             </span>
                           </div>
-                          <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                          <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
                             <span className="text-[10px] uppercase font-bold text-slate-500 block">Missing Cells</span>
                             <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
                               {beforeMissing} <span className="text-slate-400">→</span> {afterMissing}
                             </span>
                           </div>
-                          <div className="p-4 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-[#212121] shadow-sm">
+                          <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm">
                             <span className="text-[10px] uppercase font-bold text-slate-500 block">Duplicate Rows</span>
                             <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1.5 block">
                               {beforeDups} <span className="text-slate-400">→</span> {afterDups}

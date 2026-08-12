@@ -86,7 +86,7 @@ function BouncyAccordionRow({
         }}
         transition={reduce ? { duration: 0 } : ROW_TRANSITION}
         className={cn(
-          "overflow-hidden bg-white dark:bg-[#212121] shadow-sm border border-slate-200 dark:border-zinc-800 transition-colors relative z-0",
+          "overflow-hidden bg-white dark:bg-[#1a1a1e] shadow-sm hover:shadow-md dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_6px_26px_rgba(0,0,0,0.65)] border border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 transition-all duration-200 relative z-0",
           open && "z-10",
           item.customClass, // Allows custom borders for ML vs Vis vs Cleaning
           item.disabled && "opacity-50",
@@ -101,7 +101,7 @@ function BouncyAccordionRow({
           aria-controls={contentId}
           onClick={onToggle}
           className={cn(
-            "flex min-h-[54px] w-full items-center gap-4 px-5 py-4 text-left outline-none cursor-pointer hover:bg-slate-50/80 dark:hover:bg-zinc-900/40 transition duration-150",
+            "flex min-h-[54px] w-full items-center gap-4 px-5 py-4 text-left outline-none cursor-pointer hover:bg-slate-100/60 dark:hover:bg-white/[0.04] transition duration-200 select-none",
             "disabled:pointer-events-none",
             classNames?.trigger
           )}

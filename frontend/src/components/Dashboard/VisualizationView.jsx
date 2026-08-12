@@ -1444,7 +1444,7 @@ export default function VisualizationView({
 
       {/* Auto Graph Recommendation Carousel Row */}
       {recommendations.length > 0 && (
-        <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#212121] shadow-sm">
+        <div className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] shadow-sm dark:shadow-md">
           <h2 className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-3.5 flex items-center gap-2">
             <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />{" "}
             Recommended Visualizations
@@ -1454,7 +1454,7 @@ export default function VisualizationView({
               <div
                 key={idx}
                 onClick={() => handleApplyRecommendation(rec)}
-                className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#212121] hover:border-black dark:hover:border-white transition-all duration-300 ease-out cursor-pointer select-none active:scale-[0.98] shadow-sm flex flex-col justify-between"
+                className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm hover:shadow-md dark:hover:shadow-[0_6px_24px_rgba(0,0,0,0.6)] hover:border-slate-300 dark:hover:border-white/20 transition-all duration-200 cursor-pointer select-none active:scale-[0.98] flex flex-col justify-between"
               >
                 <div>
                   <div className="flex justify-between items-center">
@@ -1492,7 +1492,7 @@ export default function VisualizationView({
       {/* Main Studio layout: properties (left) + canvas (middle) + options (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Sidebar: Data mappings, specific chart settings, and color customizations */}
-        <div className="lg:col-span-4 p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#212121] shadow-sm flex flex-col gap-4 max-w-full overflow-hidden lg:sticky lg:top-4 z-10 max-h-[calc(100vh-60px)] overflow-y-auto">
+        <div className="lg:col-span-4 p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] shadow-sm dark:shadow-md flex flex-col gap-4 max-w-full overflow-hidden lg:sticky lg:top-4 z-10 max-h-[calc(100vh-60px)] overflow-y-auto">
           <div className="space-y-4">
             {/* Side sub tab header (iOS Segmented Pill Switch) */}
             <div className="grid grid-cols-3 p-1 rounded-full bg-[#e3e3e8] dark:bg-[#1c1c1e] border border-slate-200/60 dark:border-zinc-800/80 shadow-inner text-center text-xs font-semibold">

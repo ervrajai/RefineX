@@ -859,7 +859,7 @@ export default function ModelTrainingView({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* CONFIGURATION SIDEBAR (LEFT) */}
             <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-4 z-10 max-h-[calc(100vh-60px)] overflow-y-auto pr-0.5">
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-4">
+              <div className="p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] shadow-sm dark:shadow-md space-y-4">
                 <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-3 pb-3 border-b border-slate-150 dark:border-zinc-800 mb-3.5">
                   <SlidersHorizontal className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
                   <span>Training Parameters</span>
@@ -1074,15 +1074,18 @@ export default function ModelTrainingView({
                 )}
 
                 {/* Advanced parameters */}
-                <div className="pt-2 border-t border-slate-100 dark:border-zinc-800">
+                <div className="pt-3 border-t border-slate-200/80 dark:border-white/10">
                   <BouncyAccordion
                     items={[
                       {
                         id: "advanced-config",
                         title: (
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                            Advanced Configurations
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <SlidersHorizontal className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-zinc-300">
+                              Advanced Configurations
+                            </span>
+                          </div>
                         ),
                         description: (
                           <div className="pt-3 pb-2 space-y-3.5 text-xs animate-fade-in">
@@ -1093,13 +1096,12 @@ export default function ModelTrainingView({
                               const totalRowsCount = metadata?.rows_count || metadata?.rows || preview?.rows?.length || 0;
                               const testRowsEst = totalRowsCount ? Math.round(totalRowsCount * testSize) : null;
                               const trainRowsEst = totalRowsCount ? Math.round(totalRowsCount * (1 - testSize)) : null;
-                              // Relative thumb fill percentage from 0% (at min 0.1) to 100% (at max 0.4)
                               const fillPct = Math.min(100, Math.max(0, ((testSize - 0.1) / (0.4 - 0.1)) * 100));
 
                               return (
-                                <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/70 space-y-3">
+                                <div className="p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm space-y-3.5">
                                   <div className="flex items-center justify-between">
-                                    <span className="text-[11px] font-bold text-slate-700 dark:text-zinc-300 tracking-tight">
+                                    <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 tracking-tight">
                                       Train / Test Split Ratio
                                     </span>
                                   </div>
@@ -1108,26 +1110,26 @@ export default function ModelTrainingView({
                                   <div className="flex items-center justify-between px-1">
                                     {/* Left: Testing Data */}
                                     <div className="flex flex-col text-left">
-                                      <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-600 dark:text-purple-400">
                                         Testing Data
                                       </span>
-                                      <span className="text-sm font-black text-slate-900 dark:text-white">
+                                      <span className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
                                         {testPct}%
                                       </span>
                                     </div>
 
                                     {/* Right: Training Data */}
                                     <div className="flex flex-col text-right">
-                                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                                         Training Data
                                       </span>
-                                      <span className="text-sm font-black text-slate-900 dark:text-white">
+                                      <span className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
                                         {trainPct}%
                                       </span>
                                     </div>
                                   </div>
 
-                                  {/* Dual-Color Progress Bar Track + 1:1 Mouse Synced Range Slider */}
+                                  {/* Dual-Color Progress Bar Track + Range Slider */}
                                   <div className="pt-1 pb-1">
                                     <input
                                       type="range"
@@ -1138,14 +1140,14 @@ export default function ModelTrainingView({
                                       onChange={(e) =>
                                         setTestSize(parseFloat(e.target.value))
                                       }
-                                      className="w-full h-3 rounded-full appearance-none cursor-pointer border border-slate-200/80 dark:border-zinc-800 shadow-inner accent-purple-600 dark:accent-purple-400 focus:outline-none transition-all duration-75"
+                                      className="w-full h-2.5 rounded-full appearance-none cursor-pointer border border-slate-200/80 dark:border-zinc-800 shadow-inner accent-purple-600 dark:accent-purple-400 focus:outline-none transition-all duration-75"
                                       style={{
                                         background: `linear-gradient(to right, #a855f7 0%, #a855f7 ${fillPct}%, #10b981 ${fillPct}%, #10b981 100%)`
                                       }}
                                     />
                                   </div>
 
-                                  {/* Grayed-out Row Estimate Description UNDER Slider */}
+                                  {/* Row Estimate Description UNDER Slider */}
                                   <div className="text-[11px] font-medium text-slate-400 dark:text-zinc-500 text-center tracking-tight pt-0.5 font-sans">
                                     {testRowsEst !== null && trainRowsEst !== null ? (
                                       <span>
@@ -1161,42 +1163,46 @@ export default function ModelTrainingView({
                               );
                             })()}
 
-                            <div className="space-y-1">
-                              <label className="block text-[11px] font-semibold text-slate-600 dark:text-zinc-400">
-                                Random State Seed
-                              </label>
-                              <input
-                                type="number"
-                                value={randomState}
-                                onChange={(e) =>
-                                  setRandomState(parseInt(e.target.value))
-                                }
-                                className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900 rounded-lg font-semibold text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-600 dark:focus:border-purple-400"
-                              />
+                            {/* 2-Column Grid for Random Seed and Cross-Validation Folds */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm space-y-1.5">
+                                <label className="block text-[11px] font-bold text-slate-700 dark:text-zinc-300">
+                                  Random Seed
+                                </label>
+                                <input
+                                  type="number"
+                                  value={randomState}
+                                  onChange={(e) =>
+                                    setRandomState(parseInt(e.target.value) || 0)
+                                  }
+                                  className="w-full px-3 py-1.5 border border-slate-200 dark:border-zinc-700 bg-slate-50/80 dark:bg-zinc-800/80 rounded-xl font-bold text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition shadow-xs"
+                                />
+                              </div>
+
+                              <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm space-y-1.5">
+                                <label className="block text-[11px] font-bold text-slate-700 dark:text-zinc-300">
+                                  CV Folds
+                                </label>
+                                <input
+                                  type="number"
+                                  min="2"
+                                  max="10"
+                                  value={cvFolds}
+                                  onChange={(e) =>
+                                    setCvFolds(parseInt(e.target.value) || 2)
+                                  }
+                                  className="w-full px-3 py-1.5 border border-slate-200 dark:border-zinc-700 bg-slate-50/80 dark:bg-zinc-800/80 rounded-xl font-bold text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition shadow-xs"
+                                />
+                              </div>
                             </div>
 
-                            <div className="space-y-1">
-                              <label className="block text-[11px] font-semibold text-slate-600 dark:text-zinc-400">
-                                Cross-Validation Folds
-                              </label>
-                              <input
-                                type="number"
-                                min="2"
-                                max="10"
-                                value={cvFolds}
-                                onChange={(e) =>
-                                  setCvFolds(parseInt(e.target.value))
-                                }
-                                className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900 rounded-lg font-semibold text-xs text-slate-900 dark:text-white focus:outline-none focus:border-purple-600 dark:focus:border-purple-400"
-                              />
-                            </div>
-
-                            <div className="pt-1 pb-1">
+                            {/* Shuffle Dataset Card */}
+                            <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm flex items-center justify-between">
                               <AnimatedCheckbox
                                 checked={shuffle}
                                 onChange={(e) => setShuffle(e.target.checked)}
                                 label="Shuffle Dataset"
-                                className="font-semibold text-xs text-slate-700 dark:text-zinc-300"
+                                className="font-bold text-xs text-slate-800 dark:text-zinc-200"
                               />
                             </div>
                           </div>
@@ -1211,9 +1217,8 @@ export default function ModelTrainingView({
                     className="space-y-0"
                     classNames={{
                       item: "bg-transparent shadow-none border-none",
-                      trigger: "px-0 py-0 hover:bg-transparent",
+                      trigger: "px-0 py-1 hover:bg-transparent",
                       content: "border-t-0 bg-transparent overflow-visible",
-                      description: "p-0",
                     }}
                   />
                 </div>

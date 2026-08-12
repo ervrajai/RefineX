@@ -771,7 +771,7 @@ export default function CleanView({
             className="font-bold text-slate-800 dark:text-zinc-200 text-xs sm:text-[13px]"
           />
           <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed font-normal pl-1 pt-0.5">
-            Auto-extract numerical numbers. Cleans currency symbols (₹, $, €, £), percentages (%), spaces, and commas separator.
+            Auto-extract numerical values. Cleans currency symbols ($, ₹, €, £, ¥), codes (rs, Rs., USD, INR, EUR, etc.), percentages (%), spaces, and comma separators.
           </p>
         </div>
       )
@@ -1301,7 +1301,7 @@ export default function CleanView({
             
             {/* LEFT SIDEBAR (Cleaning Configuration Options) */}
             <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-4 z-10 max-h-[calc(100vh-60px)] overflow-y-auto pr-0.5">
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
+              <div className="p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] shadow-sm dark:shadow-md">
                 <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-3 pb-3 border-b border-slate-150 dark:border-zinc-800 mb-3.5">
                   <Settings className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
                   <span>Cleaning Configuration</span>

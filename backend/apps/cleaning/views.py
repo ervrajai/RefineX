@@ -190,23 +190,21 @@ def perform_cleaning_operation(dataset, config, user=None):
     """
     Helper function that executes the cleaning pipeline and updates the Dataset model and CleaningJob.
     Strictly branches: Auto-Decide mode (auto_clean_dataset) vs Manual mode (clean_dataset).
+    Always cleans from dataset.original_file to ensure idempotency and prevent config drift.
     Stores cleaned binary artifact as fast .parquet format with safe CSV fallback.
     """
-    # Prefer cleaned_file if it exists, else fallback to original_file
     input_file_path = dataset.original_file.path
     input_file_type = dataset.file_type
-    
+
+    # Delete existing physical cleaned file if present before saving new output
     if dataset.cleaned_file and os.path.exists(dataset.cleaned_file.path):
-        input_file_path = dataset.cleaned_file.path
-        if dataset.cleaned_file.name.endswith(".parquet"):
-            input_file_type = "parquet"
-            
-    try:
-        df, _ = read_dataframe(input_file_path, input_file_type, encoding=dataset.encoding)
-    except Exception:
-        # Fallback to reading original file if cleaned file read fails
-        df, _ = read_dataframe(dataset.original_file.path, dataset.file_type, encoding=dataset.encoding)
-    
+        try:
+            os.remove(dataset.cleaned_file.path)
+        except Exception:
+            pass
+
+    df, _ = read_dataframe(input_file_path, input_file_type, encoding=dataset.encoding)
+
     if config.get("is_auto_decide", False):
         cleaned_df, logs, before_report, after_report = auto_clean_dataset(df)
     else:
@@ -225,8 +223,7 @@ def perform_cleaning_operation(dataset, config, user=None):
 
     try:
         cleaned_df.to_parquet(out_buffer, index=False)
-    except Exception as err:
-        # Retry by converting object columns to string if PyArrow encounters mixed types
+    except Exception:
         try:
             temp_df = cleaned_df.copy()
             for col in temp_df.select_dtypes(include=['object']).columns:
@@ -234,7 +231,6 @@ def perform_cleaning_operation(dataset, config, user=None):
             out_buffer = io.BytesIO()
             temp_df.to_parquet(out_buffer, index=False)
         except Exception:
-            # Fallback to CSV if Parquet engine fails completely
             out_buffer = io.BytesIO()
             cleaned_name = f"{clean_base}_cleaned_v{version}.csv"
             cleaned_df.to_csv(out_buffer, index=False, encoding=dataset.encoding)
@@ -247,8 +243,8 @@ def perform_cleaning_operation(dataset, config, user=None):
     
     rows_removed = max(0, len(df) - len(cleaned_df))
     cols_removed = max(0, len(df.columns) - len(cleaned_df.columns))
-    missing_before = before_report.get("overview", {}).get("total_missing", 0)
-    missing_after = after_report.get("overview", {}).get("total_missing", 0)
+    missing_before = before_report.get("missing_summary", {}).get("total_missing", 0)
+    missing_after = after_report.get("missing_summary", {}).get("total_missing", 0)
     missing_filled = max(0, missing_before - missing_after)
 
     job = CleaningJob.objects.create(
@@ -530,6 +526,16 @@ class DatasetDownloadView(APIView):
             # Serve Excel export with versioned filename
             try:
                 df, _ = read_dataframe(file_path, file_type, encoding=dataset.encoding)
+                
+                # Convert timezone-aware datetimes to tz-naive for openpyxl compatibility
+                for col in df.columns:
+                    if pd.api.types.is_datetime64_any_dtype(df[col]):
+                        try:
+                            if hasattr(df[col].dt, 'tz') and df[col].dt.tz is not None:
+                                df[col] = df[col].dt.tz_localize(None)
+                        except Exception:
+                            df[col] = df[col].astype(str)
+
                 response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 filename = get_versioned_filename(dataset, "xlsx")
                 response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -580,10 +586,11 @@ class DatasetPreviewView(APIView):
         
         try:
             file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
+            file_type = "parquet" if (dataset.cleaned_file and dataset.cleaned_file.name.endswith(".parquet")) else dataset.file_type
             if not os.path.exists(file_path):
                 return Response({"error": "Dataset file not found"}, status=status.HTTP_404_NOT_FOUND)
                 
-            df, _ = read_dataframe(file_path, dataset.file_type, encoding=dataset.encoding)
+            df, _ = read_dataframe(file_path, file_type, encoding=dataset.encoding)
             sliced_df = df.iloc[offset:offset+limit].replace({np.nan: None})
             
             return Response({

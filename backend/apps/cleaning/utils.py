@@ -22,18 +22,22 @@ def is_numeric_column(series):
     return pd.api.types.is_numeric_dtype(series)
 
 def make_columns_unique(columns):
-    seen = {}
+    """
+    Guarantees all column names are unique, non-empty, and free of accidental duplication.
+    """
     new_cols = []
+    seen = set()
     for col in columns:
         col_str = str(col).strip()
         if not col_str:
             col_str = "unnamed"
-        if col_str in seen:
-            seen[col_str] += 1
-            new_cols.append(f"{col_str}_{seen[col_str]}")
-        else:
-            seen[col_str] = 0
-            new_cols.append(col_str)
+        candidate = col_str
+        count = 1
+        while candidate in seen:
+            candidate = f"{col_str}_{count}"
+            count += 1
+        seen.add(candidate)
+        new_cols.append(candidate)
     return new_cols
 
 def clean_numeric_series(series):
@@ -55,8 +59,8 @@ def clean_numeric_series(series):
     # 2. Strip common currency symbols ($, ₹, €, £, ¥, ₩, ฿, ₫, ₱, ¢, ¤, %)
     s = s.str.replace(r'[$₹€£¥₩฿₫₱¢¤%]', '', regex=True)
     
-    # 3. Strip currency word codes/prefixes/suffixes (case-insensitive, optional trailing dot for Rs.)
-    currency_words_regex = r'(?i)\b(rs|inr|usd|eur|gbp|jpy|aud|cad|chf|cny|sgd|nzd|aed|sar|brl|rub)\b\.?'
+    # 3. Strip currency word codes/prefixes/suffixes (case-insensitive, optional trailing dot)
+    currency_words_regex = r'(?i)(rs|inr|usd|eur|gbp|jpy|aud|cad|chf|cny|sgd|nzd|aed|sar|brl|rub)\.?'
     s = s.str.replace(currency_words_regex, '', regex=True)
     
     # 4. Strip thousand separator commas and extra spaces
@@ -206,7 +210,9 @@ def make_json_safe(obj):
     Recursively converts NumPy/Pandas data types, datetimes, UUIDs, and float NaNs
     to standard Python types that are JSON serializable.
     """
-    if isinstance(obj, dict):
+    if isinstance(obj, (pd.Series, pd.Index)):
+        return make_json_safe(obj.tolist())
+    elif isinstance(obj, dict):
         return {str(k): make_json_safe(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [make_json_safe(v) for v in obj]
@@ -214,7 +220,7 @@ def make_json_safe(obj):
         return [make_json_safe(v) for v in obj]
     elif isinstance(obj, (np.integer, np.int64, np.int32, np.int16, np.int8)):
         return int(obj)
-    elif isinstance(obj, (np.floating, np.float64, np.float32, np.float16)):
+    elif isinstance(obj, (np.floating, np.float64, np.float32, np.float16, float)):
         if np.isnan(obj) or np.isinf(obj):
             return None
         return float(obj)
@@ -226,8 +232,12 @@ def make_json_safe(obj):
         return obj.isoformat()
     elif isinstance(obj, uuid.UUID):
         return str(obj)
-    elif pd.isna(obj):
-        return None
+    else:
+        try:
+            if pd.isna(obj):
+                return None
+        except Exception:
+            pass
     return obj
 
 
@@ -261,7 +271,7 @@ def calculate_quality_score(df, report=None, original_row_count=None):
         except Exception:
             missing_cells = 0
 
-    missing_ratio = missing_cells / total_cells
+    missing_ratio = missing_cells / total_cells if total_cells > 0 else 0
     score -= (missing_ratio * 35.0)
 
     # 2. Duplicate Rows Penalty (max -25 pts)
@@ -274,26 +284,28 @@ def calculate_quality_score(df, report=None, original_row_count=None):
         except Exception:
             dup_rows = 0
 
-    dup_ratio = dup_rows / rows
+    dup_ratio = dup_rows / rows if rows > 0 else 0
     score -= (dup_ratio * 25.0)
 
     # 3. Mixed / Invalid Sentinel Values Penalty (max -15 pts)
     invalid_cells = 0
-    blank_markers = {"", " ", "na", "n/a", "null", "none", "-", "--", "unknown"}
+    blank_markers = {"", " ", "na", "n/a", "null", "none", "-", "--", "unknown", "nan", "nil", "missing", "#n/a", "#na"}
     for col in df.columns:
-        if df[col].dtype == object:
+        if df[col].dtype == object or pd.api.types.is_string_dtype(df[col]):
             try:
-                invalid_cells += int(df[col].astype(str).str.strip().str.lower().isin(blank_markers).sum())
+                s_str = df[col].astype(str).str.strip().str.lower()
+                mask = s_str.isin(blank_markers) & df[col].notna()
+                invalid_cells += int(mask.sum())
             except Exception:
                 pass
 
-    invalid_ratio = invalid_cells / total_cells
+    invalid_ratio = invalid_cells / total_cells if total_cells > 0 else 0
     score -= (invalid_ratio * 15.0)
 
     # 4. Data Loss Penalty (max -35 pts)
     orig_rows = original_row_count
     if not orig_rows and report and isinstance(report, dict):
-        orig_rows = report.get("original_row_count") or report.get("overview", {}).get("rows")
+        orig_rows = report.get("original_row_count") or report.get("rows")
     
     if orig_rows and orig_rows > rows:
         row_loss_ratio = (orig_rows - rows) / orig_rows
@@ -306,7 +318,7 @@ def calculate_quality_score(df, report=None, original_row_count=None):
     return int(round(score))
 
 
-def profile_dataset(df):
+def profile_dataset(df, original_row_count=None):
     """
     Profiles a Pandas DataFrame and returns a comprehensive, JSON-safe report.
     """
@@ -323,7 +335,7 @@ def profile_dataset(df):
             memory_usage = f"{mem_bytes / 1024:.2f} KB"
         else:
             memory_usage = f"{mem_bytes / (1024 * 1024):.2f} MB"
-    except:
+    except Exception:
         memory_usage = "Unknown"
 
     # Missing Value analysis
@@ -347,19 +359,22 @@ def profile_dataset(df):
     dup_rows_count = int(df.duplicated().sum())
     dup_rows_pct = (dup_rows_count / rows) * 100 if rows > 0 else 0
     
-    # Duplicate columns
+    # Duplicate columns via robust Series.equals comparison
     dup_cols_count = 0
     dup_cols_list = []
-    # Fast duplicate column check using transpose + duplicated
     if cols > 1 and cols < 1000:
         try:
-            # Drop unhashable structures if any before checking duplicates
-            temp_df = df.copy()
-            for col in temp_df.columns:
-                if temp_df[col].apply(lambda x: isinstance(x, (list, dict))).any():
-                    temp_df[col] = temp_df[col].astype(str)
-            dup_cols_mask = temp_df.T.duplicated()
-            dup_cols_list = list(temp_df.columns[dup_cols_mask])
+            cols_arr = list(df.columns)
+            seen_dup = set()
+            for i in range(len(cols_arr)):
+                if cols_arr[i] in seen_dup:
+                    continue
+                for j in range(i + 1, len(cols_arr)):
+                    if cols_arr[j] in seen_dup:
+                        continue
+                    if df[cols_arr[i]].equals(df[cols_arr[j]]):
+                        seen_dup.add(cols_arr[j])
+            dup_cols_list = list(seen_dup)
             dup_cols_count = len(dup_cols_list)
         except Exception:
             pass
@@ -411,7 +426,7 @@ def profile_dataset(df):
                     parsed = pd.to_datetime(df[col].dropna().head(20), format='mixed', errors='coerce')
                 if parsed.notna().sum() > 10 or (parsed.notna().sum() == len(df[col].dropna().head(20)) and len(df[col].dropna().head(20)) > 0):
                     sug_type = 'datetime64[ns]'
-            except:
+            except Exception:
                 pass
             
             # Check if it could be numeric
@@ -421,7 +436,7 @@ def profile_dataset(df):
                     cleaned = clean_numeric_series(sample)
                     if (cleaned.notna().sum() / len(sample)) >= 0.7:
                         sug_type = 'float64'
-            except:
+            except Exception:
                 pass
 
         conversion_needed = (curr_type != sug_type)
@@ -441,12 +456,14 @@ def profile_dataset(df):
             numeric_columns.append(col)
             col_nonnull = df[col].dropna()
             outlier_count = 0
+            iqr_val = 0.0
             if len(col_nonnull) > 4:
                 try:
                     q1 = col_nonnull.quantile(0.25)
                     q3 = col_nonnull.quantile(0.75)
                     iqr = q3 - q1
-                    if iqr > 0:
+                    iqr_val = float(iqr) if pd.notna(iqr) else 0.0
+                    if iqr_val > 0:
                         lower_bound = q1 - 1.5 * iqr
                         upper_bound = q3 + 1.5 * iqr
                         outliers = col_nonnull[(col_nonnull < lower_bound) | (col_nonnull > upper_bound)]
@@ -468,7 +485,7 @@ def profile_dataset(df):
             outlier_report.append({
                 "column": col,
                 "outlier_count": outlier_count,
-                "method_used": "IQR" if (iqr if 'iqr' in locals() else 0) > 0 else "Z-score"
+                "method_used": "IQR" if iqr_val > 0 else "Z-score"
             })
 
     # Numeric Statistics
@@ -478,8 +495,10 @@ def profile_dataset(df):
             try:
                 col_nonnull = df[col].dropna()
                 if len(col_nonnull) > 0:
-                    q1 = float(col_nonnull.quantile(0.25))
-                    q3 = float(col_nonnull.quantile(0.75))
+                    q1_val = col_nonnull.quantile(0.25)
+                    q3_val = col_nonnull.quantile(0.75)
+                    q1 = float(q1_val) if pd.notna(q1_val) else 0.0
+                    q3 = float(q3_val) if pd.notna(q3_val) else 0.0
                     iqr = q3 - q1
                     
                     # Mode extraction safely
@@ -513,7 +532,7 @@ def profile_dataset(df):
         try:
             corr_df = df[numeric_columns].corr()
             correlation_matrix = corr_df.to_dict()
-        except:
+        except Exception:
             pass
 
     report = {
@@ -533,7 +552,7 @@ def profile_dataset(df):
     }
 
     # Add calculated quality score
-    report["quality_score"] = calculate_quality_score(df, report)
+    report["quality_score"] = calculate_quality_score(df, report, original_row_count=original_row_count)
     
     return make_json_safe(report)
 
@@ -598,12 +617,13 @@ def auto_clean_dataset(df):
         logs.append(f"✓ Phase 1: Standardized {changed_headers} column headers to clean snake_case")
 
     # 2. Normalize Blank Sentinel Strings to NaN
-    blank_markers = {"", " ", "na", "n/a", "null", "none", "-", "--", "unknown"}
+    blank_markers = {"", " ", "na", "n/a", "null", "none", "-", "--", "unknown", "nan", "nil", "missing", "#n/a", "#na"}
     blank_count = 0
     for col in cleaned_df.columns:
-        if cleaned_df[col].dtype == object:
+        if cleaned_df[col].dtype == object or pd.api.types.is_string_dtype(cleaned_df[col]):
             try:
-                mask = cleaned_df[col].astype(str).str.strip().str.lower().isin(blank_markers)
+                s_str = cleaned_df[col].astype(str).str.strip().str.lower()
+                mask = s_str.isin(blank_markers) & cleaned_df[col].notna()
                 if mask.any():
                     blank_count += int(mask.sum())
                     cleaned_df.loc[mask, col] = np.nan
@@ -715,7 +735,8 @@ def clean_dataset(df, config):
     logs = []
     
     # Store Before Report
-    before_report = profile_dataset(df)
+    original_row_count = len(df)
+    before_report = profile_dataset(df, original_row_count=original_row_count)
     
     # Work on a copy of dataframe
     cleaned_df = df.copy()
@@ -753,44 +774,36 @@ def clean_dataset(df, config):
             if config.get("standardize_remove_outer_underscores", True):
                 new_col = new_col.strip('_')
                 
+            if not new_col:
+                new_col = "unnamed"
             if new_col != str(col):
                 changed_count += 1
             new_cols.append(new_col)
             
-        # Ensure uniqueness
-        unique_cols = []
-        for col in new_cols:
-            if col in unique_cols:
-                # Add suffix
-                count = 1
-                candidate = f"{col}_{count}"
-                while candidate in unique_cols:
-                    count += 1
-                    candidate = f"{col}_{count}"
-                unique_cols.append(candidate)
-            else:
-                unique_cols.append(col)
-                
-        cleaned_df.columns = unique_cols
+        cleaned_df.columns = make_columns_unique(new_cols)
         if changed_count > 0:
             logs.append(f"✓ Standardized {changed_count} column names")
             
     # Step 4: Normalize Missing Values (Blank Value Detection)
-    # Treat spaces, NULL, NA, etc., as missing
-    blank_markers = {"", " ", "na", "n/a", "null", "none", "-", "--", "unknown"}
-    normalized_count = 0
-    for col in cleaned_df.columns:
-        if cleaned_df[col].dtype == object:
-            # We look for cell matches
-            try:
-                mask = cleaned_df[col].astype(str).str.strip().str.lower().isin(blank_markers)
-                if mask.any():
-                    cleaned_df.loc[mask, col] = np.nan
-                    normalized_count += mask.sum()
-            except Exception:
-                pass
-    if normalized_count > 0:
-        logs.append(f"✓ Normalized {normalized_count} blank/sentinel strings to Missing (NaN)")
+    if config.get("blank_value_detection", True):
+        blank_markers = {"", " ", "na", "n/a", "null", "none", "-", "--", "unknown", "nan", "nil", "missing", "#n/a", "#na"}
+        normalized_count = 0
+        for col in cleaned_df.columns:
+            if cleaned_df[col].dtype == object or pd.api.types.is_string_dtype(cleaned_df[col]):
+                try:
+                    # Strip spaces only if remove_tabs_newlines is False to avoid treating standalone \n or \t as blank
+                    if config.get("text_remove_tabs_newlines", False):
+                        s_str = cleaned_df[col].astype(str).str.strip().str.lower()
+                    else:
+                        s_str = cleaned_df[col].astype(str).apply(lambda x: str(x).strip(' ')).str.lower()
+                    mask = s_str.isin(blank_markers) & cleaned_df[col].notna()
+                    if mask.any():
+                        cleaned_df.loc[mask, col] = np.nan
+                        normalized_count += int(mask.sum())
+                except Exception:
+                    pass
+        if normalized_count > 0:
+            logs.append(f"✓ Normalized {normalized_count} blank/sentinel strings to Missing (NaN)")
 
     # Step 5: Trim Text (Text Cleaning)
     if config.get("text_cleaning", False):
@@ -799,42 +812,57 @@ def clean_dataset(df, config):
         html_count = 0
         emoji_count = 0
         space_count = 0
+        tabs_newlines_count = 0
         
         case_mode = config.get("text_case_mode", "none")  # none, upper, lower, title, sentence
+        # Python 3 Unicode code point regex matching Emojis, Emoticons, Pictographs, Symbols, ZWJ & Variation Selectors
+        emoji_pattern = re.compile(
+            r'[\U00010000-\U0010FFFF]|[\u2600-\u27BF]|[\u2300-\u23FF]|[\u2B50-\u2B55]|[\u200D\uFE0F]',
+            flags=re.UNICODE
+        )
         
         for col in cleaned_df.columns:
-            if cleaned_df[col].dtype == object:
-                # Fill na temporarily to do operations
+            if cleaned_df[col].dtype == object or pd.api.types.is_string_dtype(cleaned_df[col]) or pd.api.types.is_categorical_dtype(cleaned_df[col]):
+                if pd.api.types.is_categorical_dtype(cleaned_df[col]):
+                    cleaned_df[col] = cleaned_df[col].astype(str)
                 s = cleaned_df[col].fillna("")
                 
                 # Trim
                 if config.get("text_trim", True):
-                    s_trimmed = s.astype(str).str.strip()
-                    trim_count += (s_trimmed != s).sum()
+                    # If remove_tabs_newlines is False, strip spaces only (' ') to preserve tabs and newlines
+                    if config.get("text_remove_tabs_newlines", False):
+                        s_trimmed = s.astype(str).str.strip()
+                    else:
+                        s_trimmed = s.apply(lambda x: str(x).strip(' '))
+                    trim_count += int((s_trimmed != s).sum())
                     s = s_trimmed
                 
                 # Remove HTML
                 if config.get("text_remove_html", False):
                     s_nohtml = s.apply(lambda x: re.sub(r'<[^>]*>', '', str(x)))
-                    html_count += (s_nohtml != s).sum()
+                    html_count += int((s_nohtml != s).sum())
                     s = s_nohtml
                     
-                # Remove Emoji
+                # Remove Emoji (preserving unicode accent/latin characters)
                 if config.get("text_remove_emoji", False):
-                    # Remove non-ascii and emoji ranges
-                    s_noemoji = s.apply(lambda x: re.sub(r'[\u2600-\u27BF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|\uD83E[\uDC00-\uDFFF]|[^\x00-\x7F]+', '', str(x)))
-                    emoji_count += (s_noemoji != s).sum()
+                    s_noemoji = s.apply(lambda x: emoji_pattern.sub('', str(x)))
+                    emoji_count += int((s_noemoji != s).sum())
                     s = s_noemoji
                     
                 # Remove Tabs & Newlines
                 if config.get("text_remove_tabs_newlines", False):
                     s_clean_lines = s.apply(lambda x: str(x).replace('\t', ' ').replace('\n', ' ').replace('\r', ' '))
+                    tabs_newlines_count += int((s_clean_lines != s).sum())
                     s = s_clean_lines
                     
                 # Remove Multiple Spaces
                 if config.get("text_remove_multiple_spaces", False):
-                    s_singlespace = s.apply(lambda x: re.sub(r'\s+', ' ', str(x)))
-                    space_count += (s_singlespace != s).sum()
+                    # If text_remove_tabs_newlines is False, only collapse multiple spaces ' +' without affecting newlines or tabs
+                    if config.get("text_remove_tabs_newlines", False):
+                        s_singlespace = s.apply(lambda x: re.sub(r'\s+', ' ', str(x)))
+                    else:
+                        s_singlespace = s.apply(lambda x: re.sub(r' +', ' ', str(x)))
+                    space_count += int((s_singlespace != s).sum())
                     s = s_singlespace
 
                 # Case convert
@@ -847,20 +875,25 @@ def clean_dataset(df, config):
                         s_cased = s.str.title()
                     elif case_mode == "sentence":
                         s_cased = s.apply(lambda x: str(x).capitalize())
-                    case_count += (s_cased != s).sum()
+                    else:
+                        s_cased = s
+                    case_count += int((s_cased != s).sum())
                     s = s_cased
                 
                 # Put back into dataframe
-                # Put NaN back where it was originally
                 s_series = pd.Series(np.where(cleaned_df[col].isna(), np.nan, s), index=cleaned_df.index)
                 cleaned_df[col] = s_series
                 
         if trim_count > 0:
-            logs.append(f"✓ Trimmed extra spaces in text cells")
+            logs.append("✓ Trimmed extra spaces in text cells")
         if html_count > 0:
-            logs.append(f"✓ Cleaned HTML tags from text columns")
+            logs.append("✓ Cleaned HTML tags from text columns")
         if emoji_count > 0:
-            logs.append(f"✓ Removed emojis and special characters from text")
+            logs.append("✓ Removed emojis from text")
+        if tabs_newlines_count > 0:
+            logs.append("✓ Removed tabs and newlines from text")
+        if space_count > 0:
+            logs.append("✓ Removed multiple spaces from text")
         if case_mode != "none" and case_count > 0:
             logs.append(f"✓ Converted text case to {case_mode}")
 
@@ -875,14 +908,18 @@ def clean_dataset(df, config):
     # Step 7: Remove Duplicate Columns
     if config.get("remove_duplicate_columns", False) and len(cleaned_df.columns) > 1:
         initial_cols = len(cleaned_df.columns)
-        # Avoid unhashable type issues by temp string conversion for columns
-        temp_df = cleaned_df.copy()
-        for col in temp_df.columns:
-            if temp_df[col].apply(lambda x: isinstance(x, (list, dict))).any():
-                temp_df[col] = temp_df[col].astype(str)
-        dup_cols_mask = temp_df.T.duplicated()
-        dup_cols = list(temp_df.columns[dup_cols_mask])
-        cleaned_df = cleaned_df.drop(columns=dup_cols)
+        cols_arr = list(cleaned_df.columns)
+        dup_cols = []
+        for i in range(len(cols_arr)):
+            if cols_arr[i] in dup_cols:
+                continue
+            for j in range(i + 1, len(cols_arr)):
+                if cols_arr[j] in dup_cols:
+                    continue
+                if cleaned_df[cols_arr[i]].equals(cleaned_df[cols_arr[j]]):
+                    dup_cols.append(cols_arr[j])
+        if dup_cols:
+            cleaned_df = cleaned_df.drop(columns=dup_cols)
         removed_dup_cols = initial_cols - len(cleaned_df.columns)
         if removed_dup_cols > 0:
             logs.append(f"✓ Removed {removed_dup_cols} duplicate columns: {', '.join(dup_cols)}")
@@ -892,60 +929,57 @@ def clean_dataset(df, config):
         numeric_cleaned_count = 0
         
         for col in cleaned_df.columns:
-            # Clean non-numeric columns (object / string) that contain numeric values with currency or symbols
             if not is_numeric_column(cleaned_df[col]):
-                # Check sample of non-null values
                 sample = cleaned_df[col].dropna().head(30)
                 if len(sample) > 0:
                     cleaned_sample = clean_numeric_series(sample)
                     non_null_parsed = cleaned_sample.notna().sum()
-                    
-                    # If >=70% of non-nulls parse to float, we treat this as a numeric column
                     if (non_null_parsed / len(sample)) >= 0.7:
-                        # Clean entire column
                         cleaned_df[col] = clean_numeric_series(cleaned_df[col])
                         numeric_cleaned_count += 1
                         logs.append(f"✓ Cleaned numeric symbols (currency, commas, %) from column '{col}'")
                         
     # Step 11: Convert Data Types
     if config.get("data_type_conversion", False):
-        conversion_mode = config.get("type_conversion_mode", "auto")  # auto, manual
+        conversion_mode = config.get("type_conversion_mode", "auto")
         converted_types_count = 0
         
         if conversion_mode == "auto":
-            # Auto convert object columns to numeric or datetime or category
             for col in cleaned_df.columns:
-                if cleaned_df[col].dtype == object:
-                    # Check if it should be float/integer
+                if cleaned_df[col].dtype == object or pd.api.types.is_string_dtype(cleaned_df[col]):
                     try:
                         num_series = pd.to_numeric(cleaned_df[col], errors='coerce')
-                        if num_series.notna().sum() > 0.8 * len(cleaned_df[col].dropna()):
+                        non_null_count = len(cleaned_df[col].dropna())
+                        if non_null_count > 0 and num_series.notna().sum() > 0.8 * non_null_count:
                             cleaned_df[col] = num_series
                             converted_types_count += 1
                             continue
-                    except:
+                    except Exception:
                         pass
                     
-                    # Check if it should be datetime
                     try:
                         import warnings
                         with warnings.catch_warnings():
                             warnings.simplefilter("ignore", UserWarning)
                             date_series = pd.to_datetime(cleaned_df[col], format='mixed', errors='coerce')
-                        if date_series.notna().sum() > 0.8 * len(cleaned_df[col].dropna()):
+                        non_null_count = len(cleaned_df[col].dropna())
+                        if non_null_count > 0 and date_series.notna().sum() > 0.8 * non_null_count:
                             cleaned_df[col] = date_series
                             converted_types_count += 1
                             continue
-                    except:
+                    except Exception:
                         pass
         else:
-            # Manual conversion dict column -> target_type
             manual_cols = config.get("type_conversion_columns", {})
+            bool_map = {
+                'true': True, '1': True, '1.0': True, 'yes': True, 't': True, 'y': True,
+                'false': False, '0': False, '0.0': False, 'no': False, 'f': False, 'n': False
+            }
             for col, target_type in manual_cols.items():
                 if col in cleaned_df.columns:
                     try:
                         if target_type == "integer":
-                            cleaned_df[col] = pd.to_numeric(cleaned_df[col], errors='coerce').astype('Int64')
+                            cleaned_df[col] = pd.to_numeric(cleaned_df[col], errors='coerce').round().astype('Int64')
                         elif target_type == "float":
                             cleaned_df[col] = pd.to_numeric(cleaned_df[col], errors='coerce').astype(float)
                         elif target_type == "string":
@@ -953,7 +987,9 @@ def clean_dataset(df, config):
                         elif target_type == "category":
                             cleaned_df[col] = cleaned_df[col].astype('category')
                         elif target_type == "boolean":
-                            cleaned_df[col] = cleaned_df[col].astype(bool)
+                            s_lower = cleaned_df[col].astype(str).str.strip().str.lower()
+                            mapped = s_lower.map(bool_map)
+                            cleaned_df[col] = mapped.astype('boolean')
                         elif target_type == "datetime":
                             import warnings
                             with warnings.catch_warnings():
@@ -976,7 +1012,7 @@ def clean_dataset(df, config):
             cols_before = len(cleaned_df.columns)
             
             if missing_strategy == "remove_rows":
-                cleaned_df = cleaned_df.dropna(how='any')
+                cleaned_df = cleaned_df.dropna(how='any').reset_index(drop=True)
                 removed = rows_before - len(cleaned_df)
                 if removed > 0:
                     logs.append(f"✓ Removed {removed} rows containing missing values")
@@ -990,43 +1026,50 @@ def clean_dataset(df, config):
                 for col in cleaned_df.columns:
                     na_mask = cleaned_df[col].isna()
                     if na_mask.any():
-                        count_na = na_mask.sum()
-                        if missing_strategy == "fill_mean" and is_numeric_column(cleaned_df[col]):
-                            if pd.api.types.is_integer_dtype(cleaned_df[col]):
-                                cleaned_df[col] = cleaned_df[col].astype(float)
-                            mean_val = cleaned_df[col].mean()
-                            cleaned_df[col] = cleaned_df[col].fillna(mean_val)
-                            filled_count += count_na
-                        elif missing_strategy == "fill_median" and is_numeric_column(cleaned_df[col]):
-                            if pd.api.types.is_integer_dtype(cleaned_df[col]):
-                                cleaned_df[col] = cleaned_df[col].astype(float)
-                            median_val = cleaned_df[col].median()
-                            cleaned_df[col] = cleaned_df[col].fillna(median_val)
-                            filled_count += count_na
+                        na_before = int(na_mask.sum())
+                        if missing_strategy == "fill_mean":
+                            if is_numeric_column(cleaned_df[col]):
+                                if pd.api.types.is_integer_dtype(cleaned_df[col]):
+                                    cleaned_df[col] = cleaned_df[col].astype(float)
+                                mean_val = cleaned_df[col].mean()
+                                if pd.notna(mean_val):
+                                    cleaned_df[col] = cleaned_df[col].fillna(mean_val)
+                            else:
+                                mode_series = cleaned_df[col].mode()
+                                if not mode_series.empty:
+                                    cleaned_df[col] = cleaned_df[col].fillna(mode_series.iloc[0])
+                        elif missing_strategy == "fill_median":
+                            if is_numeric_column(cleaned_df[col]):
+                                if pd.api.types.is_integer_dtype(cleaned_df[col]):
+                                    cleaned_df[col] = cleaned_df[col].astype(float)
+                                median_val = cleaned_df[col].median()
+                                if pd.notna(median_val):
+                                    cleaned_df[col] = cleaned_df[col].fillna(median_val)
+                            else:
+                                mode_series = cleaned_df[col].mode()
+                                if not mode_series.empty:
+                                    cleaned_df[col] = cleaned_df[col].fillna(mode_series.iloc[0])
                         elif missing_strategy == "fill_mode":
                             mode_series = cleaned_df[col].mode()
                             if not mode_series.empty:
                                 cleaned_df[col] = cleaned_df[col].fillna(mode_series.iloc[0])
-                                filled_count += count_na
                         elif missing_strategy == "ffill":
                             cleaned_df[col] = cleaned_df[col].ffill()
-                            filled_count += count_na
                         elif missing_strategy == "bfill":
                             cleaned_df[col] = cleaned_df[col].bfill()
-                            filled_count += count_na
                         elif missing_strategy == "interpolate" and is_numeric_column(cleaned_df[col]):
                             cleaned_df[col] = cleaned_df[col].interpolate(method='linear')
-                            filled_count += count_na
                         elif missing_strategy == "custom_value":
-                            # Parse custom value safely
                             val = custom_fill_val
                             if is_numeric_column(cleaned_df[col]):
                                 try:
-                                    val = float(custom_fill_val) if '.' in custom_fill_val else int(custom_fill_val)
-                                except:
-                                    pass
+                                    val = float(custom_fill_val) if '.' in str(custom_fill_val) else int(custom_fill_val)
+                                except Exception:
+                                    val = 0
                             cleaned_df[col] = cleaned_df[col].fillna(val)
-                            filled_count += count_na
+                            
+                        na_after = int(cleaned_df[col].isna().sum())
+                        filled_count += max(0, na_before - na_after)
                             
                 if filled_count > 0:
                     logs.append(f"✓ Filled {filled_count} missing values using '{missing_strategy}'")
@@ -1050,11 +1093,10 @@ def clean_dataset(df, config):
                         q1 = col_nonnull.quantile(0.25)
                         q3 = col_nonnull.quantile(0.75)
                         iqr = q3 - q1
-                        if iqr > 0:
+                        if pd.notna(iqr) and iqr > 0:
                             lower = q1 - 1.5 * iqr
                             upper = q3 + 1.5 * iqr
                         else:
-                            # Fallback to Z-score bounds if IQR is 0 (skews where >50% values are identical)
                             mean_val = col_nonnull.mean()
                             std_val = col_nonnull.std()
                             if pd.notna(std_val) and std_val > 0:
@@ -1097,7 +1139,7 @@ def clean_dataset(df, config):
                             repl_count += len(outliers_indices)
 
         if outlier_strat == "remove" and len(outlier_rows_to_drop) > 0:
-            cleaned_df = cleaned_df.drop(index=list(outlier_rows_to_drop))
+            cleaned_df = cleaned_df.drop(index=list(outlier_rows_to_drop)).reset_index(drop=True)
             logs.append(f"✓ Removed {len(outlier_rows_to_drop)} rows containing outliers ({outlier_method.upper()} method)")
         elif outlier_strat == "cap" and cap_count > 0:
             logs.append(f"✓ Capped {cap_count} outlier values at thresholds")
@@ -1107,20 +1149,20 @@ def clean_dataset(df, config):
     # Step 15: Format Dates
     if config.get("date_formatting", False):
         date_format = config.get("date_format", "YYYY-MM-DD")
-        # YYYY-MM-DD -> %Y-%m-%d, DD-MM-YYYY -> %d-%m-%Y, MM/DD/YYYY -> %m/%d/%Y
         fmt_map = {
             "YYYY-MM-DD": "%Y-%m-%d",
             "DD-MM-YYYY": "%d-%m-%Y",
-            "MM/DD/YYYY": "%m/%d/%Y"
+            "MM/DD/YYYY": "%m/%d/%Y",
+            "DD/MM/YYYY": "%d/%m/%Y",
+            "YYYY/MM/DD": "%Y/%m/%d",
+            "DD.MM.YYYY": "%d.%m.%Y",
         }
         py_format = fmt_map.get(date_format, "%Y-%m-%d")
         date_formatted_count = 0
         
         for col in cleaned_df.columns:
-            # Check if it has datetime dtype or is object that looks like datetime
             is_datetime = pd.api.types.is_datetime64_any_dtype(cleaned_df[col])
-            if not is_datetime and cleaned_df[col].dtype == object:
-                # Try parsing sample to see
+            if not is_datetime and (cleaned_df[col].dtype == object or pd.api.types.is_string_dtype(cleaned_df[col])):
                 sample = cleaned_df[col].dropna().head(10)
                 if len(sample) > 0:
                     try:
@@ -1131,11 +1173,10 @@ def clean_dataset(df, config):
                             if parsed.notna().sum() > 0.7 * len(sample):
                                 cleaned_df[col] = pd.to_datetime(cleaned_df[col], format='mixed', errors='coerce')
                                 is_datetime = True
-                    except:
+                    except Exception:
                         pass
                         
             if is_datetime:
-                # Format to string representation
                 cleaned_df[col] = cleaned_df[col].dt.strftime(py_format)
                 date_formatted_count += 1
                 
@@ -1151,7 +1192,6 @@ def clean_dataset(df, config):
 
     # Step 17: Remove High Missing Columns
     if config.get("remove_high_missing_columns", False):
-        # threshold is a slider value e.g. 50 (for 50% missing allowed)
         threshold_pct = float(config.get("missing_threshold", 90))
         high_missing_cols = []
         for col in cleaned_df.columns:
@@ -1182,46 +1222,62 @@ def clean_dataset(df, config):
     # Step 19: Remove Invalid Values (Invalid Emails/Phones/Negative Age/Negative Salary)
     if config.get("remove_invalid_values", False):
         invalid_count = 0
-        email_regex = re.compile(r'^[\w\.-]+@[\w\.-]+\.\w+$')
-        phone_regex = re.compile(r'^\+?[\d\s-]{7,15}$')
+        email_regex = re.compile(r'^[\w\.\+\-]+@[\w\.\-]+\.[a-zA-Z]{2,}$')
+        phone_regex = re.compile(r'^\+?[\d\s\(\)\.-]{7,20}$')
         
         for col in cleaned_df.columns:
             col_lower = col.lower()
             
+            is_age_col = bool(re.search(r'(^|_|\s)age($|_|\s)', col_lower) or re.search(r'\b(age|ages|user_age|customer_age|patient_age)\b', col_lower))
+            is_salary_col = bool(re.search(r'(^|_|\s)(salary|salaries|income|incomes|wage|wages|pay)($|_|\s)', col_lower))
+
             # Age checks
-            if 'age' in col_lower and is_numeric_column(cleaned_df[col]):
+            if is_age_col and is_numeric_column(cleaned_df[col]):
                 neg_mask = cleaned_df[col] < 0
                 too_old_mask = cleaned_df[col] > 120
                 mask = neg_mask | too_old_mask
                 if mask.any():
                     cleaned_df.loc[mask, col] = np.nan
-                    invalid_count += mask.sum()
+                    invalid_count += int(mask.sum())
                     
             # Salary checks
-            elif ('salary' in col_lower or 'income' in col_lower) and is_numeric_column(cleaned_df[col]):
+            elif is_salary_col and is_numeric_column(cleaned_df[col]):
                 neg_mask = cleaned_df[col] < 0
                 if neg_mask.any():
                     cleaned_df.loc[neg_mask, col] = np.nan
-                    invalid_count += neg_mask.sum()
+                    invalid_count += int(neg_mask.sum())
                     
             # Email validation
             elif 'email' in col_lower:
-                emails = cleaned_df[col].astype(str)
-                invalid_emails_mask = ~emails.apply(lambda x: bool(email_regex.match(x.strip())) if x and x != "nan" and x != "None" else True)
-                # Nullify cells that failed
+                def is_valid_email_cell(val):
+                    if pd.isna(val):
+                        return True
+                    s_val = str(val).strip()
+                    if not s_val or s_val.lower() in ["nan", "none", "null"]:
+                        return True
+                    return bool(email_regex.match(s_val))
+
+                invalid_emails_mask = ~cleaned_df[col].apply(is_valid_email_cell)
                 invalid_cells = invalid_emails_mask & cleaned_df[col].notna()
                 if invalid_cells.any():
                     cleaned_df.loc[invalid_cells, col] = np.nan
-                    invalid_count += invalid_cells.sum()
+                    invalid_count += int(invalid_cells.sum())
                     
             # Phone validation
             elif 'phone' in col_lower or 'mobile' in col_lower:
-                phones = cleaned_df[col].astype(str)
-                invalid_phones_mask = ~phones.apply(lambda x: bool(phone_regex.match(x.strip())) if x and x != "nan" and x != "None" else True)
+                def is_valid_phone_cell(val):
+                    if pd.isna(val):
+                        return True
+                    s_val = re.sub(r'\.0$', '', str(val).strip())
+                    if not s_val or s_val.lower() in ["nan", "none", "null"]:
+                        return True
+                    return bool(phone_regex.match(s_val))
+
+                invalid_phones_mask = ~cleaned_df[col].apply(is_valid_phone_cell)
                 invalid_cells = invalid_phones_mask & cleaned_df[col].notna()
                 if invalid_cells.any():
                     cleaned_df.loc[invalid_cells, col] = np.nan
-                    invalid_count += invalid_cells.sum()
+                    invalid_count += int(invalid_cells.sum())
                     
         if invalid_count > 0:
             logs.append(f"✓ Nullified {invalid_count} invalid cells (negative ages/salaries, malformed emails/phones)")
@@ -1254,7 +1310,7 @@ def clean_dataset(df, config):
         logs.append("✓ Reset row index")
         
     # Generate After Report
-    after_report = profile_dataset(cleaned_df)
+    after_report = profile_dataset(cleaned_df, original_row_count=original_row_count)
     if outlier_strat != "ignore" and "outlier_report" in after_report:
         for item in after_report["outlier_report"]:
             item["outlier_count"] = 0

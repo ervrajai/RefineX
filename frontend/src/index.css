@@ -215,3 +215,128 @@
     opacity: 1;
   }
 }
+
+/* ==========================================================================
+   6. FLIP CLOCK CARD ANIMATION STYLES (3D Flip Animation, Dark/Light compatible)
+   ========================================================================== */
+.flip-clock-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.flip-digit-wrapper {
+  position: relative;
+  width: 28px;
+  height: 38px;
+  perspective: 300px;
+}
+
+@media (min-width: 640px) {
+  .flip-digit-wrapper {
+    width: 36px;
+    height: 48px;
+  }
+}
+
+.flip-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  font-family: 'Space Grotesk', 'Fira Code', monospace;
+  font-size: 20px;
+  font-weight: 900;
+  user-select: none;
+}
+
+@media (min-width: 640px) {
+  .flip-card {
+    font-size: 24px;
+  }
+}
+
+/* Static upper and lower halves */
+.flip-card-top,
+.flip-card-bottom,
+.flip-card-back-top,
+.flip-card-back-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.dark .flip-card-top,
+.dark .flip-card-bottom,
+.dark .flip-card-back-top,
+.dark .flip-card-back-bottom {
+  background: #1c1c22;
+  color: #ffffff;
+  border-color: #2e2e38;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.flip-card-top,
+.flip-card-back-top {
+  top: 0;
+  height: 50%;
+  align-items: flex-end;
+  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.dark .flip-card-top,
+.dark .flip-card-back-top {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.flip-card-bottom,
+.flip-card-back-bottom {
+  bottom: 0;
+  height: 50%;
+  align-items: flex-start;
+  border-radius: 0 0 8px 8px;
+}
+
+/* Text positioning inside upper/lower halves */
+.flip-card-top span,
+.flip-card-back-top span {
+  transform: translateY(50%);
+}
+
+.flip-card-bottom span,
+.flip-card-back-bottom span {
+  transform: translateY(-50%);
+}
+
+/* Animated flipping flap */
+.flip-card-flap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  transform-origin: bottom;
+  transform-style: preserve-3d;
+  z-index: 20;
+}
+
+.flip-card-flap.animate-flip {
+  animation: flipCardAnim 0.5s ease-in-out forwards;
+}
+
+@keyframes flipCardAnim {
+  0% {
+    transform: rotateX(0deg);
+  }
+  100% {
+    transform: rotateX(-180deg);
+  }
+}

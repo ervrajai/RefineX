@@ -249,6 +249,7 @@ export default function VisualizationView({
               id: dsId,
               name: item.dataset_name || item.name || "Dataset",
               created_at: item.created_at,
+              rows: item.before_stats?.rows || item.rows || item.rows_count,
             });
           }
         });
@@ -281,6 +282,12 @@ export default function VisualizationView({
   };
 
   const uploadFile = async (file) => {
+    if (!file) return;
+    if (file.size > 100 * 1024 * 1024) {
+      setErrorMsg("File size exceeds maximum limit of 100MB.");
+      return;
+    }
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }

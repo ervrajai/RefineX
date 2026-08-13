@@ -241,8 +241,8 @@ class DatasetMLHistoryView(APIView):
     authentication_classes = [CsrfExemptSessionAuthentication]
 
     def get(self, request, *args, **kwargs):
-        # Query filtering
-        query = ModelTrainingJob.objects.filter(is_deleted=False)
+        # Query filtering (exclude soft deleted and cancelled jobs)
+        query = ModelTrainingJob.objects.filter(is_deleted=False).exclude(status="cancelled")
         if request.user.is_authenticated:
             query = query.filter(user=request.user)
             

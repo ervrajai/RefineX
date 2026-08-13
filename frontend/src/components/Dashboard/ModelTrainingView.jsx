@@ -137,6 +137,24 @@ export default function ModelTrainingView({
     }
   }, [trainingJobDetail]);
 
+  // Disable scroll on main container and reset to top when training blur overlay is active
+  useEffect(() => {
+    const scrollContainer = document.getElementById("main-scroll-container");
+    if (scrollContainer) {
+      if (training) {
+        scrollContainer.scrollTop = 0;
+        scrollContainer.style.overflow = "hidden";
+      } else {
+        scrollContainer.style.overflow = "auto";
+      }
+    }
+    return () => {
+      if (scrollContainer) {
+        scrollContainer.style.overflow = "auto";
+      }
+    };
+  }, [training]);
+
   // Clear previous training results if datasetId changes to a different dataset
   useEffect(() => {
     if (
@@ -465,6 +483,12 @@ export default function ModelTrainingView({
   };
 
   const uploadFile = async (file) => {
+    if (!file) return;
+    if (file.size > 100 * 1024 * 1024) {
+      setErrorMsg("File size exceeds maximum limit of 100MB.");
+      return;
+    }
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -664,7 +688,14 @@ export default function ModelTrainingView({
     }
   };
 
-  const handleCancelTraining = async () => {
+  const [showTrainingCancelConfirm, setShowTrainingCancelConfirm] = useState(false);
+
+  const requestCancelTraining = () => {
+    setShowTrainingCancelConfirm(true);
+  };
+
+  const confirmCancelTraining = async () => {
+    setShowTrainingCancelConfirm(false);
     const currentJobId = activeJobId || jobStatus?.job_id;
     setTraining(false);
     setActiveJobId(null);
@@ -681,6 +712,10 @@ export default function ModelTrainingView({
       }
     }
     setSuccessMsg("Training process cancelled.");
+  };
+
+  const continueTrainingProcess = () => {
+    setShowTrainingCancelConfirm(false);
   };
 
   // Load Job Detail for Modal
@@ -736,8 +771,8 @@ export default function ModelTrainingView({
     >
       {/* MODEL TRAINING CONSOLE LOADING OVERLAY */}
       {training && (
-        <div className="absolute -top-16 -left-6 -right-6 bottom-0 z-40 bg-slate-900/40 dark:bg-black/75 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 text-center animate-fade-in select-none min-h-screen">
-          <div className="sticky top-1/3 -translate-y-1/2 flex flex-col items-center p-6 sm:p-8 rounded-3xl bg-white/90 dark:bg-[#1a1a1e]/90 border border-slate-200 dark:border-zinc-800 shadow-xl dark:shadow-2xl max-w-xs sm:max-w-sm w-full space-y-5 animate-scale-in">
+        <div className="absolute -top-16 -left-6 -right-6 -bottom-10 z-40 bg-slate-900/40 dark:bg-black/75 backdrop-blur-md p-4 sm:p-6 text-center animate-fade-in select-none">
+          <div className="sticky top-1/2 -translate-y-1/2 mx-auto flex flex-col items-center p-6 sm:p-8 rounded-3xl bg-white/90 dark:bg-[#1a1a1e]/90 border border-slate-200 dark:border-zinc-800 shadow-xl dark:shadow-2xl max-w-xs sm:max-w-sm w-full space-y-5 animate-scale-in">
             {/* Custom Matrix Loader */}
             <MatrixLoader className="scale-110 sm:scale-125" />
 
@@ -776,14 +811,38 @@ export default function ModelTrainingView({
               </div>
             </div>
 
-            {/* Cancel Button */}
-            <button
-              type="button"
-              onClick={handleCancelTraining}
-              className="mt-1 w-full sm:w-auto px-6 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-2"
-            >
-              <X className="w-4 h-4" /> Cancel Training
-            </button>
+            {/* Cancel Button / Confirmation UI */}
+            {!showTrainingCancelConfirm ? (
+              <button
+                type="button"
+                onClick={requestCancelTraining}
+                className="mt-1 w-full sm:w-auto px-6 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+              >
+                <X className="w-4 h-4" /> Cancel Training
+              </button>
+            ) : (
+              <div className="mt-1 flex flex-col items-center gap-2 w-full animate-fade-in">
+                <span className="text-xs font-bold text-rose-600 dark:text-rose-400">
+                  Cancel model training?
+                </span>
+                <div className="flex items-center gap-2 w-full">
+                  <button
+                    type="button"
+                    onClick={confirmCancelTraining}
+                    className="flex-1 py-2 px-3 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm transition-all duration-200 cursor-pointer active:scale-95"
+                  >
+                    Yes, Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={continueTrainingProcess}
+                    className="flex-1 py-2 px-3 rounded-full bg-slate-200 dark:bg-zinc-800 hover:bg-slate-300 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 font-bold text-xs shadow-sm transition-all duration-200 cursor-pointer active:scale-95"
+                  >
+                    No, Resume
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

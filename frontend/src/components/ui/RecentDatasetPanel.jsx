@@ -79,7 +79,11 @@ export default function RecentDatasetPanel({
           </div>
         ) : (
           items.map((item, idx) => {
-            const name = item.dataset_name || item.name || "Untitled Dataset";
+            let rawName = item.dataset_name || item.name || "Untitled Dataset";
+            // Strip any version suffix or cleaned tags so original dataset name is always cleanly shown
+            const name = rawName
+              .replace(/(_cleaned|_cleaned_v\d+)(\.[a-zA-Z0-9]+)?$/i, "$2")
+              .replace(/^(cleaned_)/i, "");
             const dt = item.created_at || item.cleaned_at || item.updated_at;
             const rows = item.before_stats?.rows || item.rows;
 

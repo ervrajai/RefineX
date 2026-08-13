@@ -578,7 +578,7 @@ function Sidebar({ activeTab, onTabChange, user, loading, handleLogout, loggingO
 
       {/* --- MOBILE BOTTOM NAVIGATION --- */}
       <nav className={cn(
-        "md:hidden fixed left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[380px] pointer-events-auto transition-transform duration-300 ease-in-out",
+        "md:hidden fixed left-1/2 -translate-x-1/2 z-[100] w-[92%] max-w-[380px] pointer-events-auto transition-transform duration-300 ease-in-out",
         isNavVisible ? "translate-y-0 bottom-5" : "translate-y-32 bottom-5"
       )}>
         <div className="relative flex items-center p-1.5 h-[64px] rounded-full bg-[#FFFFFF]/80 dark:bg-[#212121]/70 backdrop-blur-3xl border border-slate-200 dark:border-zinc-800 shadow-md touch-none select-none">

@@ -48,6 +48,9 @@ class DatasetUploadView(APIView):
             return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Basic validation
+        if file_obj.size > 100 * 1024 * 1024:
+            return Response({"error": "File size exceeds maximum limit of 100MB."}, status=status.HTTP_400_BAD_REQUEST)
+
         name, ext = os.path.splitext(file_obj.name)
         file_type = ext.lower().replace('.', '')
         if file_type not in ['csv', 'xlsx', 'xls']:
@@ -743,6 +746,9 @@ class GuestUploadAndCleanView(APIView):
         file_obj = request.FILES.get("file")
         if not file_obj:
             return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if file_obj.size > 100 * 1024 * 1024:
+            return Response({"error": "File size exceeds maximum limit of 100MB."}, status=status.HTTP_400_BAD_REQUEST)
 
         name, ext = os.path.splitext(file_obj.name)
         file_type = ext.lower().replace(".", "")

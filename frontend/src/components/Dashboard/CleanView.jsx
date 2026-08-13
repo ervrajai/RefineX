@@ -7,6 +7,7 @@ import RefreshButton from "../ui/RefreshButton";
 import DatasetTableViewer from "../ui/DatasetTableViewer";
 import { AnimatedSelect } from "../ui/AnimatedSelect";
 import { AnimatedCheckbox } from "../ui/AnimatedCheckbox";
+import MatrixLoader from "../ui/MatrixLoader";
 import {
   UploadCloud,
   FileSpreadsheet,
@@ -37,7 +38,8 @@ import {
   Layers,
   Calendar,
   Filter,
-  ShieldCheck
+  ShieldCheck,
+  X
 } from "lucide-react";
 
 
@@ -75,6 +77,24 @@ export default function CleanView({
   // Clean history states
   const [cleanHistoryList, setCleanHistoryList] = useState([]);
   const [loadingCleanHistory, setLoadingCleanHistory] = useState(false);
+
+  // Disable scroll on main container and reset to top when cleaning blur overlay is active
+  useEffect(() => {
+    const scrollContainer = document.getElementById("main-scroll-container");
+    if (scrollContainer) {
+      if (processing) {
+        scrollContainer.scrollTop = 0;
+        scrollContainer.style.overflow = "hidden";
+      } else {
+        scrollContainer.style.overflow = "auto";
+      }
+    }
+    return () => {
+      if (scrollContainer) {
+        scrollContainer.style.overflow = "auto";
+      }
+    };
+  }, [processing]);
 
   useEffect(() => {
     if (!datasetId && historyList) {
@@ -321,6 +341,12 @@ export default function CleanView({
 
   // Upload handler
   const uploadFile = async (file) => {
+    if (!file) return;
+    if (file.size > 100 * 1024 * 1024) {
+      setErrorMsg("File size exceeds maximum limit of 100MB.");
+      return;
+    }
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -392,9 +418,35 @@ export default function CleanView({
     }
   };
 
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  const requestCancelCleaning = () => {
+    setShowCancelConfirm(true);
+  };
+
+  const confirmCancelCleaning = () => {
+    setShowCancelConfirm(false);
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setProcessing(false);
+    setErrorMsg("Cleaning process canceled. No changes were made or saved.");
+  };
+
+  const continueCleaning = () => {
+    setShowCancelConfirm(false);
+  };
+
   // Clean handler
   const handleClean = async () => {
     if (!datasetId) return;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setProcessing(true);
     setErrorMsg("");
     setSuccessMsg("");
@@ -406,7 +458,7 @@ export default function CleanView({
     };
 
     try {
-      const res = await api.post(`cleaning/${datasetId}/clean/`, { config: cleanConfig });
+      const res = await api.post(`cleaning/${datasetId}/clean/`, { config: cleanConfig }, { signal: controller.signal });
       const data = res.data;
       
       setMetadata(data.metadata);
@@ -420,21 +472,32 @@ export default function CleanView({
       setActiveReportTab("compare");
       setSuccessMsg("Dataset cleaned successfully!");
     } catch (err) {
-      setErrorMsg(err.response?.data?.error || "Cleaning operation failed.");
+      if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || (err.message && err.message.includes("canceled"))) {
+        setErrorMsg("Cleaning operation canceled.");
+      } else {
+        setErrorMsg(err.response?.data?.error || "Cleaning operation failed.");
+      }
     } finally {
       setProcessing(false);
+      abortControllerRef.current = null;
     }
   };
 
   // Smart Decide (RefineX Decide)
   const handleDecide = async () => {
     if (!datasetId) return;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setProcessing(true);
     setErrorMsg("");
     setSuccessMsg("");
 
     try {
-      const res = await api.post(`cleaning/${datasetId}/decide/`, {});
+      const res = await api.post(`cleaning/${datasetId}/decide/`, {}, { signal: controller.signal });
       const data = res.data;
       
       setMetadata(data.metadata);
@@ -465,9 +528,14 @@ export default function CleanView({
       setActiveReportTab("compare");
       setSuccessMsg("✨ RefineX Decide auto-cleaning complete!");
     } catch (err) {
-      setErrorMsg(err.response?.data?.error || "RefineX Decide operation failed.");
+      if (err.name === "CanceledError" || err.code === "ERR_CANCELED" || (err.message && err.message.includes("canceled"))) {
+        setErrorMsg("RefineX Decide operation canceled.");
+      } else {
+        setErrorMsg(err.response?.data?.error || "RefineX Decide operation failed.");
+      }
     } finally {
       setProcessing(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -1111,7 +1179,73 @@ export default function CleanView({
   ];
 
   return (
-    <div className={`space-y-6 text-slate-800 dark:text-zinc-100 pb-10 animate-fade-in font-sans ${!datasetId ? "max-w-7xl mx-auto" : "max-w-full"}`}>
+    <div className={`space-y-6 text-slate-800 dark:text-zinc-100 pb-10 animate-fade-in font-sans relative ${!datasetId ? "max-w-7xl mx-auto" : "max-w-full"}`}>
+      
+      {/* DATA CLEANING LOADING OVERLAY */}
+      {processing && (
+        <div className="absolute -top-16 -left-6 -right-6 -bottom-10 z-50 bg-slate-900/40 dark:bg-black/75 backdrop-blur-md p-4 sm:p-6 text-center animate-fade-in select-none">
+          <div className="sticky top-1/2 -translate-y-1/2 mx-auto flex flex-col items-center p-6 sm:p-8 rounded-3xl bg-white/90 dark:bg-[#1a1a1e]/90 border border-slate-200 dark:border-zinc-800 shadow-xl dark:shadow-2xl max-w-xs sm:max-w-sm w-full space-y-5 animate-scale-in">
+            {/* Custom Matrix Loader */}
+            <MatrixLoader className="scale-110 sm:scale-125" />
+
+            {/* Title & Details */}
+            <div className="flex flex-col items-center gap-1 w-full">
+              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Please Wait, Cleaning Dataset...
+              </h3>
+              <p className="text-[11px] sm:text-xs font-semibold text-purple-600 dark:text-purple-400 capitalize truncate max-w-full">
+                Processing data transformations
+              </p>
+            </div>
+
+            {/* Custom Theme Rounded Progress Bar Container */}
+            <div className="w-full space-y-1.5">
+              <div className="relative w-full h-8 rounded-full bg-slate-900 border-2 border-slate-900 dark:bg-black dark:border-white overflow-hidden shadow-inner flex items-center justify-center">
+                <div
+                  className="absolute left-0 top-0 h-full bg-slate-100 dark:bg-white transition-all duration-300 ease-out"
+                  style={{ width: "100%" }}
+                />
+                <span className="relative z-10 text-xs font-black tracking-wider text-slate-900 dark:text-black whitespace-nowrap pointer-events-none">
+                  Processing...
+                </span>
+              </div>
+            </div>
+
+            {/* Cancel Button / Confirmation UI */}
+            {!showCancelConfirm ? (
+              <button
+                type="button"
+                onClick={requestCancelCleaning}
+                className="mt-1 w-full sm:w-auto px-6 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+              >
+                <X className="w-4 h-4" /> Cancel Cleaning
+              </button>
+            ) : (
+              <div className="mt-1 flex flex-col items-center gap-2 w-full animate-fade-in">
+                <span className="text-xs font-bold text-rose-600 dark:text-rose-400">
+                  Cancel cleaning process?
+                </span>
+                <div className="flex items-center gap-2 w-full">
+                  <button
+                    type="button"
+                    onClick={confirmCancelCleaning}
+                    className="flex-1 py-2 px-3 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm transition-all duration-200 cursor-pointer active:scale-95"
+                  >
+                    Yes, Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={continueCleaning}
+                    className="flex-1 py-2 px-3 rounded-full bg-slate-200 dark:bg-zinc-800 hover:bg-slate-300 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 font-bold text-xs shadow-sm transition-all duration-200 cursor-pointer active:scale-95"
+                  >
+                    No, Resume
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       
       {/* Toast Alerts */}
       {successMsg && (

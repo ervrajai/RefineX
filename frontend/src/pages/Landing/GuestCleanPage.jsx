@@ -176,6 +176,43 @@ export default function GuestCleanPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // 3D Flip Card Component with real-time flip transition on change
+  const FlipCard = ({ digit }) => {
+    const [current, setCurrent] = useState(digit);
+    const [previous, setPrevious] = useState(digit);
+    const [isFlipping, setIsFlipping] = useState(false);
+
+    useEffect(() => {
+      if (digit !== current) {
+        setPrevious(current);
+        setCurrent(digit);
+        setIsFlipping(true);
+        const t = setTimeout(() => setIsFlipping(false), 500);
+        return () => clearTimeout(t);
+      }
+    }, [digit, current]);
+
+    return (
+      <div className="flip-digit-wrapper">
+        <div className="flip-card">
+          <div className="flip-card-top">
+            <span>{current}</span>
+          </div>
+          <div className="flip-card-bottom">
+            <span>{previous}</span>
+          </div>
+          {isFlipping && (
+            <div className="flip-card-flap animate-flip">
+              <div className="flip-card-back-top">
+                <span>{previous}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-lightBg dark:bg-darkBg text-slate-900 dark:text-white transition-colors duration-300">
       <Navbar />
@@ -192,23 +229,39 @@ export default function GuestCleanPage() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 text-left">
         {/* Top Header Bar: Countdown Timer Card & Daily Guest Limit Pill */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6">
-          {/* Live Reset Countdown Time Card (No moon, proper card size) */}
+          {/* Live Reset Countdown Time (Floating Flip Cards in Air, Dark/Light Compatible) */}
           {!isLoggedIn && (
-            <div 
-              className="relative overflow-hidden rounded-[15px] p-3.5 px-5 text-white transition-all duration-300 flex flex-col justify-center min-w-[260px] border border-slate-700/50 shadow-md cursor-pointer hover:shadow-lg"
-              style={{
-                background: 'linear-gradient(to right, rgb(20, 30, 48), rgb(36, 59, 85))'
-              }}
-            >
-              <div className="flex items-baseline gap-2 font-['Gill_Sans','Gill_Sans_MT',Calibri,'Trebuchet_MS',sans-serif]">
-                <span className="text-3xl font-extrabold tracking-tight">
-                  {timeLeft.hours}:{timeLeft.minutes}:{timeLeft.seconds}
-                </span>
-                <span className="text-xs font-semibold tracking-wide text-cyan-300 uppercase">
-                  UNTIL RESET
+            <div className="flex flex-col text-left select-none animate-fade-in py-1">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {/* Hours flip cards */}
+                <div className="flip-clock-container">
+                  <FlipCard digit={timeLeft.hours[0] || "0"} />
+                  <FlipCard digit={timeLeft.hours[1] || "0"} />
+                </div>
+
+                <span className="text-xl sm:text-2xl font-black text-slate-400 dark:text-zinc-500 pb-1">:</span>
+
+                {/* Minutes flip cards */}
+                <div className="flip-clock-container">
+                  <FlipCard digit={timeLeft.minutes[0] || "0"} />
+                  <FlipCard digit={timeLeft.minutes[1] || "0"} />
+                </div>
+
+                <span className="text-xl sm:text-2xl font-black text-slate-400 dark:text-zinc-500 pb-1">:</span>
+
+                {/* Seconds flip cards */}
+                <div className="flip-clock-container">
+                  <FlipCard digit={timeLeft.seconds[0] || "0"} />
+                  <FlipCard digit={timeLeft.seconds[1] || "0"} />
+                </div>
+
+                <span className="text-[10px] font-extrabold tracking-widest text-purple-600 dark:text-purple-400 uppercase ml-2">
+                  Until Reset
                 </span>
               </div>
-              <p className="text-xs font-medium text-slate-300 mt-0.5 truncate font-['Gill_Sans','Gill_Sans_MT',Calibri,'Trebuchet_MS',sans-serif]">
+
+              {/* Date and time text under the timer in small letters */}
+              <p className="text-[11px] font-medium text-slate-500 dark:text-zinc-400 mt-1.5 pl-0.5">
                 Limit restores at 12:00 AM • {timeLeft.dayText}
               </p>
             </div>

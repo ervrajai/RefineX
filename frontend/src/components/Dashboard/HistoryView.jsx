@@ -207,6 +207,9 @@ export default function HistoryView({
 
   // Compute filtered items
   const filteredHistory = history.filter((item) => {
+    // 0. Exclude cancelled jobs
+    if (item.status === "cancelled" || item.status === "canceled") return false;
+
     // 1. Category Filter
     if (activeFilter === "Cleaning") {
       if (item.type && item.type !== "clean" && item.type !== "cleaning") return false;

@@ -557,23 +557,91 @@ def profile_dataset(df, original_row_count=None):
     return make_json_safe(report)
 
 
+def strip_emojis_and_control_chars(text):
+    """
+    Strips emojis, non-printable unicode control characters, zero-width spaces, and HTML tags from a text string.
+    """
+    if not isinstance(text, str):
+        return text
+    emoji_pattern = re.compile(
+        "["
+        "\U0001F600-\U0001F64F"  # emoticons
+        "\U0001F300-\U0001F5FF"  # symbols & pictographs
+        "\U0001F680-\U0001F6FF"  # transport & map symbols
+        "\U0001F1E0-\U0001F1FF"  # flags (iOS)
+        "\U00002702-\U000027B0"
+        "\U000024C2-\U000025B6"
+        "\u2600-\u27BF"          # misc symbols & dingbats
+        "\u2300-\u23FF"          # technical symbols
+        "\u2B00-\u2BFF"
+        "\u200b-\u200d"          # zero-width spaces
+        "\uFE0F"                 # variation selector
+        "\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f"  # control characters
+        "]+", flags=re.UNICODE
+    )
+    cleaned = emoji_pattern.sub('', text)
+    cleaned = re.sub(r'<[^>]+>', '', cleaned)  # Remove HTML tags
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()  # Collapse extra whitespace
+    return cleaned
+
+# Strong EMAIL regex (RFC 5322-style, practical strict version):
+#   - no leading/trailing/consecutive dots in local part
+#   - domain must have valid labels + a 2+ letter TLD
+EMAIL_REGEX = re.compile(
+    r"^(?!.*\.\.)[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+"
+    r"(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*"
+    r"@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+"
+    r"[a-zA-Z]{2,63}$"
+)
+
+# Strong MOBILE NUMBER regex (checked AFTER stripping spaces/dashes/dots/
+# parentheses down to digits + optional leading '+'). Enforces E.164 shape:
+#   - optional single leading '+'
+#   - first digit cannot be 0
+#   - total digit length between 7 and 15 (ITU E.164 max)
+MOBILE_REGEX = re.compile(r"^\+?[1-9]\d{6,14}$")
+
+EMAIL_NAME_HINTS = {"email", "e_mail", "mail", "email_address", "emailid", "email_id"}
+MOBILE_NAME_HINTS = {
+    "phone", "mobile", "cell", "contact", "contact_no", "contact_number",
+    "mob", "mob_no", "mobile_no", "mobile_number", "phone_no", "phone_number",
+    "whatsapp", "telephone", "tel"
+}
+
+
 def auto_clean_dataset(df):
     """
-    Executes the 3-Phase Heuristic Engine for 'Auto-Decide' mode ONLY.
+    Executes the enterprise 6-Phase Heuristic Engine for 'Auto-Decide' mode.
     
-    Phase 1 (Structural):
+    Phase 1 (Structural & Text Hygiene):
       - Standardize header names to snake_case.
+      - Remove emojis, non-printable unicode, HTML tags, and extra spaces from text cells.
       - Normalize sentinel blank strings ("N/A", "NULL", etc.) to NaN.
       - Drop exact duplicate rows.
-      - Drop 0-variance constant columns.
       
-    Phase 2 (Imputation):
+    Phase 2 (Email/Mobile Validation, Currency, Date & Negative Number Repair):
+      - Detect and strictly validate Email columns (RFC 5322-style regex); invalid emails -> NaN.
+      - Detect and strictly validate Mobile/Phone columns (E.164-style regex); invalid numbers -> NaN.
+      - Clean currency symbols ($, ₹, €, £, Rs, USD, INR), commas, and percentages.
+      - Correct erroneous negative numbers (e.g. negative age/price/quantity/count) to positive.
+      - Parse and format date columns to standard 'YYYY-MM-DD' ISO format.
+      - Infer and coerce remaining text columns to numeric dtypes.
+      
+    Phase 3 (Dimensionality Pruning):
       - Drop columns with >60% missing values.
-      - Impute numeric nulls with column Median.
-      - Impute categorical nulls with column Mode.
       
-    Phase 3 (Outlier Handling):
-      - Enforce non-destructive IQR capping (clipping) for numeric columns instead of dropping rows.
+    Phase 4 (Post-Validation Imputation & Null Resolution):
+      - Impute missing values created from invalid conversions or original nulls.
+      - Numeric columns -> Column Median.
+      - Categorical/Date columns -> Column Mode or Forward/Backward fill.
+      
+    Phase 5 (Outlier Capping, Decimal Rounding & Integer Refinement):
+      - Enforce non-destructive IQR capping (clipping) for numeric columns.
+      - Round float columns to 2 decimal places (default).
+      - Cast whole numeric columns to Integer (int64) dtypes.
+      
+    Phase 6 (Profiling & Scoring):
+      - Recalculate profiling report and final Dataset Quality Score.
       
     Returns: (cleaned_df, logs_list, before_report, after_report)
     """
@@ -585,9 +653,9 @@ def auto_clean_dataset(df):
     logs.append(f"⚡ RefineX Auto-Decide Engine initialized ({len(df)} rows, {len(df.columns)} columns)")
 
     # -------------------------------------------------------------
-    # PHASE 1: STRUCTURAL CLEANUP
+    # PHASE 1: STRUCTURAL CLEANUP & TEXT SANITIZATION
     # -------------------------------------------------------------
-    # 1. Standardize Header Names
+    # 1. Standardize Header Names to snake_case
     new_cols = []
     changed_headers = 0
     for col in cleaned_df.columns:
@@ -600,28 +668,27 @@ def auto_clean_dataset(df):
         new_cols.append(col_str)
 
     # Ensure uniqueness of headers
-    unique_cols = []
-    for col in new_cols:
-        if col in unique_cols:
-            count = 1
-            candidate = f"{col}_{count}"
-            while candidate in unique_cols:
-                count += 1
-                candidate = f"{col}_{count}"
-            unique_cols.append(candidate)
-        else:
-            unique_cols.append(col)
-    cleaned_df.columns = unique_cols
+    cleaned_df.columns = make_columns_unique(new_cols)
 
     if changed_headers > 0:
         logs.append(f"✓ Phase 1: Standardized {changed_headers} column headers to clean snake_case")
 
-    # 2. Normalize Blank Sentinel Strings to NaN
-    blank_markers = {"", " ", "na", "n/a", "null", "none", "-", "--", "unknown", "nan", "nil", "missing", "#n/a", "#na"}
+    # 2. Remove Emojis, Unicode control characters, HTML & Normalize Sentinel Strings
+    blank_markers = {"", " ", "na", "n/a", "null", "none", "-", "--", "unknown", "nan", "nil", "missing", "#n/a", "#na", "?"}
     blank_count = 0
+    emoji_cleaned_count = 0
+
     for col in cleaned_df.columns:
         if cleaned_df[col].dtype == object or pd.api.types.is_string_dtype(cleaned_df[col]):
             try:
+                # Strip emojis, unicode artifacts, and extra whitespace
+                orig_series = cleaned_df[col].copy()
+                cleaned_df[col] = cleaned_df[col].apply(lambda x: strip_emojis_and_control_chars(x) if isinstance(x, str) else x)
+                
+                if not cleaned_df[col].equals(orig_series):
+                    emoji_cleaned_count += 1
+
+                # Normalize sentinel strings to NaN
                 s_str = cleaned_df[col].astype(str).str.strip().str.lower()
                 mask = s_str.isin(blank_markers) & cleaned_df[col].notna()
                 if mask.any():
@@ -629,6 +696,10 @@ def auto_clean_dataset(df):
                     cleaned_df.loc[mask, col] = np.nan
             except Exception:
                 pass
+
+    if emoji_cleaned_count > 0:
+        logs.append(f"✓ Phase 1: Sanitized text in {emoji_cleaned_count} column(s) (removed emojis, HTML tags, and unicode control characters)")
+
     if blank_count > 0:
         logs.append(f"✓ Phase 1: Normalized {blank_count} blank/sentinel strings to NaN")
 
@@ -638,18 +709,146 @@ def auto_clean_dataset(df):
         cleaned_df = cleaned_df.drop_duplicates().reset_index(drop=True)
         logs.append(f"✓ Phase 1: Removed {dups_count} exact duplicate rows")
 
-    # 4. Drop 0-Variance Constant Columns
-    constant_cols_dropped = []
-    for col in cleaned_df.columns:
-        if cleaned_df[col].nunique(dropna=False) <= 1:
-            constant_cols_dropped.append(col)
+    # -------------------------------------------------------------
+    # PHASE 2: EMAIL/MOBILE VALIDATION, CURRENCY, DATE & NEGATIVE NUMBER REPAIR
+    # -------------------------------------------------------------
+    email_cleaned_count = 0
+    email_invalid_count = 0
+    mobile_cleaned_count = 0
+    mobile_invalid_count = 0
+    currency_cleaned_count = 0
+    date_cleaned_count = 0
 
-    if constant_cols_dropped:
-        cleaned_df = cleaned_df.drop(columns=constant_cols_dropped)
-        logs.append(f"✓ Phase 1: Dropped {len(constant_cols_dropped)} zero-variance constant column(s): {', '.join(constant_cols_dropped)}")
+    for col in cleaned_df.columns:
+        col_dtype = cleaned_df[col].dtype
+
+        if col_dtype == object or pd.api.types.is_string_dtype(cleaned_df[col]):
+            s_non_null = cleaned_df[col].dropna().astype(str)
+
+            if len(s_non_null) > 0:
+                col_name_lower = str(col).lower()
+
+                # 0a. Strong Email Validation
+                is_email_name = any(hint in col_name_lower for hint in EMAIL_NAME_HINTS)
+                email_match_ratio = s_non_null.str.strip().str.match(EMAIL_REGEX).mean()
+                if is_email_name or email_match_ratio >= 0.6:
+                    before_valid = cleaned_df[col].notna().sum()
+                    cleaned_df[col] = cleaned_df[col].apply(
+                        lambda x: x.strip().lower() if isinstance(x, str) and EMAIL_REGEX.match(x.strip()) else np.nan
+                    )
+                    invalid_here = int(before_valid - cleaned_df[col].notna().sum())
+                    email_cleaned_count += 1
+                    email_invalid_count += invalid_here
+                    continue
+
+                # 0b. Strong Mobile Number Validation
+                is_mobile_name = any(hint in col_name_lower for hint in MOBILE_NAME_HINTS)
+                stripped_sample = s_non_null.apply(lambda x: re.sub(r'[^\d+]', '', x))
+                mobile_match_ratio = stripped_sample.str.match(MOBILE_REGEX).mean()
+                if is_mobile_name or mobile_match_ratio >= 0.6:
+                    def _clean_mobile(x):
+                        if not isinstance(x, str):
+                            return np.nan
+                        digits = re.sub(r'[^\d+]', '', x)
+                        if digits.count('+') > 1 or ('+' in digits and not digits.startswith('+')):
+                            return np.nan
+                        return digits if MOBILE_REGEX.match(digits) else np.nan
+
+                    before_valid = cleaned_df[col].notna().sum()
+                    cleaned_df[col] = cleaned_df[col].apply(_clean_mobile)
+                    invalid_here = int(before_valid - cleaned_df[col].notna().sum())
+                    mobile_cleaned_count += 1
+                    mobile_invalid_count += invalid_here
+                    continue
+
+        # 1. Currency & Special Numeric Cleaning for text columns
+        if col_dtype == object or pd.api.types.is_string_dtype(cleaned_df[col]):
+            s_non_null = cleaned_df[col].dropna().astype(str)
+            if len(s_non_null) > 0:
+                has_currency_symbols = s_non_null.str.contains(r'[$₹€£¥₩฿₫₱¢¤%]|(?i)\b(rs|inr|usd|eur|gbp|jpy)\b', regex=True).any()
+                cleaned_num = clean_numeric_series(cleaned_df[col])
+                valid_num_count = cleaned_num.notna().sum()
+                
+                if valid_num_count > 0 and (has_currency_symbols or (valid_num_count / len(s_non_null)) >= 0.5):
+                    cleaned_df[col] = cleaned_num
+                    currency_cleaned_count += 1
+                    continue
+
+        # 2. Date Formatting (YYYY-MM-DD)
+        if col_dtype == object or pd.api.types.is_string_dtype(cleaned_df[col]) or pd.api.types.is_datetime64_any_dtype(cleaned_df[col]):
+            s_non_null = cleaned_df[col].dropna()
+            if len(s_non_null) > 0:
+                str_sample = s_non_null.astype(str).str.strip()
+                looks_like_date = str_sample.str.contains(r'[-/\.\s]', regex=True).any() or pd.api.types.is_datetime64_any_dtype(cleaned_df[col])
+                
+                if looks_like_date:
+                    try:
+                        parsed_dates = pd.to_datetime(cleaned_df[col], errors='coerce', format='mixed')
+                        valid_dates_ratio = parsed_dates.notna().sum() / len(s_non_null)
+                        
+                        if valid_dates_ratio >= 0.6:
+                            cleaned_df[col] = parsed_dates.dt.strftime('%Y-%m-%d')
+                            date_cleaned_count += 1
+                    except Exception:
+                        pass
+
+    if email_cleaned_count > 0:
+        logs.append(
+            f"✓ Phase 2: Validated {email_cleaned_count} email column(s) with strict regex"
+            + (f" — nulled {email_invalid_count} malformed email(s)" if email_invalid_count > 0 else "")
+        )
+
+    if mobile_cleaned_count > 0:
+        logs.append(
+            f"✓ Phase 2: Validated {mobile_cleaned_count} mobile/phone column(s) with strict regex"
+            + (f" — nulled {mobile_invalid_count} malformed number(s)" if mobile_invalid_count > 0 else "")
+        )
+
+    if currency_cleaned_count > 0:
+        logs.append(f"✓ Phase 2: Cleaned currency symbols and formatted numeric values in {currency_cleaned_count} column(s)")
+
+    if date_cleaned_count > 0:
+        logs.append(f"✓ Phase 2: Standardized dates to YYYY-MM-DD format in {date_cleaned_count} column(s)")
+
+    # 3. Coerce remaining object columns to numeric dtypes if applicable
+    coerced_cols_count = 0
+    for col in cleaned_df.columns:
+        if cleaned_df[col].dtype == object:
+            converted = pd.to_numeric(cleaned_df[col], errors='ignore')
+            if converted.dtype != object:
+                cleaned_df[col] = converted
+                coerced_cols_count += 1
+
+    if coerced_cols_count > 0:
+        logs.append(f"✓ Phase 2: Coerced {coerced_cols_count} text column(s) to numeric dtypes")
+
+    # 4. Correct Erroneous Negative Numbers
+    # Non-negative domain keywords (age, price, salary, quantity, count, score, etc.)
+    non_neg_keywords = {'age', 'price', 'cost', 'salary', 'qty', 'quantity', 'count', 'score', 'height', 'weight', 'amount', 'total', 'tax', 'rate', 'fee', 'units', 'distance', 'id', 'num'}
+    negative_corrected_count = 0
+
+    for col in cleaned_df.columns:
+        if is_numeric_column(cleaned_df[col]):
+            col_name_lower = str(col).lower()
+            s_non_null = cleaned_df[col].dropna()
+            if len(s_non_null) > 0:
+                has_negatives = (s_non_null < 0).any()
+                if has_negatives:
+                    # If column name matches non-negative domain keywords OR >85% of values are positive/zero
+                    is_non_neg_domain = any(kw in col_name_lower for kw in non_neg_keywords)
+                    pos_ratio = (s_non_null >= 0).mean()
+                    
+                    if is_non_neg_domain or pos_ratio >= 0.85:
+                        neg_mask = cleaned_df[col] < 0
+                        neg_cnt = int(neg_mask.sum())
+                        cleaned_df[col] = cleaned_df[col].abs()
+                        negative_corrected_count += neg_cnt
+
+    if negative_corrected_count > 0:
+        logs.append(f"✓ Phase 2: Corrected {negative_corrected_count} invalid negative value(s) to positive")
 
     # -------------------------------------------------------------
-    # PHASE 2: IMPUTATION (Threshold & Type-Specific)
+    # PHASE 3: COLUMN FILTERING & PRUNING
     # -------------------------------------------------------------
     # 1. Drop Columns with >60% Nulls
     high_null_cols_dropped = []
@@ -663,33 +862,43 @@ def auto_clean_dataset(df):
         cols_to_remove = [c[0] for c in high_null_cols_dropped]
         cleaned_df = cleaned_df.drop(columns=cols_to_remove)
         desc_list = [f"{c} ({r}%)" for c, r in high_null_cols_dropped]
-        logs.append(f"✓ Phase 2: Dropped {len(cols_to_remove)} column(s) exceeding 60% missing threshold: {', '.join(desc_list)}")
+        logs.append(f"✓ Phase 3: Dropped {len(cols_to_remove)} column(s) exceeding 60% missing threshold: {', '.join(desc_list)}")
 
-    # 2. Impute Remaining Columns (Numeric -> Median, Categorical -> Mode)
+
+
+    # -------------------------------------------------------------
+    # PHASE 4: IMPUTATION & INVALID VALUE NULL VALIDATION
+    # -------------------------------------------------------------
     num_imputed = 0
     cat_imputed = 0
+
     for col in cleaned_df.columns:
         na_mask = cleaned_df[col].isna()
         if na_mask.any():
             null_count = int(na_mask.sum())
             if is_numeric_column(cleaned_df[col]):
                 median_val = cleaned_df[col].median()
+                if pd.isna(median_val):
+                    median_val = 0
                 cleaned_df[col] = cleaned_df[col].fillna(median_val)
                 num_imputed += null_count
             else:
+                # Categorical or Date column: Impute with Mode, or ffill/bfill fallback
                 mode_series = cleaned_df[col].mode()
                 if not mode_series.empty:
                     mode_val = mode_series.iloc[0]
                     cleaned_df[col] = cleaned_df[col].fillna(mode_val)
-                    cat_imputed += null_count
+                else:
+                    cleaned_df[col] = cleaned_df[col].ffill().bfill().fillna("Unknown")
+                cat_imputed += null_count
 
     if num_imputed > 0:
-        logs.append(f"✓ Phase 2: Imputed {num_imputed} numeric missing values using column Median")
+        logs.append(f"✓ Phase 4: Resolved {num_imputed} numeric missing/invalid value(s) using column Median")
     if cat_imputed > 0:
-        logs.append(f"✓ Phase 2: Imputed {cat_imputed} categorical missing values using column Mode")
+        logs.append(f"✓ Phase 4: Resolved {cat_imputed} categorical/date missing value(s) using Mode/Forward-Fill")
 
     # -------------------------------------------------------------
-    # PHASE 3: NON-DESTRUCTIVE OUTLIER HANDLING (IQR Capping)
+    # PHASE 5: OUTLIER HANDLING & INTEGER CASTING
     # -------------------------------------------------------------
     total_capped = 0
     for col in cleaned_df.columns:
@@ -713,9 +922,33 @@ def auto_clean_dataset(df):
                     pass
 
     if total_capped > 0:
-        logs.append(f"✓ Phase 3: Non-destructively capped {total_capped} numeric outlier values using IQR bounds")
+        logs.append(f"✓ Phase 5: Non-destructively capped {total_capped} numeric outlier values using IQR bounds")
 
-    # Generate After Report & calculate Quality Score with data loss penalty check
+    # Convert whole numbers (e.g. 10.0, 50.0) to Integer dtypes cleanly
+    integer_converted_count = 0
+    rounded_cols_count = 0
+    decimal_places = 2
+    for col in cleaned_df.columns:
+        if is_numeric_column(cleaned_df[col]) and not pd.api.types.is_integer_dtype(cleaned_df[col]):
+            try:
+                # Check if all values are whole numbers
+                non_nulls = cleaned_df[col].dropna()
+                if len(non_nulls) > 0 and (non_nulls % 1 == 0).all():
+                    cleaned_df[col] = cleaned_df[col].round().astype('int64')
+                    integer_converted_count += 1
+                else:
+                    # Round float columns to specified decimal places
+                    cleaned_df[col] = cleaned_df[col].round(decimal_places)
+                    rounded_cols_count += 1
+            except Exception:
+                pass
+
+    if integer_converted_count > 0:
+        logs.append(f"✓ Phase 5: Converted {integer_converted_count} numeric column(s) to Integer dtypes")
+    if rounded_cols_count > 0:
+        logs.append(f"✓ Phase 5: Rounded {rounded_cols_count} decimal column(s) to {decimal_places} decimal places")
+
+    # Generate After Report & calculate Quality Score
     after_report = profile_dataset(cleaned_df)
     if "outlier_report" in after_report:
         for item in after_report["outlier_report"]:
@@ -1265,20 +1498,32 @@ def clean_dataset(df, config):
                     
             # Phone validation
             elif 'phone' in col_lower or 'mobile' in col_lower:
-                def is_valid_phone_cell(val):
+                def is_valid_phone_cell(val, _regex=phone_regex):
                     if pd.isna(val):
                         return True
                     s_val = re.sub(r'\.0$', '', str(val).strip())
                     if not s_val or s_val.lower() in ["nan", "none", "null"]:
                         return True
-                    return bool(phone_regex.match(s_val))
+                    # Must contain at least 7 digit characters to be a real phone number
+                    if len(re.findall(r'\d', s_val)) < 7:
+                        return False
+                    return bool(_regex.match(s_val))
+
+                def normalize_phone_cell(val):
+                    if pd.isna(val):
+                        return val
+                    return re.sub(r'\.0$', '', str(val).strip())
 
                 invalid_phones_mask = ~cleaned_df[col].apply(is_valid_phone_cell)
                 invalid_cells = invalid_phones_mask & cleaned_df[col].notna()
                 if invalid_cells.any():
                     cleaned_df.loc[invalid_cells, col] = np.nan
                     invalid_count += int(invalid_cells.sum())
-                    
+                # Normalize remaining valid phone cells from float representation to clean string
+                valid_cells = ~invalid_phones_mask & cleaned_df[col].notna()
+                if valid_cells.any():
+                    cleaned_df.loc[valid_cells, col] = cleaned_df.loc[valid_cells, col].apply(normalize_phone_cell)
+
         if invalid_count > 0:
             logs.append(f"✓ Nullified {invalid_count} invalid cells (negative ages/salaries, malformed emails/phones)")
 

@@ -70,6 +70,12 @@
     /* Low eye-strain background */
     @apply bg-[#F8FAFC] text-slate-900 dark:bg-[#0F0F0F] dark:text-[#f8f8f8] font-sans antialiased transition-colors duration-300;
   }
+
+  /* Global iOS 60% Corner Smoothing (Figma Squircle Curvature) */
+  div, button, section, article, nav, header, main, card {
+    corner-smoothing: 0.6;
+    -webkit-corner-smoothing: 0.6;
+  }
 }
 
 /* ==========================================================================
@@ -108,6 +114,13 @@
   }
 }
 
+/* Skeleton Loader Shimmer */
+@keyframes shimmer {
+  to {
+    background-position: -100% 0;
+  }
+}
+
 /* Animation Helper Classes */
 .animate-upload-glow {
   animation: uploadGlow 2.2s infinite ease-in-out;
@@ -121,6 +134,29 @@
   background-size: 200% 100%;
   animation: progressShimmer 2s linear infinite;
 }
+
+.card__skeleton {
+  background-image: linear-gradient(
+    90deg,
+    #ccc 0px,
+    rgb(229 229 229 / 90%) 40px,
+    #ccc 80px
+  );
+  background-size: 300%;
+  background-position: 100% 0;
+  border-radius: inherit;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .card__skeleton {
+  background-image: linear-gradient(
+    90deg,
+    #272727 0px,
+    rgb(60 60 60 / 90%) 40px,
+    #272727 80px
+  );
+}
+
 
 /* ==========================================================================
    5. CUSTOM SCROLLBAR STYLING (FIREFOX & WEBKIT)

@@ -84,7 +84,7 @@ function BouncyAccordionRow({
           borderBottomLeftRadius: endsGroup ? 20 : 0,
           borderBottomRightRadius: endsGroup ? 20 : 0,
         }}
-        transition={reduce ? { duration: 0 } : ROW_TRANSITION}
+        transition={{ duration: 0 }}
         className={cn(
           "overflow-hidden bg-white dark:bg-[#1a1a1e] shadow-sm hover:shadow-md dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_6px_26px_rgba(0,0,0,0.65)] border border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 transition-all duration-200 relative z-0",
           open && "z-10",

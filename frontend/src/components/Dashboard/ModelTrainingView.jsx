@@ -7,6 +7,7 @@ import DatasetTableViewer from "../ui/DatasetTableViewer";
 import { AnimatedSelect } from "../ui/AnimatedSelect";
 import { AnimatedCheckbox } from "../ui/AnimatedCheckbox";
 import { BouncyAccordion } from "../ui/BouncyAccordion";
+import MatrixLoader from "../ui/MatrixLoader";
 import {
   BrainCircuit,
   UploadCloud,
@@ -640,6 +641,7 @@ export default function ModelTrainingView({
       const res = await api.post(`model-training/${datasetId}/train/`, payload);
       setActiveJobId(res.data.job_id);
       setJobStatus({
+        job_id: res.data.job_id,
         status: "training",
         progress_stage: "loading_dataset",
         progress_percent: 10,
@@ -650,6 +652,23 @@ export default function ModelTrainingView({
       );
       setTraining(false);
     }
+  };
+
+  const handleCancelTraining = async () => {
+    const currentJobId = activeJobId || jobStatus?.job_id;
+    setTraining(false);
+    setActiveJobId(null);
+    setJobStatus(null);
+    setTrainingJobDetail(null);
+    
+    if (currentJobId) {
+      try {
+        await api.post(`model-training/jobs/${currentJobId}/actions/`, { action: "cancel" });
+      } catch (err) {
+        console.error("Error cancelling training job:", err);
+      }
+    }
+    setSuccessMsg("Training process cancelled.");
   };
 
   // Load Job Detail for Modal
@@ -692,8 +711,59 @@ export default function ModelTrainingView({
 
   return (
     <div
-      className={`space-y-6 text-slate-800 dark:text-zinc-100 pb-10 animate-fade-in font-sans ${!datasetId ? "max-w-7xl mx-auto" : "max-w-full"}`}
+      className={`space-y-6 text-slate-800 dark:text-zinc-100 pb-10 animate-fade-in font-sans relative ${!datasetId ? "max-w-7xl mx-auto" : "max-w-full"}`}
     >
+      {/* MODEL TRAINING CONSOLE LOADING OVERLAY */}
+      {training && (
+        <div className="absolute -top-16 -left-6 -right-6 bottom-0 z-40 bg-slate-900/40 dark:bg-black/75 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 text-center animate-fade-in select-none min-h-screen">
+          <div className="sticky top-1/3 -translate-y-1/2 flex flex-col items-center p-6 sm:p-8 rounded-3xl bg-white/90 dark:bg-[#1a1a1e]/90 border border-slate-200 dark:border-zinc-800 shadow-xl dark:shadow-2xl max-w-xs sm:max-w-sm w-full space-y-5 animate-scale-in">
+            {/* Custom Matrix Loader */}
+            <MatrixLoader className="scale-110 sm:scale-125" />
+
+            {/* Title & Stage Details */}
+            <div className="flex flex-col items-center gap-1 w-full">
+              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Please Wait, Training Model...
+              </h3>
+              <p className="text-[11px] sm:text-xs font-semibold text-purple-600 dark:text-purple-400 capitalize truncate max-w-full">
+                {jobStatus?.progress_stage ? jobStatus.progress_stage.replace("_", " ") : "Initializing setup"}
+              </p>
+            </div>
+
+            {/* Custom Theme Rounded Progress Bar Container */}
+            <div className="w-full space-y-1.5">
+              <div className="relative w-full h-8 rounded-full bg-slate-900 border-2 border-slate-900 dark:bg-black dark:border-white overflow-hidden shadow-inner">
+                {/* Progress Fill */}
+                <div
+                  className="h-full bg-slate-100 dark:bg-white transition-all duration-300 ease-out relative flex items-center justify-center"
+                  style={{ width: `${jobStatus?.progress_percent || 0}%` }}
+                >
+                  {/* Centered Percentage Label */}
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-black tracking-wider text-slate-900 dark:text-black whitespace-nowrap pointer-events-none">
+                    {jobStatus?.progress_percent || 0}%
+                  </span>
+                </div>
+                {/* Fallback label when progress is 0% */}
+                {(!jobStatus?.progress_percent || jobStatus.progress_percent === 0) && (
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-black tracking-wider text-white dark:text-white whitespace-nowrap pointer-events-none">
+                    0%
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Cancel Button */}
+            <button
+              type="button"
+              onClick={handleCancelTraining}
+              className="mt-1 w-full sm:w-auto px-6 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+            >
+              <X className="w-4 h-4" /> Cancel Training
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notifications */}
       {successMsg && (
         <div className="fixed top-6 right-6 z-[9999] flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-white/90 dark:bg-zinc-900/90 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400 shadow-2xl backdrop-blur-md animate-fade-in max-w-md">
@@ -752,6 +822,7 @@ export default function ModelTrainingView({
 
       {/* CONSOLE PANEL */}
       <div className="space-y-6">
+
         {/* UPLOADER STATE */}
         {!datasetId ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
@@ -1204,7 +1275,7 @@ export default function ModelTrainingView({
                             </div>
 
                             {/* Shuffle Dataset Card */}
-                            <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm flex items-center justify-between">
+                            <div className="p-3.5 mb-2 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] shadow-sm flex items-center justify-between">
                               <AnimatedCheckbox
                                 checked={shuffle}
                                 onChange={(e) => setShuffle(e.target.checked)}
@@ -1223,9 +1294,10 @@ export default function ModelTrainingView({
                     collapsible={true}
                     className="space-y-0"
                     classNames={{
-                      item: "rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] shadow-sm hover:shadow-md dark:hover:shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition-all duration-200 overflow-hidden",
-                      trigger: "px-3.5 py-3 min-h-[50px] flex items-center justify-between w-full",
-                      content: "p-3 sm:p-4 border-t border-slate-100 dark:border-white/10 bg-slate-50/40 dark:bg-black/20",
+                      item: "rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden",
+                      trigger: "px-3.5 py-3 min-h-[50px] flex items-center justify-between w-full hover:bg-slate-50 dark:hover:bg-zinc-800/50",
+                      content: "border-t border-slate-100 dark:border-zinc-800/80 bg-slate-50/50 dark:bg-zinc-900/40",
+                      description: "p-3 sm:p-4",
                       chevron: "w-7 h-7 p-1 rounded-lg border-none bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300"
                     }}
                   />
@@ -1347,47 +1419,6 @@ export default function ModelTrainingView({
                     >
                       Force Train Anyway
                     </button>
-                  </div>
-                </div>
-              )}
-
-              {/* RUNNING TRAINING PROGRESS */}
-              {training && jobStatus && (
-                <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm space-y-4 animate-fade-in">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <Activity className="w-5 h-5 text-primary animate-pulse" />
-                      <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                        RefineX Training Pipeline Running
-                      </h3>
-                    </div>
-                    <span className="text-sm font-black text-primary">
-                      {jobStatus.progress_percent}%
-                    </span>
-                  </div>
-
-                  <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-zinc-800 overflow-hidden border border-slate-200/50 dark:border-zinc-800">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-primary to-indigo-500 transition-all duration-300 ease-out"
-                      style={{ width: `${jobStatus.progress_percent}%` }}
-                    />
-                  </div>
-
-                  <div className="flex justify-between items-center text-[10px] font-semibold text-slate-500 dark:text-zinc-400 tracking-wider">
-                    <span className="capitalize">
-                      Stage:{" "}
-                      <strong className="text-primary font-bold">
-                        {jobStatus.progress_stage.replace("_", " ")}
-                      </strong>
-                    </span>
-                    <span>
-                      Est. Remaining: ~
-                      {Math.max(
-                        5,
-                        30 - Math.round(jobStatus.progress_percent * 0.25),
-                      )}{" "}
-                      seconds
-                    </span>
                   </div>
                 </div>
               )}
@@ -1662,7 +1693,8 @@ export default function ModelTrainingView({
                 );
               })}
             </div>
-            {/* Content Body: 2x2 Grid Layout with Depth Effect */}
+
+            {/* Content Body: 2x2 Grid Layout with Depth Effect */}
             <div className="flex-1 overflow-y-auto p-6 min-h-0">
               {selectedModelForModal &&
                 trainingJobDetail.evaluation_metrics[selectedModelForModal] &&

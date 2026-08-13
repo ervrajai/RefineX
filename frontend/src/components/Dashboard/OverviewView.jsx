@@ -103,12 +103,42 @@ function OverviewView({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[450px] w-full gap-4 text-slate-500 dark:text-zinc-400">
-        <div className="relative w-12 h-12 flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full border-4 border-purple-500/20 animate-ping" />
-          <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+      <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto font-sans text-slate-900 dark:text-white pb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* --- LEFT COLUMN SKELETON (lg:col-span-8) --- */}
+          <div className="lg:col-span-8 space-y-6 min-w-0">
+            
+            {/* Mobile Header Skeleton */}
+            <div className="grid grid-cols-2 gap-3 sm:hidden">
+              <div className="rounded-3xl p-4 aspect-square bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+              <div className="rounded-3xl p-4 aspect-square bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+            </div>
+
+            {/* Desktop Hero Banner Skeleton */}
+            <div className="hidden sm:block w-full h-[200px] rounded-3xl bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+
+            {/* Quick Links Skeleton */}
+            <div className="flex flex-col gap-3">
+              <div className="h-4 w-28 rounded-md bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+              <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
+                <div className="h-[105px] sm:h-[120px] rounded-2xl sm:rounded-3xl bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+                <div className="h-[105px] sm:h-[120px] rounded-2xl sm:rounded-3xl bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+                <div className="h-[105px] sm:h-[120px] rounded-2xl sm:rounded-3xl bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+              </div>
+            </div>
+
+            {/* Statistics Section Skeleton */}
+            <div className="flex flex-col gap-3">
+              <div className="h-4 w-32 rounded-md bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+              <div className="h-64 rounded-3xl bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+            </div>
+          </div>
+
+          {/* --- RIGHT COLUMN SKELETON (lg:col-span-4) --- */}
+          <div className="hidden sm:flex lg:col-span-4 rounded-3xl h-[560px] bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+
         </div>
-        <span className="text-sm font-semibold tracking-wide animate-pulse">Loading RefineX Workspace...</span>
       </div>
     );
   }

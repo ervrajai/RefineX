@@ -13,15 +13,11 @@ import ModelTrainingView from "../../components/Dashboard/ModelTrainingView";
 import VisualizationView from "../../components/Dashboard/VisualizationView";
 
 
-import logoImg from "../../assets/logo/refinex_logo.png";
-
 import { 
   Sparkles,
   BrainCircuit,
   LineChart,
-  History,
-  Sun,
-  Moon
+  History
 } from "lucide-react";
 
 function Dashboard() {
@@ -34,45 +30,6 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-
-  // Mobile Header Theme State
-  const [theme, setThemeState] = useState(() => {
-    const stored = localStorage.getItem("theme");
-    if (stored) return stored;
-    return document.documentElement.classList.contains("dark") ? "dark" : "light";
-  });
-
-  useEffect(() => {
-    const syncTheme = () => {
-      const stored = localStorage.getItem("theme") || (document.documentElement.classList.contains("dark") ? "dark" : "light");
-      setThemeState(stored);
-    };
-    window.addEventListener("themeChange", syncTheme);
-    return () => window.removeEventListener("themeChange", syncTheme);
-  }, []);
-
-  const isDarkMode = theme === "dark" || (theme === "auto" && document.documentElement.classList.contains("dark"));
-
-  const toggleTheme = () => {
-    const targetMode = isDarkMode ? "light" : "dark";
-    localStorage.setItem("theme", targetMode);
-    setThemeState(targetMode);
-    if (targetMode === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    window.dispatchEvent(new Event("themeChange"));
-  };
-
-  const getInitials = (firstName, lastName, email) => {
-    if (firstName && lastName) {
-      return `${firstName[0]}${lastName[0]}`.toUpperCase();
-    }
-    if (firstName) return firstName[0].toUpperCase();
-    if (email) return email[0].toUpperCase();
-    return "U";
-  };
 
   // Centralized History & Dataset Pagination State
   const [historyList, setHistoryList] = useState([]);
@@ -263,23 +220,8 @@ function Dashboard() {
     setActiveTab("clean");
   };
 
-  const lastScrollTopRef = useRef(0);
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-
   const handleScroll = (e) => {
-    const currentScrollTop = e.currentTarget.scrollTop;
-    setIsScrolled(currentScrollTop > 10);
-
-    if (currentScrollTop <= 10) {
-      setIsHeaderVisible(true);
-    } else if (currentScrollTop > lastScrollTopRef.current + 8) {
-      // User scrolling DOWN -> vanish header
-      setIsHeaderVisible(false);
-    } else if (currentScrollTop < lastScrollTopRef.current - 8) {
-      // User scrolling UP -> reveal header
-      setIsHeaderVisible(true);
-    }
-    lastScrollTopRef.current = currentScrollTop;
+    setIsScrolled(e.currentTarget.scrollTop > 10);
   };
 
   return (
@@ -300,58 +242,8 @@ function Dashboard() {
       {/* Workspace Panel */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         
-        {/* MOBILE FLOATING TOP GLASS HEADER (Elevated Floating Pill Bar, Vanishes on Scroll Down / Reveals on Scroll Up) */}
-        <header className={`md:hidden fixed top-3 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-[420px] pointer-events-auto transition-all duration-300 ease-in-out transform ${
-          isHeaderVisible ? "translate-y-0 opacity-100" : "-translate-y-24 opacity-0 pointer-events-none"
-        }`}>
-          <div className="relative flex items-center justify-between px-3.5 h-[52px] rounded-full bg-white/80 dark:bg-[#212121]/80 backdrop-blur-3xl border border-slate-200/80 dark:border-zinc-800 shadow-md dark:shadow-black/50">
-            {/* Left: App Logo & Brand Name */}
-            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab("overview")}>
-              <img src={logoImg} alt="RefineX Logo" className="w-[32px] h-[32px] object-cover rounded-lg shrink-0 shadow-xs" />
-              <span className="sidebar-refine text-base tracking-wider inline-flex items-center text-slate-900 dark:text-white whitespace-nowrap">
-                Refine<span className="font-sans text-[#673ab7] text-xl font-black ml-0.5 inline-flex items-center justify-center leading-none">X</span>
-              </span>
-            </div>
-
-            {/* Right: Dark/Light Mode Toggle + Profile Avatar */}
-            <div className="flex items-center gap-2">
-              {/* Theme Toggle Button */}
-              <button
-                type="button"
-                onClick={toggleTheme}
-                title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                className="w-8.5 h-8.5 rounded-full flex items-center justify-center bg-slate-100/90 dark:bg-zinc-800/90 text-slate-700 dark:text-zinc-200 border border-slate-200/80 dark:border-zinc-700/80 shadow-2xs hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-              >
-                {isDarkMode ? (
-                  <Sun className="w-4 h-4 text-amber-400" />
-                ) : (
-                  <Moon className="w-4 h-4 text-purple-600" />
-                )}
-              </button>
-
-              {/* Profile Avatar Button -> Tapping redirects to Settings / Profile */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("settings")}
-                title="View Profile Settings"
-                className="relative w-8.5 h-8.5 rounded-full overflow-hidden bg-slate-200 dark:bg-zinc-800 flex items-center justify-center border-2 border-purple-500/40 dark:border-purple-400/40 shadow-2xs cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200"
-              >
-                {loading ? (
-                  <div className="w-full h-full animate-pulse bg-slate-300 dark:bg-zinc-700" />
-                ) : user?.profile_picture ? (
-                  <img src={user.profile_picture} alt="avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">
-                    {user ? getInitials(user.first_name, user.last_name, user.email) : "?"}
-                  </span>
-                )}
-              </button>
-            </div>
-          </div>
-        </header>
-
         {/* Dynamic content area - listens for scroll */}
-        <main id="main-scroll-container" onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 pt-16 sm:pt-6">
+        <main id="main-scroll-container" onScroll={handleScroll} className="flex-1 overflow-y-auto p-6 space-y-6 pt-16">
           
           {/* Main Error Banner */}
           {error && (

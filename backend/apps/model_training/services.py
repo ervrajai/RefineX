@@ -370,6 +370,11 @@ class ModelTrainingService:
             total_algorithms = len(algorithms)
 
             for idx, algo in enumerate(algorithms):
+                # Check if job was cancelled by user
+                job.refresh_from_db()
+                if job.status == "cancelled":
+                    return
+
                 job.progress_stage = f"training_{algo}"
                 job.progress_percent = int(35 + (idx / total_algorithms) * 45)
                 job.save()
@@ -501,6 +506,11 @@ class ModelTrainingService:
                     best_model_name = algo
                     best_pipeline = pipeline
 
+            # Check if cancelled before saving final files
+            job.refresh_from_db()
+            if job.status == "cancelled":
+                return
+
             # Stage: saving model
             job.progress_stage = "saving_results"
             job.progress_percent = 90
@@ -522,6 +532,16 @@ class ModelTrainingService:
                 "problem_type": problem_type
             }
             joblib.dump(saved_bundle, model_path)
+
+            # Check if cancelled after joblib dump
+            job.refresh_from_db()
+            if job.status == "cancelled":
+                if os.path.exists(model_path):
+                    try:
+                        os.remove(model_path)
+                    except Exception:
+                        pass
+                return
 
             # Store predictions data
             # Map predictions back to label classes
@@ -551,9 +571,15 @@ class ModelTrainingService:
             job.save()
 
         except Exception as e:
-            job.status = "failed"
-            job.progress_stage = "failed"
-            job.progress_percent = 100
-            job.error_message = str(e)
-            job.predictions = {}
-            job.save()
+            try:
+                job.refresh_from_db()
+                if job.status == "cancelled":
+                    return
+                job.status = "failed"
+                job.progress_stage = "failed"
+                job.progress_percent = 100
+                job.error_message = str(e)
+                job.predictions = {}
+                job.save()
+            except Exception:
+                pass

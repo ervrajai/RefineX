@@ -9,6 +9,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.base import ContentFile
 from django.utils import timezone
+from django.conf import settings
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -320,6 +321,29 @@ class DatasetMLJobActionsView(APIView):
             job.save()
             return Response({"message": "Notes and tags updated successfully."}, status=status.HTTP_200_OK)
             
+        elif action == "cancel":
+            job.status = "cancelled"
+            job.save(update_fields=["status"])
+            
+            # Remove joblib model file from disk if created
+            if job.trained_model_file and os.path.exists(job.trained_model_file.path):
+                try:
+                    os.remove(job.trained_model_file.path)
+                except Exception:
+                    pass
+            
+            # Also check expected filename path
+            model_dir = os.path.join(settings.MEDIA_ROOT, "models")
+            expected_path = os.path.join(model_dir, f"model_job_{job.id}.joblib")
+            if os.path.exists(expected_path):
+                try:
+                    os.remove(expected_path)
+                except Exception:
+                    pass
+
+            job.delete()
+            return Response({"message": "Training job cancelled and removed."}, status=status.HTTP_200_OK)
+
         elif action == "soft_delete":
             job.is_deleted = True
             job.deleted_at = timezone.now()

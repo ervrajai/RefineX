@@ -128,6 +128,9 @@ PURPOSE_EMAIL_CONFIG = {
 }
 
 
+import logging
+logger = logging.getLogger(__name__)
+
 def _send_otp(email, otp, subject, purpose="signup"):
     config = PURPOSE_EMAIL_CONFIG.get(purpose, PURPOSE_EMAIL_CONFIG["signup"])
     final_subject = subject or config["subject"]
@@ -135,16 +138,22 @@ def _send_otp(email, otp, subject, purpose="signup"):
     html_message = render_to_string(config["template"], context)
     text_message = strip_tags(html_message)
 
-    sent_count = send_mail(
-        final_subject,
-        text_message,
-        getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@refinex.local"),
-        [email],
-        html_message=html_message,
-        fail_silently=False,
-    )
-    if sent_count != 1:
-        raise SMTPException("OTP email was not accepted by the SMTP backend.")
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", getattr(settings, "EMAIL_HOST_USER", "no-reply@refinex.local"))
+    try:
+        sent_count = send_mail(
+            final_subject,
+            text_message,
+            from_email,
+            [email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        if sent_count != 1:
+            raise SMTPException("OTP email was not accepted by the SMTP backend.")
+    except Exception as exc:
+        logger.error(f"[EMAIL FAILED] Could not send OTP to {email}: {exc}")
+        print(f"[EMAIL FAILED] Could not send OTP to {email}: {repr(exc)}")
+        raise
 
 
 def _otp_email_error_response():

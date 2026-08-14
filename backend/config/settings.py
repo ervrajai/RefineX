@@ -240,6 +240,9 @@ FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173").rstr
 LOGIN_REDIRECT_URL = f"{FRONTEND_BASE_URL}/dashboard"
 LOGOUT_REDIRECT_URL = f"{FRONTEND_BASE_URL}/login"
 
+# Proxy SSL header for reverse proxies (Render, Vercel, Cloudflare, Nginx)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     "accept",
@@ -266,6 +269,11 @@ _custom_cors = os.getenv("CORS_ALLOWED_ORIGINS", "")
 if _custom_cors:
     CORS_ALLOWED_ORIGINS.extend([origin.strip() for origin in _custom_cors.split(",") if origin.strip()])
 
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https:\/\/.*\.vercel\.app$",
+    r"^https:\/\/.*\.onrender\.com$",
+]
+
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -280,8 +288,18 @@ if _custom_csrf:
     CSRF_TRUSTED_ORIGINS.extend([origin.strip() for origin in _custom_csrf.split(",") if origin.strip()])
 
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_SAMESITE = "Lax"
+if not DEBUG:
+    SESSION_COOKIE_SAMESITE = "None"
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SAMESITE = "None"
+    CSRF_COOKIE_SECURE = True
+    ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
+else:
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SECURE = False
+    ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
 
 SOCIALACCOUNT_LOGIN_ON_GET = True
 SOCIALACCOUNT_AUTO_SIGNUP = True

@@ -32,7 +32,7 @@ DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,.onrender.com").split(",")
+    for host in os.getenv("ALLOWED_HOSTS", "*").split(",")
     if host.strip()
 ]
 
@@ -69,11 +69,6 @@ INSTALLED_APPS = [
     "apps.model_training",
     "apps.visualization",
     "apps.history",
-]
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
 ]
 
 MIDDLEWARE = [
@@ -259,8 +254,6 @@ CORS_ALLOW_HEADERS = [
 
 CORS_ALLOWED_ORIGINS = [
     "https://refinex-kappa.vercel.app",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
 ]
 if FRONTEND_BASE_URL and FRONTEND_BASE_URL not in CORS_ALLOWED_ORIGINS:
     CORS_ALLOWED_ORIGINS.append(FRONTEND_BASE_URL)
@@ -276,8 +269,6 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 
 CSRF_TRUSTED_ORIGINS = [
     "https://refinex-kappa.vercel.app",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
     "https://*.onrender.com",
     "https://*.vercel.app",
 ]

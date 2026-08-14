@@ -107,7 +107,7 @@ function Dashboard() {
 
   // Centralized Overview Statistics Cache State
   const [overviewData, setOverviewData] = useState(null);
-  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [overviewLoading, setOverviewLoading] = useState(true);
 
   // Central Initial Overview Fetch (cached in state, refetched only on page refresh or explicit update)
   const fetchOverviewData = async (force = false) => {

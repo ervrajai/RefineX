@@ -635,15 +635,75 @@ export default function HistoryView({
 
   if (loading) {
     return (
-      <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
-        <div className="p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#212121] shadow-sm">
-          <div className="h-7 w-56 bg-slate-200 dark:bg-zinc-800 rounded animate-pulse mb-6" />
-          <div className="space-y-4">
-            <div className="h-16 bg-slate-100 dark:bg-zinc-800/50 rounded animate-pulse" />
-            <div className="h-16 bg-slate-100 dark:bg-zinc-800/50 rounded animate-pulse" />
-            <div className="h-16 bg-slate-100 dark:bg-zinc-800/50 rounded animate-pulse" />
+      <div className="space-y-6 text-slate-800 dark:text-zinc-100 max-w-4xl mx-auto animate-fade-in font-sans pb-10">
+        
+        {/* 1. Header Skeleton */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-0 py-1 mb-6 animate-pulse">
+          <div className="space-y-2">
+            <div className="h-7 sm:h-8 w-32 sm:w-40 bg-slate-200 dark:bg-zinc-800 rounded-xl" />
+            <div className="h-3 w-64 sm:w-96 bg-slate-100 dark:bg-zinc-800/60 rounded-md" />
+          </div>
+
+          <div className="flex items-center gap-2.5 self-start sm:self-center shrink-0">
+            <div className="w-8.5 h-8.5 rounded-full bg-slate-200 dark:bg-zinc-800" />
+            <div className="h-8.5 w-28 rounded-full bg-slate-200 dark:bg-zinc-800" />
           </div>
         </div>
+
+        {/* 2. Search & Filter Toolbar Skeleton */}
+        <div className="flex flex-col md:flex-row items-center gap-3 w-full my-4 animate-pulse">
+          {/* Left: 4-Pill Segmented Filter Capsule */}
+          <div className="w-full md:w-7/12">
+            <div className="hidden md:grid grid-cols-4 p-1 rounded-full bg-[#e3e3e8] dark:bg-[#1c1c1e] border border-slate-200/60 dark:border-zinc-800/80 h-10.5 items-center gap-1">
+              <div className="h-full rounded-full bg-white dark:bg-[#3a3a3c] shadow-xs" />
+              <div className="h-full rounded-full bg-transparent" />
+              <div className="h-full rounded-full bg-transparent" />
+              <div className="h-full rounded-full bg-transparent" />
+            </div>
+            <div className="block md:hidden h-10.5 rounded-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800" />
+          </div>
+
+          {/* Right: Search Bar Capsule */}
+          <div className="w-full md:w-5/12 h-10.5 rounded-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex items-center px-4 gap-2">
+            <div className="w-4 h-4 rounded-full bg-slate-200 dark:bg-zinc-800 shrink-0" />
+            <div className="h-3 w-32 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+          </div>
+        </div>
+
+        {/* 3. Stacked History Accordion Cards Skeleton */}
+        <div className="space-y-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="rounded-[20px] overflow-hidden bg-white dark:bg-[#1a1a1e] border border-slate-200 dark:border-white/10 shadow-sm p-4 sm:p-5 flex items-center justify-between gap-4 animate-pulse"
+            >
+              {/* Left Side: Icon & Title Metadata */}
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 flex items-center justify-center shrink-0">
+                  <div className="w-5 h-5 rounded-md bg-purple-200/80 dark:bg-purple-800/40" />
+                </div>
+                
+                <div className="space-y-2 min-w-0 flex-1">
+                  <div className="h-4 w-40 sm:w-60 bg-slate-200 dark:bg-zinc-800 rounded-md" />
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-20 bg-slate-100 dark:bg-zinc-800/60 rounded-md" />
+                    <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-zinc-700" />
+                    <div className="h-3 w-28 bg-slate-100 dark:bg-zinc-800/60 rounded-md" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Side: Status Pill, Buttons & Chevron */}
+              <div className="flex items-center gap-2.5 shrink-0">
+                <div className="hidden sm:block h-6 w-20 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/50 dark:border-emerald-800/30" />
+                <div className="hidden sm:block h-8 w-24 rounded-full bg-slate-900/10 dark:bg-white/10" />
+                <div className="hidden sm:block w-7 h-7 rounded-full bg-slate-100 dark:bg-zinc-800" />
+                <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-zinc-800" />
+              </div>
+            </div>
+          ))}
+        </div>
+
       </div>
     );
   }

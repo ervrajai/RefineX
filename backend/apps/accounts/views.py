@@ -128,19 +128,93 @@ PURPOSE_EMAIL_CONFIG = {
 }
 
 
+import base64
 import logging
+import os
 import smtplib
 import ssl
 import threading
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+import requests
+
 logger = logging.getLogger(__name__)
+
+
+def _send_email_via_gmail_api(to_email, subject, html_content, text_content):
+    """
+    Sends email directly via official Google Gmail REST API over HTTPS (Port 443).
+    100% Google, zero SMTP port block issues on cloud hosts.
+    """
+    refresh_token = os.getenv("GMAIL_REFRESH_TOKEN", "").strip().strip("'\"")
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip().strip("'\"")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip().strip("'\"")
+    user_email = getattr(settings, "EMAIL_HOST_USER", "refinexteam@gmail.com") or "refinexteam@gmail.com"
+
+    if not (refresh_token and client_id and client_secret):
+        return False
+
+    try:
+        # 1. Get short-lived Access Token from Google OAuth2 Endpoint
+        token_resp = requests.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "refresh_token": refresh_token,
+                "grant_type": "refresh_token",
+            },
+            timeout=8,
+        )
+        token_data = token_resp.json()
+        access_token = token_data.get("access_token")
+        if not access_token:
+            logger.error(f"[GMAIL API TOKEN ERROR] Failed to fetch access token: {token_data}")
+            return False
+
+        # 2. Build RFC 2822 Multipart Email
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"RefineX <{user_email}>"
+        msg["To"] = to_email
+
+        msg.attach(MIMEText(text_content, "plain", "utf-8"))
+        msg.attach(MIMEText(html_content, "html", "utf-8"))
+
+        raw_b64 = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+
+        # 3. POST to Google Gmail Send API (HTTPS Port 443)
+        send_resp = requests.post(
+            "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+            json={"raw": raw_b64},
+            timeout=8,
+        )
+        if send_resp.status_code in (200, 201):
+            logger.info(f"[GMAIL API HTTPS 443] Successfully delivered OTP email to {to_email}")
+            return True
+        else:
+            logger.error(f"[GMAIL API SEND ERROR {send_resp.status_code}] {send_resp.text}")
+            return False
+    except Exception as e:
+        logger.error(f"[GMAIL API EXCEPTION] {e}")
+        return False
+
 
 def _send_email_direct_smtp(to_email, subject, html_content, text_content):
     """
-    Direct, fast Google SMTP sender with SSL 465 and TLS 587 fallback.
+    Primary: Google Gmail HTTPS API (Port 443).
+    Secondary Fallback: Google SMTP (Port 465 / 587).
     """
+    # 1. Try Official Google Gmail API over HTTPS (Port 443)
+    if _send_email_via_gmail_api(to_email, subject, html_content, text_content):
+        return True
+
+    # 2. Fallback to Direct SMTP
     user = getattr(settings, "EMAIL_HOST_USER", "refinexteam@gmail.com") or "refinexteam@gmail.com"
     password = getattr(settings, "EMAIL_HOST_PASSWORD", "apbmgkakcgclllqv") or "apbmgkakcgclllqv"
     from_header = f"RefineX <{user}>"

@@ -3,7 +3,7 @@ import { FaGithub } from "react-icons/fa";
 
 const BACKEND_URL = import.meta.env.VITE_API_BASE_URL
   ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '')
-  : "http://localhost:8000";
+  : "https://refinex-backend.onrender.com";
 
 const OAUTH_BASE = `${BACKEND_URL}/accounts`;
 

@@ -1541,7 +1541,7 @@ export default function VisualizationView({
                 {/* Library Selection */}
                 <div>
                   <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                    Engine Engine
+                    Engine 
                   </label>
                   <AnimatedSelect
                     value={config.library}

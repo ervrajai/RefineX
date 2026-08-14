@@ -75,72 +75,67 @@ def clean_numeric_series(series):
         
     return numeric_s
 
-def read_dataframe(file_path, file_type, encoding='UTF-8'):
+def read_dataframe(file_input, file_type='csv', encoding='UTF-8'):
     """
-    Safely reads a dataset into a Pandas DataFrame, handling common encoding formats and delimiter sniffing.
+    Safely reads a dataset into a Pandas DataFrame, handling:
+    - Django FieldFile / File instances (from remote S3/B2 storage or local storage)
+    - File-like objects (io.BytesIO, StringIO)
+    - Raw bytes
+    - File system string paths / storage keys
+    Handles Parquet, CSV (delimiter sniffing & multiple encodings), and Excel (xlsx/xls).
     """
-    if file_path.endswith('.parquet') or file_type.lower() == 'parquet':
+    if file_input is None:
+        raise ValueError("No file provided to read_dataframe.")
+
+    # Determine file_type if not explicitly known
+    ext = (file_type or "").lower()
+    if hasattr(file_input, 'name') and file_input.name:
+        ext = file_input.name.split('.')[-1].lower()
+    elif isinstance(file_input, str) and '.' in file_input:
+        ext = file_input.split('.')[-1].lower()
+
+    # Extract bytes safely from any source
+    content_bytes = None
+    if isinstance(file_input, bytes):
+        content_bytes = file_input
+    elif hasattr(file_input, 'read'):
         try:
-            df = pd.read_parquet(file_path)
+            if hasattr(file_input, 'seek'):
+                file_input.seek(0)
+            content_bytes = file_input.read()
+        except Exception:
+            if hasattr(file_input, 'open'):
+                with file_input.open('rb') as f:
+                    content_bytes = f.read()
+            else:
+                raise
+    elif hasattr(file_input, 'open'):
+        with file_input.open('rb') as f:
+            content_bytes = f.read()
+    elif isinstance(file_input, str):
+        if os.path.exists(file_input):
+            with open(file_input, 'rb') as f:
+                content_bytes = f.read()
+        else:
+            from django.core.files.storage import default_storage
+            if default_storage.exists(file_input):
+                with default_storage.open(file_input, 'rb') as f:
+                    content_bytes = f.read()
+            else:
+                raise ValueError(f"File not found: {file_input}")
+
+    if not content_bytes or len(content_bytes.strip()) == 0:
+        raise ValueError("The dataset file is empty.")
+
+    if ext == 'parquet' or file_type.lower() == 'parquet':
+        try:
+            df = pd.read_parquet(io.BytesIO(content_bytes))
             df.columns = make_columns_unique(df.columns)
             return df, 'UTF-8'
         except Exception as e:
             raise ValueError(f"Could not read Parquet file: {str(e)}")
 
-    if file_type.lower() == 'csv':
-        detected_encoding = encoding
-        encodings_to_try = [encoding, 'utf-8-sig', 'utf-8', 'latin-1', 'cp1252', 'utf-16']
-        seen_enc = set()
-        unique_encodings = [x for x in encodings_to_try if not (x.lower() in seen_enc or seen_enc.add(x.lower()))]
-        df = None
-        for enc in unique_encodings:
-            try:
-                # Read sample to sniff delimiter
-                with open(file_path, 'rb') as f:
-                    sample_bytes = f.read(10240)
-                sample = sample_bytes.decode(enc, errors='ignore')
-                
-                try:
-                    dialect = csv.Sniffer().sniff(sample)
-                    delimiter = dialect.delimiter
-                    if delimiter not in [',', ';', '\t', '|', ':']:
-                        delimiter = ','
-                except Exception:
-                    # Fallback separator counts
-                    if ';' in sample and sample.count(';') > sample.count(','):
-                        delimiter = ';'
-                    elif '\t' in sample:
-                        delimiter = '\t'
-                    elif '|' in sample and sample.count('|') > sample.count(','):
-                        delimiter = '|'
-                    else:
-                        delimiter = ','
-
-                df = pd.read_csv(file_path, encoding=enc, sep=delimiter, on_bad_lines='skip', engine='python')
-                detected_encoding = enc
-                break
-            except Exception:
-                try:
-                    df = pd.read_csv(file_path, encoding=enc, on_bad_lines='skip')
-                    detected_encoding = enc
-                    break
-                except Exception:
-                    continue
-                
-        if df is None:
-            raise ValueError("Could not decode CSV file using standard encodings. Check delimiter, rows format, or file corruption.")
-            
-        df.columns = make_columns_unique(df.columns)
-        return df, detected_encoding
-    elif file_type.lower() in ['xlsx', 'xls']:
-        try:
-            df = pd.read_excel(file_path)
-            df.columns = make_columns_unique(df.columns)
-            return df, 'UTF-8'
-        except Exception as e:
-            raise ValueError(f"Could not read Excel file: {str(e)}")
-    else:
-        raise ValueError(f"Unsupported file type: {file_type}")
+    return read_dataframe_from_bytes(content_bytes, file_type=file_type, encoding=encoding)
 
 
 def read_dataframe_from_bytes(content_bytes, file_type, encoding='UTF-8'):

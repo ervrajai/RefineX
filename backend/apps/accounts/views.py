@@ -606,18 +606,16 @@ class DeleteAccountConfirmView(APIView):
 
             _clear_otp(request, "delete_account")
 
-        # Permanently erase physical CSV and model files from local PC disk storage
+        # Permanently erase dataset files and model files from storage
         for ds in user.datasets.all():
             if ds.original_file:
                 try:
-                    if os.path.isfile(ds.original_file.path):
-                        os.remove(ds.original_file.path)
+                    ds.original_file.delete(save=False)
                 except Exception:
                     pass
             if ds.cleaned_file:
                 try:
-                    if os.path.isfile(ds.cleaned_file.path):
-                        os.remove(ds.cleaned_file.path)
+                    ds.cleaned_file.delete(save=False)
                 except Exception:
                     pass
 
@@ -625,8 +623,7 @@ class DeleteAccountConfirmView(APIView):
             for job in user.model_training_jobs.all():
                 if job.trained_model_file:
                     try:
-                        if os.path.isfile(job.trained_model_file.path):
-                            os.remove(job.trained_model_file.path)
+                        job.trained_model_file.delete(save=False)
                     except Exception:
                         pass
 

@@ -19,14 +19,12 @@ class CleaningConfig(AppConfig):
             for ds in expired:
                 if ds.original_file:
                     try:
-                        if os.path.isfile(ds.original_file.path):
-                            os.remove(ds.original_file.path)
+                        ds.original_file.delete(save=False)
                     except Exception:
                         pass
                 if ds.cleaned_file:
                     try:
-                        if os.path.isfile(ds.cleaned_file.path):
-                            os.remove(ds.cleaned_file.path)
+                        ds.cleaned_file.delete(save=False)
                     except Exception:
                         pass
                 ds.delete()

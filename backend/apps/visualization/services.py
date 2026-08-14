@@ -17,8 +17,8 @@ def get_dataset_analysis(dataset):
         return analysis
         
     try:
-        file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
-        df, _ = read_dataframe(file_path, dataset.file_type, encoding=dataset.encoding)
+        target_file = dataset.cleaned_file if dataset.cleaned_file else dataset.original_file
+        df, _ = read_dataframe(target_file, dataset.file_type, encoding=dataset.encoding)
         
         analysis = run_comprehensive_analysis(df, dataset)
         cache.set(cache_key, analysis, timeout=None)  # Cache indefinitely until dataset updates

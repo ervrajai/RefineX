@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import logoImg from "../../assets/logo/refinex_logo.png";
 
 // --- 100% CRASH-PROOF INLINE SVG ICONS ---
@@ -151,6 +152,7 @@ const NavSection = ({ title, links, index, navigate }) => (
 // --- MAIN FOOTER ---
 export default function Footer() {
   const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
 
   return (
     <footer className="w-full px-4 pt-20 pb-12 overflow-hidden bg-white dark:bg-[#0F0F0F]">
@@ -225,7 +227,7 @@ export default function Footer() {
             {/* Navigation Context Links */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12 w-full lg:w-auto">
               {footerData.sections.map((section, index) => (
-                <NavSection key={section.title} title={section.title} links={section.links} index={index} navigate={navigate} />
+                <NavSection key={section.title} title={section.title} links={section.links} index={index} navigate={navigate} isLoggedIn={isLoggedIn} />
               ))}
             </div>
           </div>

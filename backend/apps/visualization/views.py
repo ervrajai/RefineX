@@ -150,12 +150,12 @@ class GraphGenerationView(APIView):
             }, status=status.HTTP_200_OK)
             
         try:
-            # 2. Execution Profiling: Step 1 - Disk Read
+            # 2. Execution Profiling: Step 1 - Data Read
             t_start_read = time.time()
-            file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
-            df, _ = read_dataframe(file_path, dataset.file_type, encoding=dataset.encoding)
+            target_file = dataset.cleaned_file if dataset.cleaned_file else dataset.original_file
+            df, _ = read_dataframe(target_file, dataset.file_type, encoding=dataset.encoding)
             t_read = time.time() - t_start_read
-            logger.info(f"[PROFILING] 1. Disk Read Time: {t_read:.4f}s for dataset_id={dataset_id}")
+            logger.info(f"[PROFILING] 1. Data Read Time: {t_read:.4f}s for dataset_id={dataset_id}")
 
             # Execution Profiling: Step 2 - Data Processing & Aggregation
             t_start_proc = time.time()
@@ -218,8 +218,8 @@ class GraphExportView(APIView):
         dataset = get_object_or_404(Dataset, pk=dataset_id)
         
         try:
-            file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
-            df, _ = read_dataframe(file_path, dataset.file_type, encoding=dataset.encoding)
+            target_file = dataset.cleaned_file if dataset.cleaned_file else dataset.original_file
+            df, _ = read_dataframe(target_file, dataset.file_type, encoding=dataset.encoding)
             
             # Force full dataset export (no sampling)
             config["is_export"] = True

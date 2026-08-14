@@ -2,20 +2,30 @@ import React, { useRef, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Hero() {
   const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const handleButtonClick = () => {
-    navigate("/clean");
+    if (isLoggedIn) {
+      navigate("/dashboard");
+    } else {
+      navigate("/clean");
+    }
   };
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
-      navigate("/clean", { state: { file: e.target.files[0] } });
+      if (isLoggedIn) {
+        navigate("/dashboard", { state: { file: e.target.files[0] } });
+      } else {
+        navigate("/clean", { state: { file: e.target.files[0] } });
+      }
     }
   };
 

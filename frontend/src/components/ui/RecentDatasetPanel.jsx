@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { History, FileSpreadsheet, ChevronRight, RotateCw } from "lucide-react";
+import { History, FileSpreadsheet, ChevronRight, RotateCw, Loader2 } from "lucide-react";
 
 export default function RecentDatasetPanel({
   items = [],
@@ -79,6 +79,8 @@ export default function RecentDatasetPanel({
           </div>
         ) : (
           items.map((item, idx) => {
+            const itemId = item.dataset_id || item.id;
+            const isLoading = loadingId && (String(loadingId) === String(itemId) || String(loadingId) === String(item.id));
             let rawName = item.dataset_name || item.name || "Untitled Dataset";
             // Strip any version suffix or cleaned tags so original dataset name is always cleanly shown
             const name = rawName
@@ -90,8 +92,10 @@ export default function RecentDatasetPanel({
             return (
               <div
                 key={item.id || idx}
-                onClick={() => onSelect && onSelect(item)}
-                className="relative group p-2.5 sm:p-3 rounded-xl border border-slate-200/90 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/60 hover:bg-slate-900 dark:hover:bg-white hover:border-slate-900 dark:hover:border-white transition-all duration-300 ease-in-out cursor-pointer flex items-center justify-between shadow-2xs overflow-hidden"
+                onClick={() => !isLoading && onSelect && onSelect(item)}
+                className={`relative group p-2.5 sm:p-3 rounded-xl border border-slate-200/90 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-900/60 hover:bg-slate-900 dark:hover:bg-white hover:border-slate-900 dark:hover:border-white transition-all duration-300 ease-in-out cursor-pointer flex items-center justify-between shadow-2xs overflow-hidden ${
+                  isLoading ? "opacity-80 pointer-events-none" : ""
+                }`}
               >
                 {/* Left content: Icon + Info */}
                 <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -108,9 +112,13 @@ export default function RecentDatasetPanel({
                   </div>
                 </div>
 
-                {/* Right Arrow indicator */}
+                {/* Right Arrow indicator or Inline Loading Spinner */}
                 <div className="flex items-center gap-1 shrink-0 ml-2">
-                  <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 dark:text-zinc-500 group-hover:text-white dark:group-hover:text-slate-900 group-hover:translate-x-1 transition-all duration-300" />
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 text-purple-600 dark:text-purple-400 animate-spin" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 dark:text-zinc-500 group-hover:text-white dark:group-hover:text-slate-900 group-hover:translate-x-1 transition-all duration-300" />
+                  )}
                 </div>
               </div>
             );

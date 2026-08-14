@@ -28,16 +28,14 @@ def purge_expired_deleted_items():
         # 1. Datasets & associated CleaningJobs
         expired_datasets = Dataset.objects.filter(is_deleted=True, deleted_at__lte=cutoff)
         for ds in expired_datasets:
-            if ds.original_file and ds.original_file.name:
+            if ds.original_file:
                 try:
-                    if os.path.isfile(ds.original_file.path):
-                        os.remove(ds.original_file.path)
+                    ds.original_file.delete(save=False)
                 except Exception:
                     pass
-            if ds.cleaned_file and ds.cleaned_file.name:
+            if ds.cleaned_file:
                 try:
-                    if os.path.isfile(ds.cleaned_file.path):
-                        os.remove(ds.cleaned_file.path)
+                    ds.cleaned_file.delete(save=False)
                 except Exception:
                     pass
             ds.delete()
@@ -48,10 +46,9 @@ def purge_expired_deleted_items():
         # 2. ModelTrainingJobs
         expired_ml = ModelTrainingJob.objects.filter(is_deleted=True, deleted_at__lte=cutoff)
         for job in expired_ml:
-            if job.trained_model_file and job.trained_model_file.name:
+            if job.trained_model_file:
                 try:
-                    if os.path.isfile(job.trained_model_file.path):
-                        os.remove(job.trained_model_file.path)
+                    job.trained_model_file.delete(save=False)
                 except Exception:
                     pass
             job.delete()
@@ -288,11 +285,11 @@ class CleaningHistoryView(APIView):
                 ds = Dataset.objects.filter(id=target_id).first()
                 if ds:
                     if is_permanent:
-                        if ds.original_file and ds.original_file.name and os.path.isfile(ds.original_file.path):
-                            try: os.remove(ds.original_file.path)
+                        if ds.original_file:
+                            try: ds.original_file.delete(save=False)
                             except Exception: pass
-                        if ds.cleaned_file and ds.cleaned_file.name and os.path.isfile(ds.cleaned_file.path):
-                            try: os.remove(ds.cleaned_file.path)
+                        if ds.cleaned_file:
+                            try: ds.cleaned_file.delete(save=False)
                             except Exception: pass
                         ds.delete()
                         return Response({"detail": "Uploaded dataset permanently deleted."}, status=status.HTTP_200_OK)
@@ -310,11 +307,11 @@ class CleaningHistoryView(APIView):
                     if is_permanent:
                         ds = job.dataset
                         if ds:
-                            if ds.original_file and ds.original_file.name and os.path.isfile(ds.original_file.path):
-                                try: os.remove(ds.original_file.path)
+                            if ds.original_file:
+                                try: ds.original_file.delete(save=False)
                                 except Exception: pass
-                            if ds.cleaned_file and ds.cleaned_file.name and os.path.isfile(ds.cleaned_file.path):
-                                try: os.remove(ds.cleaned_file.path)
+                            if ds.cleaned_file:
+                                try: ds.cleaned_file.delete(save=False)
                                 except Exception: pass
                             ds.delete()
                         else:
@@ -333,11 +330,11 @@ class CleaningHistoryView(APIView):
                 ds = Dataset.objects.filter(id=target_id).first()
                 if ds:
                     if is_permanent:
-                        if ds.original_file and ds.original_file.name and os.path.isfile(ds.original_file.path):
-                            try: os.remove(ds.original_file.path)
+                        if ds.original_file:
+                            try: ds.original_file.delete(save=False)
                             except Exception: pass
-                        if ds.cleaned_file and ds.cleaned_file.name and os.path.isfile(ds.cleaned_file.path):
-                            try: os.remove(ds.cleaned_file.path)
+                        if ds.cleaned_file:
+                            try: ds.cleaned_file.delete(save=False)
                             except Exception: pass
                         ds.delete()
                         return Response({"detail": "Dataset permanently deleted."}, status=status.HTTP_200_OK)
@@ -354,8 +351,8 @@ class CleaningHistoryView(APIView):
                 job = ModelTrainingJob.objects.filter(id=target_id).first()
                 if job:
                     if is_permanent:
-                        if job.trained_model_file and job.trained_model_file.name and os.path.isfile(job.trained_model_file.path):
-                            try: os.remove(job.trained_model_file.path)
+                        if job.trained_model_file:
+                            try: job.trained_model_file.delete(save=False)
                             except Exception: pass
                         job.delete()
                         return Response({"detail": "Training record permanently deleted."}, status=status.HTTP_200_OK)
@@ -394,16 +391,16 @@ class CleaningHistoryView(APIView):
                 clean_jobs = CleaningJob.objects.all()
 
             for ds in datasets:
-                if ds.original_file and ds.original_file.name and os.path.isfile(ds.original_file.path):
-                    try: os.remove(ds.original_file.path)
+                if ds.original_file:
+                    try: ds.original_file.delete(save=False)
                     except Exception: pass
-                if ds.cleaned_file and ds.cleaned_file.name and os.path.isfile(ds.cleaned_file.path):
-                    try: os.remove(ds.cleaned_file.path)
+                if ds.cleaned_file:
+                    try: ds.cleaned_file.delete(save=False)
                     except Exception: pass
 
             for job in ml_jobs:
-                if job.trained_model_file and job.trained_model_file.name and os.path.isfile(job.trained_model_file.path):
-                    try: os.remove(job.trained_model_file.path)
+                if job.trained_model_file:
+                    try: job.trained_model_file.delete(save=False)
                     except Exception: pass
 
             clean_jobs.delete()
@@ -624,16 +621,16 @@ class RecentlyDeletedView(APIView):
                 clean_jobs = CleaningJob.objects.filter(is_deleted=True)
 
             for ds in datasets:
-                if ds.original_file and ds.original_file.name and os.path.isfile(ds.original_file.path):
-                    try: os.remove(ds.original_file.path)
+                if ds.original_file:
+                    try: ds.original_file.delete(save=False)
                     except Exception: pass
-                if ds.cleaned_file and ds.cleaned_file.name and os.path.isfile(ds.cleaned_file.path):
-                    try: os.remove(ds.cleaned_file.path)
+                if ds.cleaned_file:
+                    try: ds.cleaned_file.delete(save=False)
                     except Exception: pass
 
             for job in ml_jobs:
-                if job.trained_model_file and job.trained_model_file.name and os.path.isfile(job.trained_model_file.path):
-                    try: os.remove(job.trained_model_file.path)
+                if job.trained_model_file:
+                    try: job.trained_model_file.delete(save=False)
                     except Exception: pass
 
             clean_jobs.delete()
@@ -652,11 +649,11 @@ class RecentlyDeletedView(APIView):
             if not ds:
                 ds = Dataset.objects.filter(id=clean_item_id).first()
             if ds:
-                if ds.original_file and ds.original_file.name and os.path.isfile(ds.original_file.path):
-                    try: os.remove(ds.original_file.path)
+                if ds.original_file:
+                    try: ds.original_file.delete(save=False)
                     except Exception: pass
-                if ds.cleaned_file and ds.cleaned_file.name and os.path.isfile(ds.cleaned_file.path):
-                    try: os.remove(ds.cleaned_file.path)
+                if ds.cleaned_file:
+                    try: ds.cleaned_file.delete(save=False)
                     except Exception: pass
                 ds.delete()
                 return Response({"detail": "Uploaded dataset permanently purged."}, status=status.HTTP_200_OK)
@@ -667,11 +664,11 @@ class RecentlyDeletedView(APIView):
             if job:
                 ds = job.dataset
                 if ds:
-                    if ds.original_file and ds.original_file.name and os.path.isfile(ds.original_file.path):
-                        try: os.remove(ds.original_file.path)
+                    if ds.original_file:
+                        try: ds.original_file.delete(save=False)
                         except Exception: pass
-                    if ds.cleaned_file and ds.cleaned_file.name and os.path.isfile(ds.cleaned_file.path):
-                        try: os.remove(ds.cleaned_file.path)
+                    if ds.cleaned_file:
+                        try: ds.cleaned_file.delete(save=False)
                         except Exception: pass
                     ds.delete()
                 else:
@@ -680,11 +677,11 @@ class RecentlyDeletedView(APIView):
 
             ds = Dataset.objects.filter(id=clean_item_id).first()
             if ds:
-                if ds.original_file and ds.original_file.name and os.path.isfile(ds.original_file.path):
-                    try: os.remove(ds.original_file.path)
+                if ds.original_file:
+                    try: ds.original_file.delete(save=False)
                     except Exception: pass
-                if ds.cleaned_file and ds.cleaned_file.name and os.path.isfile(ds.cleaned_file.path):
-                    try: os.remove(ds.cleaned_file.path)
+                if ds.cleaned_file:
+                    try: ds.cleaned_file.delete(save=False)
                     except Exception: pass
                 ds.delete()
                 return Response({"detail": "Dataset permanently erased."}, status=status.HTTP_200_OK)
@@ -694,8 +691,8 @@ class RecentlyDeletedView(APIView):
         elif item_type == "training":
             job = ModelTrainingJob.objects.filter(id=clean_item_id, is_deleted=True).first()
             if job:
-                if job.trained_model_file and job.trained_model_file.name and os.path.isfile(job.trained_model_file.path):
-                    try: os.remove(job.trained_model_file.path)
+                if job.trained_model_file:
+                    try: job.trained_model_file.delete(save=False)
                     except Exception: pass
                 job.delete()
                 return Response({"detail": "Model training record permanently erased."}, status=status.HTTP_200_OK)

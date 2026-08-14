@@ -109,7 +109,7 @@ def generate_pdf_report(output_stream, dataset, latest_job=None):
     else:
         # Profile original
         try:
-            df, _ = read_dataframe(dataset.original_file.path, dataset.file_type, encoding=dataset.encoding)
+            df, _ = read_dataframe(dataset.original_file, dataset.file_type, encoding=dataset.encoding)
             report = profile_dataset(df)
             score = report.get("quality_score", 0)
         except Exception:
@@ -127,7 +127,7 @@ def generate_pdf_report(output_stream, dataset, latest_job=None):
     report_source = latest_job.after_stats if latest_job else None
     if not report_source:
         try:
-            df, _ = read_dataframe(dataset.original_file.path, dataset.file_type, encoding=dataset.encoding)
+            df, _ = read_dataframe(dataset.original_file, dataset.file_type, encoding=dataset.encoding)
             report_source = profile_dataset(df)
         except Exception:
             pass

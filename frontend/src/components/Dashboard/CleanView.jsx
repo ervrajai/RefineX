@@ -111,11 +111,13 @@ export default function CleanView({
     }
   }, [datasetId, historyList]);
 
+  const [loadingHistoryId, setLoadingHistoryId] = useState(null);
+
   const handleUseFromHistory = async (job) => {
     const targetDatasetId = job.dataset_id || job.id;
     if (!targetDatasetId) return;
 
-    setProcessing(true);
+    setLoadingHistoryId(targetDatasetId);
     setErrorMsg("");
     setSuccessMsg("");
     try {
@@ -144,7 +146,7 @@ export default function CleanView({
     } catch (err) {
       setErrorMsg("Failed to load historical dataset details. The file might have been deleted.");
     } finally {
-      setProcessing(false);
+      setLoadingHistoryId(null);
     }
   };
 
@@ -1424,6 +1426,7 @@ export default function CleanView({
                 onSelect={(item) => handleUseFromHistory(item)}
                 onViewAll={() => setActiveTab("history")}
                 onRefresh={onRefreshHistory}
+                loadingId={loadingHistoryId}
               />
             </div>
           )}

@@ -215,8 +215,11 @@ def _send_email_direct_smtp(to_email, subject, html_content, text_content):
         return True
 
     # 2. Fallback to Direct SMTP
-    user = getattr(settings, "EMAIL_HOST_USER", "refinexteam@gmail.com") or "refinexteam@gmail.com"
-    password = getattr(settings, "EMAIL_HOST_PASSWORD", "apbmgkakcgclllqv") or "apbmgkakcgclllqv"
+    user = getattr(settings, "EMAIL_HOST_USER", "") or os.getenv("EMAIL_HOST_USER", "")
+    password = getattr(settings, "EMAIL_HOST_PASSWORD", "") or os.getenv("EMAIL_HOST_PASSWORD", "")
+    if not (user and password):
+        logger.error("[SMTP ERROR] EMAIL_HOST_USER or EMAIL_HOST_PASSWORD not configured.")
+        return False
     from_header = f"RefineX <{user}>"
 
     msg = MIMEMultipart("alternative")

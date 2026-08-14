@@ -19,10 +19,16 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from django.http import JsonResponse
 from apps.cleaning.views import GuestUploadAndCleanView, GuestSessionView
 from apps.accounts.views import RegisterView
 
+def health_check(request):
+    return JsonResponse({"status": "ok", "message": "RefineX API is live and operational", "version": "1.0.0"})
+
 urlpatterns = [
+    path('', health_check, name='health-check'),
+    path('health/', health_check, name='health-check-alias'),
     path('admin/', admin.site.urls),
     path("accounts/", include("allauth.urls")),
 

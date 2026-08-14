@@ -1,3 +1,5 @@
+import os
+from django.conf import settings
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
@@ -8,12 +10,44 @@ from django.http import JsonResponse
 User = get_user_model()
 
 
+def _get_frontend_base_url(request=None):
+    env_url = os.getenv("FRONTEND_BASE_URL")
+    if env_url and env_url.strip():
+        return env_url.strip().rstrip("/")
+    if request:
+        origin = request.headers.get("origin") or request.META.get("HTTP_ORIGIN")
+        if origin and "onrender.com" not in origin:
+            return origin.rstrip("/")
+        referer = request.headers.get("referer") or request.META.get("HTTP_REFERER")
+        if referer and "onrender.com" not in referer:
+            from urllib.parse import urlparse
+            p = urlparse(referer)
+            if p.scheme and p.netloc:
+                return f"{p.scheme}://{p.netloc}"
+    return getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/")
+
+
 class RefinexAccountAdapter(DefaultAccountAdapter):
     def is_open_for_signup(self, request):
         return True
 
+    def get_login_redirect_url(self, request):
+        base = _get_frontend_base_url(request)
+        return f"{base}/dashboard"
+
+    def get_logout_redirect_url(self, request):
+        base = _get_frontend_base_url(request)
+        return f"{base}/login"
+
 
 class RefinexSocialAccountAdapter(DefaultSocialAccountAdapter):
+    def get_login_redirect_url(self, request):
+        base = _get_frontend_base_url(request)
+        return f"{base}/dashboard"
+
+    def get_connect_redirect_url(self, request, socialaccount):
+        base = _get_frontend_base_url(request)
+        return f"{base}/dashboard"
     def _update_user_from_social(self, user, sociallogin):
         provider = sociallogin.account.provider
         extra_data = sociallogin.account.extra_data or {}

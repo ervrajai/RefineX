@@ -83,9 +83,13 @@ def read_dataframe(file_input, file_type='csv', encoding='UTF-8'):
     - Raw bytes
     - File system string paths / storage keys
     Handles Parquet, CSV (delimiter sniffing & multiple encodings), and Excel (xlsx/xls).
+    Utilizes local fast disk caching to avoid redundant remote S3/B2 downloads.
     """
     if file_input is None:
         raise ValueError("No file provided to read_dataframe.")
+
+    import hashlib
+    import tempfile
 
     # Determine file_type if not explicitly known
     ext = (file_type or "").lower()
@@ -94,35 +98,60 @@ def read_dataframe(file_input, file_type='csv', encoding='UTF-8'):
     elif isinstance(file_input, str) and '.' in file_input:
         ext = file_input.split('.')[-1].lower()
 
-    # Extract bytes safely from any source
+    # Check local disk cache for FieldFiles or string paths
+    file_identifier = getattr(file_input, 'name', None) or (file_input if isinstance(file_input, str) else None)
+    cache_path = None
     content_bytes = None
-    if isinstance(file_input, bytes):
-        content_bytes = file_input
-    elif hasattr(file_input, 'read'):
+
+    if file_identifier and isinstance(file_identifier, str):
         try:
-            if hasattr(file_input, 'seek'):
-                file_input.seek(0)
-            content_bytes = file_input.read()
+            cache_dir = os.path.join(tempfile.gettempdir(), "refinex_dataset_cache")
+            os.makedirs(cache_dir, exist_ok=True)
+            file_hash = hashlib.md5(file_identifier.encode('utf-8')).hexdigest()
+            cache_path = os.path.join(cache_dir, f"{file_hash}_{os.path.basename(file_identifier)}")
+            if os.path.exists(cache_path) and os.path.getsize(cache_path) > 0:
+                with open(cache_path, 'rb') as cf:
+                    content_bytes = cf.read()
         except Exception:
-            if hasattr(file_input, 'open'):
-                with file_input.open('rb') as f:
-                    content_bytes = f.read()
-            else:
-                raise
-    elif hasattr(file_input, 'open'):
-        with file_input.open('rb') as f:
-            content_bytes = f.read()
-    elif isinstance(file_input, str):
-        if os.path.exists(file_input):
-            with open(file_input, 'rb') as f:
+            content_bytes = None
+
+    # Extract bytes safely from source if not cached
+    if content_bytes is None:
+        if isinstance(file_input, bytes):
+            content_bytes = file_input
+        elif hasattr(file_input, 'read'):
+            try:
+                if hasattr(file_input, 'seek'):
+                    file_input.seek(0)
+                content_bytes = file_input.read()
+            except Exception:
+                if hasattr(file_input, 'open'):
+                    with file_input.open('rb') as f:
+                        content_bytes = f.read()
+                else:
+                    raise
+        elif hasattr(file_input, 'open'):
+            with file_input.open('rb') as f:
                 content_bytes = f.read()
-        else:
-            from django.core.files.storage import default_storage
-            if default_storage.exists(file_input):
-                with default_storage.open(file_input, 'rb') as f:
+        elif isinstance(file_input, str):
+            if os.path.exists(file_input):
+                with open(file_input, 'rb') as f:
                     content_bytes = f.read()
             else:
-                raise ValueError(f"File not found: {file_input}")
+                from django.core.files.storage import default_storage
+                if default_storage.exists(file_input):
+                    with default_storage.open(file_input, 'rb') as f:
+                        content_bytes = f.read()
+                else:
+                    raise ValueError(f"File not found: {file_input}")
+
+        # Save to local cache for instant future retrieval
+        if cache_path and content_bytes and len(content_bytes) > 0:
+            try:
+                with open(cache_path, 'wb') as cf:
+                    cf.write(content_bytes)
+            except Exception:
+                pass
 
     if not content_bytes or len(content_bytes.strip()) == 0:
         raise ValueError("The dataset file is empty.")

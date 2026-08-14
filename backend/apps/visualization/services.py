@@ -45,30 +45,40 @@ def get_dataset_analysis(dataset):
 
 def run_comprehensive_analysis(df, dataset):
     """
-    Computes all metadata, types, and stats from the Pandas DataFrame.
+    High-performance vectorized dataset profiling.
     """
     total_rows = len(df)
     total_cols = len(df.columns)
-    
+
     numeric_cols = []
     categorical_cols = []
     boolean_cols = []
     date_cols = []
     text_cols = []
-    
-    unique_counts = {}
-    null_counts = {}
+
+    # Vectorized null counts & unique counts (single C-level pass)
+    null_counts = {col: int(cnt) for col, cnt in df.isna().sum().items()}
+    unique_counts = {col: int(cnt) for col, cnt in df.nunique(dropna=True).items()}
+
+    # Vectorized numeric stats
+    numeric_df = df.select_dtypes(include=[np.number])
     stats = {}
-    
+    if not numeric_df.empty:
+        desc = numeric_df.describe(percentiles=[0.5]).to_dict()
+        for col in numeric_df.columns:
+            col_stats = desc.get(col, {})
+            stats[col] = {
+                "min": float(col_stats.get("min", 0.0)) if not pd.isna(col_stats.get("min")) else 0.0,
+                "max": float(col_stats.get("max", 0.0)) if not pd.isna(col_stats.get("max")) else 0.0,
+                "mean": float(col_stats.get("mean", 0.0)) if not pd.isna(col_stats.get("mean")) else 0.0,
+                "median": float(col_stats.get("50%", 0.0)) if not pd.isna(col_stats.get("50%")) else 0.0,
+                "std": float(col_stats.get("std", 0.0)) if not pd.isna(col_stats.get("std")) else 0.0,
+            }
+
     for col in df.columns:
         series = df[col]
-        # Count nulls
-        null_counts[col] = int(series.isna().sum())
-        
-        # Count unique values
-        nunique = int(series.nunique(dropna=True))
-        unique_counts[col] = nunique
-        
+        nunique = unique_counts.get(col, 0)
+
         # Deduce column type
         if pd.api.types.is_bool_dtype(series):
             boolean_cols.append(col)
@@ -76,40 +86,29 @@ def run_comprehensive_analysis(df, dataset):
             date_cols.append(col)
         elif pd.api.types.is_numeric_dtype(series):
             numeric_cols.append(col)
-            # Numeric Stats
-            non_null = series.dropna()
-            if len(non_null) > 0:
-                stats[col] = {
-                    "min": float(non_null.min()),
-                    "max": float(non_null.max()),
-                    "mean": float(non_null.mean()),
-                    "median": float(non_null.median()),
-                    "std": float(non_null.std()) if len(non_null) > 1 else 0.0
-                }
         else:
-            # Check if it could be parsed as a datetime
+            # Quick date detection on non-null sample
             is_date = False
             try:
-                sample = series.dropna().head(20)
+                sample = series.dropna().head(15)
                 if len(sample) > 0:
                     import warnings
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore", UserWarning)
                         parsed = pd.to_datetime(sample, format='mixed', errors='coerce')
-                    if parsed.notna().sum() > 0.8 * len(sample):
+                    if parsed.notna().sum() >= 0.8 * len(sample):
                         is_date = True
-            except:
+            except Exception:
                 pass
-                
+
             if is_date:
                 date_cols.append(col)
             else:
-                # Text vs Categorical threshold: <= 50 unique values OR < 10% unique values
                 if nunique <= 50 or (total_rows > 0 and (nunique / total_rows) < 0.1):
                     categorical_cols.append(col)
                 else:
                     text_cols.append(col)
-                    
+
     duplicate_rows = int(df.duplicated().sum())
     
     try:

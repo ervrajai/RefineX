@@ -204,6 +204,18 @@ else:
         },
     }
 
+# Fast In-Memory Cache for Dataset Analysis and Visualizations
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "refinex-cache",
+        "TIMEOUT": 86400,
+        "OPTIONS": {
+            "MAX_ENTRIES": 2000,
+        },
+    }
+}
+
 # Rest Framework
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [

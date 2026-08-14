@@ -137,7 +137,7 @@ export function ZoomParallax({ images = [], features = [] }) {
       case 1:
         return '[&>div]:!-top-[30vh] [&>div]:!left-[5vw] [&>div]:!h-[30vh] [&>div]:!w-[35vw]';
       case 2:
-        return '[&>div]:!top-[3vh] md:[&>div]:!-top-[10vh] [&>div]:!-left-[28vw] md:[&>div]:!-left-[25vw] [&>div]:!h-[25vh] md:[&>div]:!h-[45vh] [&>div]:!w-[24vw] md:[&>div]:!w-[20vw]';
+        return '[&>div]:!-top-[3vh] md:[&>div]:!-top-[10vh] [&>div]:!-left-[28vw] md:[&>div]:!-left-[25vw] [&>div]:!h-[25vh] md:[&>div]:!h-[45vh] [&>div]:!w-[24vw] md:[&>div]:!w-[20vw]';
       case 3:
         return '[&>div]:!left-[27.5vw] [&>div]:!h-[25vh] [&>div]:!w-[25vw]';
       case 4:

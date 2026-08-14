@@ -25,12 +25,16 @@ load_dotenv(BASE_DIR / ".env")
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-s-#btz3+m#vwys9kojo+4h-1rg_tnjs9ox%^^ljbsl&3^-40ei'
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-s-#btz3+m#vwys9kojo+4h-1rg_tnjs9ox%^^ljbsl&3^-40ei")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,.onrender.com").split(",")
+    if host.strip()
+]
 
 
 # Application definition
@@ -43,6 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.sites',
     'django.contrib.messages',
+    'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
 
     # React & Storage
@@ -74,6 +79,7 @@ CORS_ALLOWED_ORIGINS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -188,7 +194,7 @@ if USE_S3:
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         },
         "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
 else:
@@ -200,7 +206,7 @@ else:
             "BACKEND": "django.core.files.storage.FileSystemStorage",
         },
         "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
 
@@ -248,10 +254,30 @@ CORS_ALLOW_HEADERS = [
     "x-guest-id",
     "X-Guest-ID",
 ]
-CSRF_TRUSTED_ORIGINS = [
+
+CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+if FRONTEND_BASE_URL and FRONTEND_BASE_URL not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append(FRONTEND_BASE_URL)
+
+_custom_cors = os.getenv("CORS_ALLOWED_ORIGINS", "")
+if _custom_cors:
+    CORS_ALLOWED_ORIGINS.extend([origin.strip() for origin in _custom_cors.split(",") if origin.strip()])
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://*.onrender.com",
+    "https://*.vercel.app",
+]
+if FRONTEND_BASE_URL and FRONTEND_BASE_URL not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(FRONTEND_BASE_URL)
+
+_custom_csrf = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+if _custom_csrf:
+    CSRF_TRUSTED_ORIGINS.extend([origin.strip() for origin in _custom_csrf.split(",") if origin.strip()])
 
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"

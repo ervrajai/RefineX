@@ -189,10 +189,10 @@ class CleaningHistoryView(APIView):
                 ml_jobs = ModelTrainingJob.objects.filter(dataset__guest_id=guest_id, is_deleted=False).select_related('dataset').distinct()
                 vis_graphs = SavedGraph.objects.filter(dataset__guest_id=guest_id, is_deleted=False).select_related('dataset').distinct()
             else:
-                user_datasets = Dataset.objects.filter(is_deleted=False)
-                clean_jobs = CleaningJob.objects.filter(is_deleted=False).select_related('dataset').defer('logs')
-                ml_jobs = ModelTrainingJob.objects.filter(is_deleted=False).select_related('dataset')
-                vis_graphs = SavedGraph.objects.filter(is_deleted=False).select_related('dataset')
+                user_datasets = Dataset.objects.none()
+                clean_jobs = CleaningJob.objects.none()
+                ml_jobs = ModelTrainingJob.objects.none()
+                vis_graphs = SavedGraph.objects.none()
 
         results = []
 
@@ -452,10 +452,10 @@ class RecentlyDeletedView(APIView):
                 ml_jobs = ModelTrainingJob.objects.filter(dataset__guest_id=guest_id, is_deleted=True).distinct()
                 vis_graphs = SavedGraph.objects.filter(dataset__guest_id=guest_id, is_deleted=True).distinct()
             else:
-                user_datasets = Dataset.objects.filter(is_deleted=True)
-                clean_jobs = CleaningJob.objects.filter(is_deleted=True)
-                ml_jobs = ModelTrainingJob.objects.filter(is_deleted=True)
-                vis_graphs = SavedGraph.objects.filter(is_deleted=True)
+                user_datasets = Dataset.objects.none()
+                clean_jobs = CleaningJob.objects.none()
+                ml_jobs = ModelTrainingJob.objects.none()
+                vis_graphs = SavedGraph.objects.none()
 
         results = []
         seen_datasets = set()

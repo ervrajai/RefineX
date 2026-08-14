@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import Lenis from 'lenis';
+import Lenis from '@studio-freight/lenis';
 import ZoomParallax from '@/components/ui/ZoomParallax';
 
 import centerLight from '@/assets/images/centerLight.png';

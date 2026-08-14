@@ -36,17 +36,22 @@ from .models import ModelTrainingJob
 
 class DatasetValidationService:
     @staticmethod
-    def validate_file(file_path, file_type, encoding="UTF-8"):
+    def validate_file(file_input, file_type, encoding="UTF-8"):
         """
         Performs initial rigorous validations on file existence, corruption, size, columns and row bounds.
         Returns: (success, error_message, dataframe, detected_encoding)
         """
-        if not os.path.exists(file_path):
+        if not file_input:
             return False, "File does not exist on the server.", None, encoding
             
         # File Size check (limit to 20MB)
-        file_size = os.path.getsize(file_path)
-        if file_size > 20 * 1024 * 1024:
+        file_size = getattr(file_input, "size", None)
+        if file_size is None and hasattr(file_input, "__len__"):
+            file_size = len(file_input)
+        elif file_size is None and isinstance(file_input, str) and os.path.exists(file_input):
+            file_size = os.path.getsize(file_input)
+
+        if file_size and file_size > 20 * 1024 * 1024:
             return False, "File size exceeds the allowed limit of 20MB.", None, encoding
 
         try:
@@ -295,10 +300,10 @@ class ModelTrainingService:
 
         try:
             dataset = job.dataset
-            file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
+            file_target = dataset.cleaned_file if dataset.cleaned_file else dataset.original_file
             
             # Load Data
-            df, _ = read_dataframe(file_path, dataset.file_type, encoding=dataset.encoding)
+            df, _ = read_dataframe(file_target, dataset.file_type, encoding=dataset.encoding)
             
             # Extract configuration
             target = job.target_column
@@ -516,11 +521,8 @@ class ModelTrainingService:
             job.progress_percent = 90
             job.save()
 
-            # Save the best model
-            model_dir = os.path.join(settings.MEDIA_ROOT, "models")
-            os.makedirs(model_dir, exist_ok=True)
+            # Save the best model via Django storage
             model_filename = f"model_job_{job.id}.joblib"
-            model_path = os.path.join(model_dir, model_filename)
 
             # Package estimator alongside encoders
             saved_bundle = {
@@ -531,14 +533,17 @@ class ModelTrainingService:
                 "target": target,
                 "problem_type": problem_type
             }
-            joblib.dump(saved_bundle, model_path)
+            buf = io.BytesIO()
+            joblib.dump(saved_bundle, buf)
+            buf.seek(0)
+            job.trained_model_file.save(model_filename, ContentFile(buf.getvalue()), save=True)
 
             # Check if cancelled after joblib dump
-            job.refresh_from_db()
-            if job.status == "cancelled":
-                if os.path.exists(model_path):
+            curr_status = ModelTrainingJob.objects.filter(pk=job.id).values_list("status", flat=True).first()
+            if curr_status == "cancelled":
+                if job.trained_model_file:
                     try:
-                        os.remove(model_path)
+                        job.trained_model_file.delete(save=False)
                     except Exception:
                         pass
                 return
@@ -566,7 +571,6 @@ class ModelTrainingService:
             job.best_model_score = float(best_score)
             job.training_duration = float(sum(m["training_time"] for m in trained_models_summary.values()))
             job.prediction_duration = float(sum(m["prediction_time"] for m in trained_models_summary.values()))
-            job.trained_model_file = f"models/{model_filename}"
             job.predictions = pred_data
             job.save()
 

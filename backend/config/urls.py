@@ -44,5 +44,5 @@ urlpatterns = [
 ]
 
 
-if settings.DEBUG:
+if settings.DEBUG and not getattr(settings, "USE_S3", False) and hasattr(settings, "MEDIA_ROOT"):
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

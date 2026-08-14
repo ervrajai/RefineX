@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 function FeatureCard({ title, steps, onClick }) {
   return (
@@ -115,6 +116,7 @@ const cardVariants = {
 
 export default function Features() {
   const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
 
   const cleaningSteps = [
     { name: "Upload Dataset", desc: "Import your raw CSV safely." },
@@ -160,7 +162,7 @@ export default function Features() {
             <FeatureCard
               title="Data Cleaning"
               steps={cleaningSteps}
-              onClick={() => navigate("/clean")}
+              onClick={() => navigate(isLoggedIn ? "/dashboard" : "/clean")}
             />
           </motion.div>
           

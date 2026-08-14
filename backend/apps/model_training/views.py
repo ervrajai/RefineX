@@ -46,7 +46,7 @@ class DatasetMLUploadView(APIView):
 
         # Run Validation Service
         success, err_msg, df, encoding = DatasetValidationService.validate_file(
-            dataset.original_file.path, dataset.file_type
+            dataset.original_file, dataset.file_type
         )
         if not success:
             # Delete if invalid to preserve space
@@ -108,14 +108,9 @@ class DatasetMLTrainView(APIView):
         if not algorithms:
             return Response({"error": "At least one algorithm must be selected."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if dataset.cleaned_file and os.path.exists(dataset.cleaned_file.path):
-            file_path = dataset.cleaned_file.path
-            # Cleaned files are always stored as parquet; use its actual type
-            actual_file_type = "parquet" if file_path.endswith(".parquet") else dataset.file_type
-        else:
-            file_path = dataset.original_file.path
-            actual_file_type = dataset.file_type
-        df, _ = read_dataframe(file_path, actual_file_type, encoding=dataset.encoding)
+        target_file = dataset.cleaned_file if dataset.cleaned_file else dataset.original_file
+        actual_file_type = "parquet" if (dataset.cleaned_file and dataset.cleaned_file.name.endswith(".parquet")) else dataset.file_type
+        df, _ = read_dataframe(target_file, actual_file_type, encoding=dataset.encoding)
         
         # 1. Check target column existence
         if target not in df.columns:
@@ -325,19 +320,10 @@ class DatasetMLJobActionsView(APIView):
             job.status = "cancelled"
             job.save(update_fields=["status"])
             
-            # Remove joblib model file from disk if created
-            if job.trained_model_file and os.path.exists(job.trained_model_file.path):
+            # Remove joblib model file from storage if created
+            if job.trained_model_file:
                 try:
-                    os.remove(job.trained_model_file.path)
-                except Exception:
-                    pass
-            
-            # Also check expected filename path
-            model_dir = os.path.join(settings.MEDIA_ROOT, "models")
-            expected_path = os.path.join(model_dir, f"model_job_{job.id}.joblib")
-            if os.path.exists(expected_path):
-                try:
-                    os.remove(expected_path)
+                    job.trained_model_file.delete(save=False)
                 except Exception:
                     pass
 
@@ -377,7 +363,7 @@ class DatasetMLDownloadView(APIView):
         )
 
         if download_type == "model":
-            if not job.trained_model_file or not os.path.exists(job.trained_model_file.path):
+            if not job.trained_model_file:
                 return Response({"error": "Serialized model file not found."}, status=status.HTTP_404_NOT_FOUND)
             
             algorithm = request.query_params.get("algorithm")
@@ -385,7 +371,8 @@ class DatasetMLDownloadView(APIView):
                 import joblib
                 import io
                 try:
-                    saved_bundle = joblib.load(job.trained_model_file.path)
+                    with job.trained_model_file.open('rb') as f:
+                        saved_bundle = joblib.load(f)
                     all_pipelines = saved_bundle.get("all_pipelines", {})
                     if algorithm in all_pipelines:
                         specific_bundle = {
@@ -406,10 +393,9 @@ class DatasetMLDownloadView(APIView):
                 except Exception:
                     pass
 
-            response = HttpResponse(open(job.trained_model_file.path, 'rb'), content_type='application/octet-stream')
+            from django.http import FileResponse
             filename = os.path.basename(job.trained_model_file.name)
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            return response
+            return FileResponse(job.trained_model_file.open('rb'), content_type='application/octet-stream', as_attachment=True, filename=filename)
 
         elif download_type == "predictions":
             if not job.predictions or "actual" not in job.predictions:
@@ -452,13 +438,14 @@ class DatasetMLPredictView(APIView):
         import pandas as pd
         
         job = get_object_or_404(ModelTrainingJob, pk=pk)
-        if not job.trained_model_file or not os.path.exists(job.trained_model_file.path):
+        if not job.trained_model_file:
             return Response({"error": "Trained model binary not found. It might have been deleted."}, status=status.HTTP_404_NOT_FOUND)
             
         inputs = request.data.get("inputs", {})
         
         try:
-            saved_bundle = joblib.load(job.trained_model_file.path)
+            with job.trained_model_file.open('rb') as f:
+                saved_bundle = joblib.load(f)
             pipeline = saved_bundle["pipeline"]
             features = saved_bundle["features"]
             label_encoder = saved_bundle.get("label_encoder")

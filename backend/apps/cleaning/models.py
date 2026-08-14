@@ -110,20 +110,17 @@ class CleaningJob(models.Model):
 @receiver(post_delete, sender=Dataset)
 def auto_delete_file_on_dataset_delete(sender, instance, **kwargs):
     """
-    Deletes physical CSV files from local disk when Dataset object is deleted.
+    Deletes files from cloud/local storage when Dataset object is deleted.
     """
-    import os
     if instance.original_file:
         try:
-            if os.path.isfile(instance.original_file.path):
-                os.remove(instance.original_file.path)
+            instance.original_file.delete(save=False)
         except Exception:
             pass
 
     if instance.cleaned_file:
         try:
-            if os.path.isfile(instance.cleaned_file.path):
-                os.remove(instance.cleaned_file.path)
+            instance.cleaned_file.delete(save=False)
         except Exception:
             pass
 

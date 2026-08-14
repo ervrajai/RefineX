@@ -217,19 +217,20 @@
 }
 
 /* ==========================================================================
-   6. FLIP CLOCK CARD ANIMATION STYLES (3D Flip Animation, Dark/Light compatible)
+   6. FLIP CLOCK CARD ANIMATION (CSS Transition Based)
    ========================================================================== */
 .flip-clock-container {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
+  position: relative;
 }
 
 .flip-digit-wrapper {
   position: relative;
   width: 28px;
   height: 38px;
-  perspective: 300px;
+  perspective: 1000px; /* High perspective for clean 3D effect */
 }
 
 @media (min-width: 640px) {
@@ -243,27 +244,26 @@
   position: relative;
   width: 100%;
   height: 100%;
-  border-radius: 8px;
   font-family: 'Space Grotesk', 'Fira Code', monospace;
   font-size: 20px;
   font-weight: 900;
+  border-radius: 8px;
   user-select: none;
 }
 
 @media (min-width: 640px) {
-  .flip-card {
-    font-size: 24px;
-  }
+  .flip-card { font-size: 24px; }
 }
 
-/* Static upper and lower halves */
-.flip-card-top,
-.flip-card-bottom,
-.flip-card-back-top,
-.flip-card-back-bottom {
+/* --- Shared Base Styles for all card halves --- */
+.flip-card-top, 
+.flip-card-bottom, 
+.flip-flap-front, 
+.flip-flap-back {
   position: absolute;
-  left: 0;
+  left: 0; 
   right: 0;
+  height: 50%;
   overflow: hidden;
   display: flex;
   justify-content: center;
@@ -273,70 +273,72 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
-.dark .flip-card-top,
-.dark .flip-card-bottom,
-.dark .flip-card-back-top,
-.dark .flip-card-back-bottom {
+.dark .flip-card-top, 
+.dark .flip-card-bottom, 
+.dark .flip-flap-front, 
+.dark .flip-flap-back {
   background: #1c1c22;
   color: #ffffff;
   border-color: #2e2e38;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-.flip-card-top,
-.flip-card-back-top {
+/* --- Specifics for Top Halves --- */
+.flip-card-top, 
+.flip-flap-front {
   top: 0;
-  height: 50%;
-  align-items: flex-end;
+  align-items: flex-end; /* Pushes text down to the seam */
   border-radius: 8px 8px 0 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.15);
 }
-
-.dark .flip-card-top,
-.dark .flip-card-back-top {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+.dark .flip-card-top, 
+.dark .flip-flap-front { 
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15); 
+}
+.flip-card-top span, 
+.flip-flap-front span { 
+  transform: translateY(50%); 
 }
 
-.flip-card-bottom,
-.flip-card-back-bottom {
+/* --- Specifics for Bottom Halves --- */
+.flip-card-bottom, 
+.flip-flap-back {
   bottom: 0;
-  height: 50%;
-  align-items: flex-start;
+  align-items: flex-start; /* Pushes text up to the seam */
   border-radius: 0 0 8px 8px;
 }
-
-/* Text positioning inside upper/lower halves */
-.flip-card-top span,
-.flip-card-back-top span {
-  transform: translateY(50%);
+.flip-card-bottom span, 
+.flip-flap-back span { 
+  transform: translateY(-50%); 
 }
 
-.flip-card-bottom span,
-.flip-card-back-bottom span {
-  transform: translateY(-50%);
-}
-
-/* Animated flipping flap */
-.flip-card-flap {
+/* --- The Animated 3D Flap Container --- */
+.flip-flap {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: 0; 
+  left: 0; 
   right: 0;
   height: 50%;
-  transform-origin: bottom;
+  transform-origin: bottom; /* Hinges exactly at the center seam */
   transform-style: preserve-3d;
-  z-index: 20;
+  z-index: 10;
 }
 
-.flip-card-flap.animate-flip {
-  animation: flipCardAnim 0.5s ease-in-out forwards;
+/* Triggered by React state */
+.flip-flap.is-flipping {
+  transform: rotateX(-180deg);
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes flipCardAnim {
-  0% {
-    transform: rotateX(0deg);
-  }
-  100% {
-    transform: rotateX(-180deg);
-  }
+/* --- Flap Faces Fixes --- */
+.flip-flap-front, 
+.flip-flap-back {
+  height: 100%; /* Overrides the 50% base height so faces fill the flap */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-flap-back {
+  top: 0; /* Resets positioning inside the flap container */
+  transform: rotateX(180deg); /* Starts upside down so it lands right-side up */
 }

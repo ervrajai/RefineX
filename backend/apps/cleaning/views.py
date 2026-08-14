@@ -158,11 +158,11 @@ class DatasetAnalyzeView(APIView):
         dataset = get_object_or_404(Dataset, pk=pk)
         
         # Read the file (Check if cleaned_file is parquet for millisecond load)
-        file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
+        target_file = dataset.cleaned_file if dataset.cleaned_file else dataset.original_file
         file_type = "parquet" if (dataset.cleaned_file and dataset.cleaned_file.name.endswith(".parquet")) else dataset.file_type
         
         try:
-            df, _ = read_dataframe(file_path, file_type, encoding=dataset.encoding)
+            df, _ = read_dataframe(target_file, file_type, encoding=dataset.encoding)
             report = profile_dataset(df)
             
             preview_df = df.head(100).replace({np.nan: None})
@@ -196,17 +196,16 @@ def perform_cleaning_operation(dataset, config, user=None):
     Always cleans from dataset.original_file to ensure idempotency and prevent config drift.
     Stores cleaned binary artifact as fast .parquet format with safe CSV fallback.
     """
-    input_file_path = dataset.original_file.path
     input_file_type = dataset.file_type
 
-    # Delete existing physical cleaned file if present before saving new output
-    if dataset.cleaned_file and os.path.exists(dataset.cleaned_file.path):
+    # Delete existing cleaned file from storage if present before saving new output
+    if dataset.cleaned_file:
         try:
-            os.remove(dataset.cleaned_file.path)
+            dataset.cleaned_file.delete(save=False)
         except Exception:
             pass
 
-    df, _ = read_dataframe(input_file_path, input_file_type, encoding=dataset.encoding)
+    df, _ = read_dataframe(dataset.original_file, input_file_type, encoding=dataset.encoding)
 
     if config.get("is_auto_decide", False):
         cleaned_df, logs, before_report, after_report = auto_clean_dataset(df)
@@ -308,14 +307,12 @@ def purge_expired_guest_data():
     for ds in expired_datasets:
         if ds.original_file:
             try:
-                if os.path.isfile(ds.original_file.path):
-                    os.remove(ds.original_file.path)
+                ds.original_file.delete(save=False)
             except Exception:
                 pass
         if ds.cleaned_file:
             try:
-                if os.path.isfile(ds.cleaned_file.path):
-                    os.remove(ds.cleaned_file.path)
+                ds.cleaned_file.delete(save=False)
             except Exception:
                 pass
         ds.delete()
@@ -444,19 +441,18 @@ class DatasetResetView(APIView):
         dataset = get_object_or_404(Dataset, pk=pk)
         
         if dataset.cleaned_file:
-            # Delete cleaned file on disk
-            if os.path.exists(dataset.cleaned_file.path):
-                try:
-                    os.remove(dataset.cleaned_file.path)
-                except:
-                    pass
+            # Delete cleaned file from storage
+            try:
+                dataset.cleaned_file.delete(save=False)
+            except Exception:
+                pass
             dataset.cleaned_file = None
             
         dataset.status = "uploaded"
         
         # Reset count metadata back to original file stats
         try:
-            df, _ = read_dataframe(dataset.original_file.path, dataset.file_type, encoding=dataset.encoding)
+            df, _ = read_dataframe(dataset.original_file, dataset.file_type, encoding=dataset.encoding)
             dataset.rows_count = len(df)
             dataset.cols_count = len(df.columns)
             dataset.save()
@@ -506,17 +502,17 @@ class DatasetDownloadView(APIView):
             request=request
         )
 
-        # Determine path and type
-        file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
+        # Determine file and type
+        target_file = dataset.cleaned_file if dataset.cleaned_file else dataset.original_file
         file_type = "parquet" if (dataset.cleaned_file and dataset.cleaned_file.name.endswith(".parquet")) else dataset.file_type
         
-        if not os.path.exists(file_path):
-            return Response({"error": "Dataset file not found on disk"}, status=status.HTTP_404_NOT_FOUND)
+        if not target_file:
+            return Response({"error": "Dataset file not found"}, status=status.HTTP_404_NOT_FOUND)
             
         if download_type == "csv":
             # Serve CSV export with versioned filename
             try:
-                df, _ = read_dataframe(file_path, file_type, encoding=dataset.encoding)
+                df, _ = read_dataframe(target_file, file_type, encoding=dataset.encoding)
                 response = HttpResponse(content_type='text/csv')
                 filename = get_versioned_filename(dataset, "csv")
                 response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -528,7 +524,7 @@ class DatasetDownloadView(APIView):
         elif download_type == "excel":
             # Serve Excel export with versioned filename
             try:
-                df, _ = read_dataframe(file_path, file_type, encoding=dataset.encoding)
+                df, _ = read_dataframe(target_file, file_type, encoding=dataset.encoding)
                 
                 # Convert timezone-aware datetimes to tz-naive for openpyxl compatibility
                 for col in df.columns:
@@ -588,12 +584,12 @@ class DatasetPreviewView(APIView):
         limit = int(request.query_params.get("limit", 100))
         
         try:
-            file_path = dataset.cleaned_file.path if dataset.cleaned_file else dataset.original_file.path
+            target_file = dataset.cleaned_file if dataset.cleaned_file else dataset.original_file
             file_type = "parquet" if (dataset.cleaned_file and dataset.cleaned_file.name.endswith(".parquet")) else dataset.file_type
-            if not os.path.exists(file_path):
+            if not target_file:
                 return Response({"error": "Dataset file not found"}, status=status.HTTP_404_NOT_FOUND)
                 
-            df, _ = read_dataframe(file_path, file_type, encoding=dataset.encoding)
+            df, _ = read_dataframe(target_file, file_type, encoding=dataset.encoding)
             sliced_df = df.iloc[offset:offset+limit].replace({np.nan: None})
             
             return Response({

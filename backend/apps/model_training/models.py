@@ -76,13 +76,11 @@ class ModelTrainingJob(models.Model):
 @receiver(post_delete, sender=ModelTrainingJob)
 def auto_delete_file_on_model_job_delete(sender, instance, **kwargs):
     """
-    Deletes physical trained model files (.joblib) from local disk when ModelTrainingJob is deleted.
+    Deletes trained model files (.joblib) from cloud/local storage when ModelTrainingJob is deleted.
     """
-    import os
     if instance.trained_model_file:
         try:
-            if os.path.isfile(instance.trained_model_file.path):
-                os.remove(instance.trained_model_file.path)
+            instance.trained_model_file.delete(save=False)
         except Exception:
             pass
 

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Sparkles, Clock, Layers, Download, FileText, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Sparkles, Clock, Layers, Download, FileText, AlertCircle, CheckCircle2 } from "lucide-react";
 import Navbar from "../../components/Landing/Navbar";
 import Footer from "../../components/Landing/Footer";
 import CleanView from "../../components/Dashboard/CleanView";
@@ -9,10 +9,63 @@ import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { getGuestId } from "../../utils/guestSession";
 
+/* ==========================================================================
+   1. FLIP CARD COMPONENT (Must ALWAYS be outside the parent component!)
+   ========================================================================== */
+const FlipCard = ({ digit }) => {
+  const [current, setCurrent] = useState(digit);
+  const [next, setNext] = useState(digit);
+  const [isFlipping, setIsFlipping] = useState(false);
+
+  useEffect(() => {
+    if (digit !== current) {
+      setNext(digit);
+      setIsFlipping(true);
+
+      const timeout = setTimeout(() => {
+        setCurrent(digit);
+        setIsFlipping(false);
+      }, 500);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [digit, current]);
+
+  return (
+    <div className="flip-digit-wrapper">
+      <div className="flip-card">
+        <div className="flip-card-top">
+          <span>{next}</span>
+        </div>
+        <div className="flip-card-bottom">
+          <span>{current}</span>
+        </div>
+        <div className={`flip-flap ${isFlipping ? 'is-flipping' : ''}`}>
+          <div className="flip-flap-front">
+            <span>{current}</span>
+          </div>
+          <div className="flip-flap-back">
+            <span>{next}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ==========================================================================
+   2. MAIN PAGE COMPONENT
+   ========================================================================== */
 export default function GuestCleanPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, checking } = useAuth();
+
+  useEffect(() => {
+    if (!checking && isLoggedIn) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [checking, isLoggedIn, navigate]);
 
   // Guest Session states
   const [session, setSession] = useState({
@@ -28,7 +81,17 @@ export default function GuestCleanPage() {
     message: "You've used your 3 free guest dataset cleans for today. Log in or create a free account to unlock unlimited data cleaning, interactive visualizations, and ML training!"
   });
 
-  const handleOpenAuthModal = (tabName) => {
+  // CleanView states
+  const [datasetId, setDatasetId] = useState(null);
+  const [metadata, setMetadata] = useState(null);
+  const [report, setReport] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [beforeReport, setBeforeReport] = useState(null);
+  const [afterReport, setAfterReport] = useState(null);
+  const [cleanLogs, setCleanLogs] = useState([]);
+
+  // FIX: Memoize the modal handler so it doesn't crash CleanView on timer ticks
+  const handleOpenAuthModal = useCallback((tabName) => {
     if (isLoggedIn) {
       navigate("/dashboard", { state: { activeTab: tabName, datasetId } });
       return;
@@ -53,20 +116,8 @@ export default function GuestCleanPage() {
       });
     }
     setIsLimitModalOpen(true);
-  };
+  }, [isLoggedIn, navigate, datasetId]);
 
-
-
-  // CleanView states
-  const [datasetId, setDatasetId] = useState(null);
-  const [metadata, setMetadata] = useState(null);
-  const [report, setReport] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const [beforeReport, setBeforeReport] = useState(null);
-  const [afterReport, setAfterReport] = useState(null);
-  const [cleanLogs, setCleanLogs] = useState([]);
-
-  // Scroll to top on mount
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -91,7 +142,6 @@ export default function GuestCleanPage() {
     fetchGuestSession();
   }, [isLoggedIn]);
 
-  // Intercept API calls for guest headers
   useEffect(() => {
     const guestId = getGuestId();
     const requestInterceptor = api.interceptors.request.use((config) => {
@@ -156,9 +206,10 @@ export default function GuestCleanPage() {
       midnight.setHours(24, 0, 0, 0);
       const diff = midnight - now;
 
-      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-      const minutes = Math.floor((diff / (1000 * 60)) % 60);
-      const seconds = Math.floor((diff / 1000) % 60);
+      const totalSeconds = Math.floor(diff / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
 
       const options = { weekday: 'long', month: 'long', day: 'numeric' };
       const dayText = now.toLocaleDateString('en-US', options);
@@ -176,43 +227,6 @@ export default function GuestCleanPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // 3D Flip Card Component with real-time flip transition on change
-  const FlipCard = ({ digit }) => {
-    const [current, setCurrent] = useState(digit);
-    const [previous, setPrevious] = useState(digit);
-    const [isFlipping, setIsFlipping] = useState(false);
-
-    useEffect(() => {
-      if (digit !== current) {
-        setPrevious(current);
-        setCurrent(digit);
-        setIsFlipping(true);
-        const t = setTimeout(() => setIsFlipping(false), 500);
-        return () => clearTimeout(t);
-      }
-    }, [digit, current]);
-
-    return (
-      <div className="flip-digit-wrapper">
-        <div className="flip-card">
-          <div className="flip-card-top">
-            <span>{current}</span>
-          </div>
-          <div className="flip-card-bottom">
-            <span>{previous}</span>
-          </div>
-          {isFlipping && (
-            <div className="flip-card-flap animate-flip">
-              <div className="flip-card-back-top">
-                <span>{previous}</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-lightBg dark:bg-darkBg text-slate-900 dark:text-white transition-colors duration-300">
       <Navbar />
@@ -225,49 +239,33 @@ export default function GuestCleanPage() {
         message={modalDetails.message}
       />
 
-
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 text-left">
-        {/* Top Header Bar: Countdown Timer Card & Daily Guest Limit Pill */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6">
-          {/* Live Reset Countdown Time (Floating Flip Cards in Air, Dark/Light Compatible) */}
+          
           {!isLoggedIn && (
             <div className="flex flex-col text-left select-none animate-fade-in py-1">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                {/* Hours flip cards */}
                 <div className="flip-clock-container">
                   <FlipCard digit={timeLeft.hours[0] || "0"} />
                   <FlipCard digit={timeLeft.hours[1] || "0"} />
                 </div>
-
                 <span className="text-xl sm:text-2xl font-black text-slate-400 dark:text-zinc-500 pb-1">:</span>
-
-                {/* Minutes flip cards */}
                 <div className="flip-clock-container">
                   <FlipCard digit={timeLeft.minutes[0] || "0"} />
                   <FlipCard digit={timeLeft.minutes[1] || "0"} />
                 </div>
-
                 <span className="text-xl sm:text-2xl font-black text-slate-400 dark:text-zinc-500 pb-1">:</span>
-
-                {/* Seconds flip cards */}
                 <div className="flip-clock-container">
                   <FlipCard digit={timeLeft.seconds[0] || "0"} />
                   <FlipCard digit={timeLeft.seconds[1] || "0"} />
                 </div>
-
-                <span className="text-[10px] font-extrabold tracking-widest text-purple-600 dark:text-purple-400 uppercase ml-2">
-                  Until Reset
-                </span>
               </div>
-
-              {/* Date and time text under the timer in small letters */}
               <p className="text-[11px] font-medium text-slate-500 dark:text-zinc-400 mt-1.5 pl-0.5">
                 Limit restores at 12:00 AM • {timeLeft.dayText}
               </p>
             </div>
           )}
 
-          {/* Daily Guest Limit Pill */}
           <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 shadow-md backdrop-blur-sm self-start sm:self-auto sm:ml-auto">
             {isLoggedIn ? (
               <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500" />
@@ -287,7 +285,6 @@ export default function GuestCleanPage() {
           </div>
         </div>
 
-        {/* Limit Warning Banner if 0 remaining for Guests */}
         {!isLoggedIn && session.remaining_cleans <= 0 && (
           <div className="mb-8 p-5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 dark:border-amber-500/40 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
             <div className="flex items-center gap-3">
@@ -315,7 +312,6 @@ export default function GuestCleanPage() {
           </div>
         )}
 
-        {/* 3 Cleaned Datasets Slots Panel */}
         <div className="mb-8 p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 shadow-xl">
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-zinc-800/80">
             <span className="text-xs font-extrabold text-slate-800 dark:text-zinc-200 flex items-center gap-2 uppercase tracking-wider">
@@ -402,7 +398,6 @@ export default function GuestCleanPage() {
           </div>
         </div>
 
-        {/* Dashboard's Exact CleanView Module Wrapper */}
         <div className="bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 rounded-3xl p-4 sm:p-6 shadow-2xl">
           <CleanView
             isGuest={true}
@@ -420,7 +415,7 @@ export default function GuestCleanPage() {
             setAfterReport={setAfterReport}
             cleanLogs={cleanLogs}
             setCleanLogs={setCleanLogs}
-            setActiveTab={(tab) => handleOpenAuthModal(tab)}
+            setActiveTab={handleOpenAuthModal} /* FIX: Pass the memoized handler directly */
           />
         </div>
       </main>

@@ -63,13 +63,13 @@ function OverviewView({
 }) {
   const [data, setData] = useState(overviewData);
   const [history, setHistory] = useState(historyList);
-  const [loading, setLoading] = useState(!overviewData && overviewLoading);
   const [error, setError] = useState("");
+
+  const loading = overviewLoading || (!overviewData && !data);
 
   useEffect(() => {
     if (overviewData) {
       setData(overviewData);
-      setLoading(false);
     }
   }, [overviewData]);
 
@@ -101,9 +101,9 @@ function OverviewView({
     return "Good Evening";
   };
 
-  if (loading) {
+  if (loading || !data) {
     return (
-      <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto font-sans text-slate-900 dark:text-white pb-10">
+      <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto font-sans text-slate-900 dark:text-white pb-10 animate-fade-in">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* --- LEFT COLUMN SKELETON (lg:col-span-8) --- */}
@@ -111,32 +111,163 @@ function OverviewView({
             
             {/* Mobile Header Skeleton */}
             <div className="grid grid-cols-2 gap-3 sm:hidden">
-              <div className="rounded-3xl p-4 aspect-square bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
-              <div className="rounded-3xl p-4 aspect-square bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+              {/* Square 1: Gradient Action Skeleton */}
+              <div className="rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-purple-400/40 to-purple-500/40 border border-purple-400/20 aspect-square flex flex-col justify-between shadow-sm animate-pulse">
+                <div className="space-y-2">
+                  <div className="h-2.5 w-16 bg-white/40 rounded-full" />
+                  <div className="h-3.5 w-24 bg-white/50 rounded-lg" />
+                  <div className="h-3.5 w-20 bg-white/50 rounded-lg" />
+                </div>
+                <div className="h-8 w-full bg-black/30 rounded-full" />
+              </div>
+
+              {/* Square 2: Profile Image + Greeting Skeleton */}
+              <div className="rounded-3xl p-4 sm:p-5 bg-white dark:bg-[#212121] border border-slate-200/80 dark:border-zinc-800 aspect-square flex flex-col items-center justify-between text-center shadow-sm animate-pulse">
+                <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700" />
+                <div className="flex flex-col items-center gap-1 w-full">
+                  <div className="h-2.5 w-14 bg-slate-100 dark:bg-zinc-800 rounded" />
+                  <div className="h-3.5 w-20 bg-slate-100 dark:bg-zinc-800 rounded" />
+                </div>
+                <div className="h-4 w-16 bg-slate-100 dark:bg-zinc-800 rounded-full" />
+              </div>
             </div>
 
             {/* Desktop Hero Banner Skeleton */}
-            <div className="hidden sm:block w-full h-[200px] rounded-3xl bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+            <div className="hidden sm:flex w-full min-h-[200px] rounded-3xl p-8 bg-gradient-to-r from-purple-500/30 to-purple-600/30 border border-purple-400/20 flex-col justify-between shadow-sm relative overflow-hidden animate-pulse">
+              <div className="space-y-3">
+                <div className="h-3 w-28 bg-white/40 rounded-full" />
+                <div className="h-7 w-80 bg-white/50 rounded-xl" />
+                <div className="h-7 w-60 bg-white/50 rounded-xl" />
+              </div>
+              <div className="h-10 w-40 bg-zinc-950/40 rounded-full mt-4" />
+            </div>
 
             {/* Quick Links Skeleton */}
             <div className="flex flex-col gap-3">
-              <div className="h-4 w-28 rounded-md bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+              <div className="h-3.5 w-28 bg-slate-200 dark:bg-zinc-800 rounded-md animate-pulse ml-1" />
               <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
-                <div className="h-[105px] sm:h-[120px] rounded-2xl sm:rounded-3xl bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
-                <div className="h-[105px] sm:h-[120px] rounded-2xl sm:rounded-3xl bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
-                <div className="h-[105px] sm:h-[120px] rounded-2xl sm:rounded-3xl bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+                {[1, 2, 3].map((i) => (
+                  <div 
+                    key={i}
+                    className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 min-h-[105px] sm:min-h-[120px] shadow-sm flex flex-col justify-between animate-pulse"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-purple-50 dark:bg-zinc-800" />
+                      <div className="w-6 h-6 sm:w-7.5 sm:h-7.5 rounded-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700/80" />
+                    </div>
+                    <div className="h-4 w-20 sm:w-28 bg-slate-100 dark:bg-zinc-800 rounded-md mt-2" />
+                  </div>
+                ))}
               </div>
             </div>
 
             {/* Statistics Section Skeleton */}
             <div className="flex flex-col gap-3">
-              <div className="h-4 w-32 rounded-md bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
-              <div className="h-64 rounded-3xl bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+              <div className="h-3.5 w-32 bg-slate-200 dark:bg-zinc-800 rounded-md animate-pulse ml-1" />
+              <div className="rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden animate-pulse">
+                <div className="grid grid-cols-1 lg:grid-cols-10 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-zinc-800">
+                  
+                  {/* Model Accuracy Chart Skeleton */}
+                  <div className="lg:col-span-7 p-6 flex flex-col justify-between min-w-0">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-zinc-800" />
+                        <div className="space-y-1">
+                          <div className="h-3.5 w-28 bg-slate-100 dark:bg-zinc-800 rounded" />
+                          <div className="h-2.5 w-48 bg-slate-100 dark:bg-zinc-800 rounded" />
+                        </div>
+                      </div>
+                      <div className="h-5 w-16 bg-purple-50 dark:bg-zinc-800 rounded-full" />
+                    </div>
+
+                    <div className="h-56 w-full flex items-end justify-between gap-3 pt-6 pb-2 px-2">
+                      {[65, 40, 85, 55, 90, 70, 75].map((h, idx) => (
+                        <div key={idx} className="flex-1 flex flex-col items-center gap-2">
+                          <div 
+                            className="w-full bg-purple-500/20 dark:bg-purple-500/20 rounded-t-lg transition-all duration-300"
+                            style={{ height: `${h}%` }}
+                          />
+                          <div className="h-2 w-8 bg-slate-100 dark:bg-zinc-800 rounded" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Workspace Ratio Donut Skeleton */}
+                  <div className="lg:col-span-3 p-6 flex flex-col justify-between min-w-0 bg-slate-50/50 dark:bg-zinc-900/50">
+                    <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-zinc-800">
+                      <div className="w-4.5 h-4.5 rounded-full bg-emerald-500/20" />
+                      <div className="h-3.5 w-28 bg-slate-100 dark:bg-zinc-800 rounded" />
+                    </div>
+
+                    <div className="h-44 w-full flex items-center justify-center my-auto">
+                      <div className="w-32 h-32 rounded-full border-8 border-slate-200 dark:border-zinc-800 flex items-center justify-center" />
+                    </div>
+
+                    <div className="flex flex-col gap-2 pt-2 border-t border-slate-100 dark:border-zinc-800">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full bg-slate-200 dark:bg-zinc-800" />
+                            <div className="h-2.5 w-16 bg-slate-100 dark:bg-zinc-800 rounded" />
+                          </div>
+                          <div className="h-2.5 w-6 bg-slate-100 dark:bg-zinc-800 rounded" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
             </div>
+
           </div>
 
-          {/* --- RIGHT COLUMN SKELETON (lg:col-span-4) --- */}
-          <div className="hidden sm:flex lg:col-span-4 rounded-3xl h-[560px] bg-slate-200/60 dark:bg-zinc-800/60 card__skeleton" />
+          {/* --- RIGHT COLUMN SKELETON (TABLETS & DESKTOP) --- */}
+          <div className="hidden sm:flex lg:col-span-4 rounded-3xl bg-white dark:bg-[#212121] border border-slate-200/80 dark:border-zinc-800 shadow-md dark:shadow-black/50 p-6 flex-col gap-6 shadow-sm animate-pulse">
+            
+            {/* Profile Avatar & Info Skeleton */}
+            <div className="flex flex-col items-center text-center gap-3 pb-4 border-b border-slate-200 dark:border-zinc-700">
+              <div className="w-18 h-18 rounded-full bg-slate-100 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 shadow-sm" />
+              <div className="flex flex-col items-center gap-1.5 w-full">
+                <div className="h-3 w-20 bg-slate-100 dark:bg-zinc-800 rounded" />
+                <div className="h-4.5 w-32 bg-slate-100 dark:bg-zinc-800 rounded" />
+                <div className="h-2.5 w-40 bg-slate-100 dark:bg-zinc-800 rounded mt-0.5" />
+              </div>
+              <div className="h-5 w-20 bg-slate-100 dark:bg-zinc-800 rounded-full" />
+            </div>
+
+            {/* 3 Stats Box Skeleton */}
+            <div className="p-3.5 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04]">
+              <div className="grid grid-cols-3 gap-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-3 rounded-xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-white/[0.06] flex flex-col items-center justify-center text-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-zinc-800" />
+                    <div className="h-4 w-8 bg-slate-100 dark:bg-zinc-800 rounded" />
+                    <div className="h-2 w-12 bg-slate-100 dark:bg-zinc-800 rounded" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Recent Workspace Skeleton */}
+            <div className="flex flex-col gap-3 min-w-0">
+              <div className="h-3.5 w-32 bg-slate-100 dark:bg-zinc-800 rounded" />
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-dashed border-slate-200/80 dark:border-zinc-800/80 last:border-b-0">
+                    <div className="space-y-1.5 flex-1 min-w-0 pr-2">
+                      <div className="h-3.5 w-28 bg-slate-100 dark:bg-zinc-800 rounded" />
+                      <div className="h-2.5 w-16 bg-slate-100 dark:bg-zinc-800 rounded" />
+                    </div>
+                    <div className="h-7 w-16 rounded-full bg-slate-100 dark:bg-zinc-800 shrink-0" />
+                  </div>
+                ))}
+                <div className="h-9 w-full rounded-full bg-purple-50 dark:bg-purple-500/10" />
+              </div>
+            </div>
+
+          </div>
 
         </div>
       </div>
@@ -168,12 +299,20 @@ function OverviewView({
     totalRowsCleaned = stats.total_cleaned_csvs * 14250;
   }
 
-  // Check if new user with zero history
-  const isNewUser = (
-    (stats.total_uploaded_csvs || 0) === 0 &&
-    (stats.total_cleaned_csvs || 0) === 0 &&
-    recentCsvs.length === 0 &&
-    history.length === 0
+  // Check if genuine new user with zero history (strictly after data is fully loaded)
+  const isNewUser = Boolean(
+    data && (
+      stats.is_new_user !== undefined
+        ? stats.is_new_user
+        : (
+            (stats.total_uploaded_csvs || 0) === 0 &&
+            (stats.total_cleaned_csvs || 0) === 0 &&
+            (stats.total_trained_models || 0) === 0 &&
+            (stats.total_visualizations_created || 0) === 0 &&
+            recentCsvs.length === 0 &&
+            (history.length === 0 || historyList.length === 0)
+          )
+    )
   );
 
   // ALL 7 MODELS FOR BENCHMARK CHART

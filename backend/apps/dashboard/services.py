@@ -149,6 +149,14 @@ class DashboardService:
                 "created_at": viz.created_at.isoformat(),
             })
 
+        is_new_user = bool(
+            total_uploaded_csvs == 0 and
+            total_cleaned_csvs == 0 and
+            total_trained_models == 0 and
+            total_visualizations_created == 0 and
+            len(recent_csv_files) == 0
+        )
+
         return make_json_safe({
             "profile": {
                 "username": display_username,
@@ -168,6 +176,7 @@ class DashboardService:
                 "total_visualizations_created": total_visualizations_created,
                 "total_application_usage": total_application_usage,
                 "recent_activity_count": recent_activity_count,
+                "is_new_user": is_new_user,
             },
             "recent_activities": recent_activities_data,
             "recent_csv_files": recent_csv_files,

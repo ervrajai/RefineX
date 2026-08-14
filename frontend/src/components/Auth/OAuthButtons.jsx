@@ -1,7 +1,11 @@
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 
-const OAUTH_BASE = "http://localhost:8000/accounts";
+const BACKEND_URL = import.meta.env.VITE_API_BASE_URL
+  ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '')
+  : "http://localhost:8000";
+
+const OAUTH_BASE = `${BACKEND_URL}/accounts`;
 
 function OAuthButtons({ mode = "signup" }) {
   return (

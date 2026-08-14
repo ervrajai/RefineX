@@ -236,7 +236,7 @@ SOCIALACCOUNT_ADAPTER = "apps.accounts.adapters.RefinexSocialAccountAdapter"
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 SOCIALACCOUNT_QUERY_EMAIL = True
-FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/")
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "https://refinex-kappa.vercel.app").rstrip("/")
 LOGIN_REDIRECT_URL = f"{FRONTEND_BASE_URL}/dashboard"
 LOGOUT_REDIRECT_URL = f"{FRONTEND_BASE_URL}/login"
 
@@ -259,6 +259,7 @@ CORS_ALLOW_HEADERS = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
+    "https://refinex-kappa.vercel.app",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
@@ -275,6 +276,7 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 ]
 
 CSRF_TRUSTED_ORIGINS = [
+    "https://refinex-kappa.vercel.app",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://*.onrender.com",

@@ -24,7 +24,7 @@ def _get_frontend_base_url(request=None):
             p = urlparse(referer)
             if p.scheme and p.netloc:
                 return f"{p.scheme}://{p.netloc}"
-    return getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/")
+    return getattr(settings, "FRONTEND_BASE_URL", "https://refinex-kappa.vercel.app").rstrip("/")
 
 
 class RefinexAccountAdapter(DefaultAccountAdapter):

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Particles } from "./Particles";
 import logoImg from "../../assets/logo/refinex_logo.png";
 import useDisableInspect from "../../hooks/useDisableInspect";
@@ -111,6 +111,7 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
 
   return (
     <div className="relative min-h-screen w-full bg-white dark:bg-[#0F0F0F] text-slate-900 dark:text-white font-sans flex items-center justify-center py-8 px-4 transition-colors duration-300 select-none overflow-hidden">
+
       
       {/* Background Smooth Keyframe Animations */}
       <style>{`
@@ -174,8 +175,19 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
 
           {/* --- RIGHT COLUMN (Form Card Vertically Centered) --- */}
           <div className="lg:col-span-5 flex justify-center items-center w-full self-center">
-            <div className="w-full max-w-md relative overflow-hidden rounded-3xl border border-zinc-300 dark:border-zinc-700 bg-white/90 dark:bg-zinc-900/90 p-6 sm:p-7 shadow-xl backdrop-blur-xl">
-              
+            <div className="w-full max-w-md flex flex-col gap-3">
+
+              {/* Mobile Back Button — above card, left-aligned, hidden on lg+ */}
+              <Link
+                to="/"
+                className="lg:hidden self-start inline-flex items-center gap-1.5 rounded-full border border-zinc-200 dark:border-zinc-700 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-zinc-300 shadow-sm transition-all duration-200 hover:bg-white dark:hover:bg-zinc-800 active:scale-[0.97]"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Back
+              </Link>
+
+              <div className="w-full relative overflow-hidden rounded-3xl border border-zinc-300 dark:border-zinc-700 bg-white/90 dark:bg-zinc-900/90 p-6 sm:p-7 shadow-xl backdrop-blur-xl">
+
               <div className="relative z-10 w-full">
 
                 {/* Mobile View RefineX Logo Header */}
@@ -288,6 +300,7 @@ function AuthLayout({ title, subtitle, children, footerText, footerLink, footerL
                   </motion.div>
                 </AnimatePresence>
 
+              </div>
               </div>
             </div>
           </div>

@@ -229,7 +229,8 @@ class SignupOtpRequestView(APIView):
         otp = _generate_otp()
         try:
             _send_otp(email, otp, "Verify your RefineX signup", purpose="signup")
-        except (BadHeaderError, SMTPException, OSError):
+        except Exception as exc:
+            logger.error(f"[SIGNUP OTP ERROR] {exc}")
             return _otp_email_error_response()
 
         _store_otp(
@@ -436,7 +437,8 @@ class ForgotPasswordOtpRequestView(APIView):
         otp = _generate_otp()
         try:
             _send_otp(email, otp, "Reset your RefineX password", purpose="password_reset")
-        except (BadHeaderError, SMTPException, OSError):
+        except Exception as exc:
+            logger.error(f"[FORGOT PASSWORD OTP ERROR] {exc}")
             return _otp_email_error_response()
 
         _store_otp(request, "password_reset", email=email, otp=otp)
@@ -598,7 +600,8 @@ class DeleteAccountOtpRequestView(APIView):
         otp = _generate_otp()
         try:
             _send_otp(email, otp, "Confirm RefineX Account Deletion", purpose="delete_account")
-        except (BadHeaderError, SMTPException, OSError):
+        except Exception as exc:
+            logger.error(f"[DELETE ACCOUNT OTP ERROR] {exc}")
             return _otp_email_error_response()
 
         _store_otp(request, "delete_account", email=email, otp=otp)

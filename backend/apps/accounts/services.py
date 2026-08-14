@@ -64,29 +64,8 @@ class OtpService:
 
     @staticmethod
     def send_otp_email(email, otp, subject, purpose="signup"):
-        from django.template.loader import render_to_string
-        from django.utils.html import strip_tags
-
-        template_name = {
-            "signup": "emails/signup_otp.html",
-            "password_reset": "emails/password_reset_otp.html",
-            "delete_account": "emails/delete_account_otp.html",
-        }.get(purpose, "emails/signup_otp.html")
-
-        context = {"otp_code": otp}
-        html_message = render_to_string(template_name, context)
-        text_message = strip_tags(html_message)
-
-        sent_count = send_mail(
-            subject,
-            text_message,
-            getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@refinex.local"),
-            [email],
-            html_message=html_message,
-            fail_silently=False,
-        )
-        if sent_count != 1:
-            raise SMTPException("OTP email was not accepted by SMTP gateway.")
+        from .views import _send_otp
+        _send_otp(email, otp, subject, purpose=purpose)
 
 
 class UserService:

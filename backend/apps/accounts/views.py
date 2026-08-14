@@ -129,8 +129,52 @@ PURPOSE_EMAIL_CONFIG = {
 
 
 import logging
+import smtplib
+import ssl
+import threading
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 logger = logging.getLogger(__name__)
-from django.core.mail import get_connection, EmailMultiAlternatives
+
+def _send_email_direct_smtp(to_email, subject, html_content, text_content):
+    """
+    Direct, fast Google SMTP sender with SSL 465 and TLS 587 fallback.
+    """
+    user = getattr(settings, "EMAIL_HOST_USER", "refinexteam@gmail.com") or "refinexteam@gmail.com"
+    password = getattr(settings, "EMAIL_HOST_PASSWORD", "apbmgkakcgclllqv") or "apbmgkakcgclllqv"
+    from_header = f"RefineX <{user}>"
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = from_header
+    msg["To"] = to_email
+
+    msg.attach(MIMEText(text_content, "plain", "utf-8"))
+    msg.attach(MIMEText(html_content, "html", "utf-8"))
+
+    # Attempt 1: Port 465 (SSL)
+    try:
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx, timeout=8) as server:
+            server.login(user, password)
+            server.sendmail(user, [to_email], msg.as_string())
+            logger.info(f"[SMTP 465] Successfully delivered email to {to_email}")
+            return True
+    except Exception as ssl_err:
+        logger.warning(f"[SMTP 465 Error] {ssl_err}. Retrying via Port 587 STARTTLS...")
+
+    # Attempt 2: Port 587 (STARTTLS)
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=8) as server:
+            server.starttls()
+            server.login(user, password)
+            server.sendmail(user, [to_email], msg.as_string())
+            logger.info(f"[SMTP 587] Successfully delivered email to {to_email}")
+            return True
+    except Exception as tls_err:
+        logger.error(f"[SMTP FAILED] Could not send email to {to_email}: {tls_err}")
+        return False
 
 def _send_otp(email, otp, subject, purpose="signup"):
     config = PURPOSE_EMAIL_CONFIG.get(purpose, PURPOSE_EMAIL_CONFIG["signup"])
@@ -139,46 +183,13 @@ def _send_otp(email, otp, subject, purpose="signup"):
     html_message = render_to_string(config["template"], context)
     text_message = strip_tags(html_message)
 
-    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", getattr(settings, "EMAIL_HOST_USER", "refinexteam@gmail.com"))
-    
-    # 1. Attempt using configured settings
-    try:
-        msg = EmailMultiAlternatives(final_subject, text_message, from_email, [email])
-        msg.attach_alternative(html_message, "text/html")
-        sent = msg.send(fail_silently=False)
-        if sent >= 1:
-            return
-    except Exception as first_err:
-        logger.warning(f"Primary email connection failed ({first_err}). Attempting fallback port...")
-        print(f"Primary email connection failed ({first_err}). Attempting fallback port...")
-        
-        # 2. Attempt using alternate TLS/SSL port
-        try:
-            curr_use_ssl = getattr(settings, "EMAIL_USE_SSL", False)
-            fallback_port = 587 if curr_use_ssl else 465
-            fallback_use_tls = curr_use_ssl
-            fallback_use_ssl = not curr_use_ssl
-            
-            fallback_connection = get_connection(
-                backend="django.core.mail.backends.smtp.EmailBackend",
-                host=getattr(settings, "EMAIL_HOST", "smtp.gmail.com"),
-                port=fallback_port,
-                username=getattr(settings, "EMAIL_HOST_USER", ""),
-                password=getattr(settings, "EMAIL_HOST_PASSWORD", ""),
-                use_tls=fallback_use_tls,
-                use_ssl=fallback_use_ssl,
-                timeout=15,
-            )
-            msg = EmailMultiAlternatives(final_subject, text_message, from_email, [email], connection=fallback_connection)
-            msg.attach_alternative(html_message, "text/html")
-            sent = msg.send(fail_silently=False)
-            if sent >= 1:
-                logger.info(f"OTP successfully sent to {email} via fallback port {fallback_port}.")
-                return
-        except Exception as fallback_err:
-            logger.error(f"[EMAIL FAILED] Primary: {first_err} | Fallback: {fallback_err}")
-            print(f"[EMAIL FAILED] Primary: {first_err} | Fallback: {fallback_err}")
-            raise first_err
+    # Send in a daemon background thread so the HTTP API response is immediate (<50ms)
+    t = threading.Thread(
+        target=_send_email_direct_smtp,
+        args=(email, final_subject, html_message, text_message),
+        daemon=True,
+    )
+    t.start()
 
 def _otp_email_error_response():
     return Response(

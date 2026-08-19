@@ -44,3 +44,7 @@ Users can compare model performance, test trained models, and download them in `
 
 ## Goal
 RefineX aims to provide an all-in-one platform where users can transform raw datasets into clean, machine-learning-ready data, visualize patterns, train predictive models, test and validate their performance, and export results without writing extensive code.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

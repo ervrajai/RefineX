@@ -1,6 +1,6 @@
 # RefineX
 
-RefineX is a modern web-based platform designed to simplify the complete data preprocessing and machine learning workflow. It enables users to upload datasets, clean and prepare data, visualize insights through interactive charts, train machine learning models, and download processed results—all from a single, user-friendly interface.
+RefineX is a modern web-based platform designed to simplify the complete data preprocessing and machine learning workflow. It enables users to upload datasets, clean and prepare data, visualize insights through interactive charts, train machine learning models, test their performance, and download processed results—all from a single, user-friendly interface.
 
 The platform is built to reduce the time and effort required for data preparation while making machine learning accessible to students, researchers, analysts, and developers.
 
@@ -26,7 +26,6 @@ The platform is built to reduce the time and effort required for data preparatio
 
 ### Machine Learning
 RefineX allows users to train and evaluate multiple machine learning models directly from the browser, including:
-
 - Linear Regression
 - Multiple Linear Regression
 - Polynomial Regression
@@ -35,14 +34,21 @@ RefineX allows users to train and evaluate multiple machine learning models dire
 - Random Forest
 - Support Vector Machine (SVM)
 
-Users can compare model performance and download trained models in `.pkl` format.
+Users can compare model performance and download trained models in `.joblib` format.
+
+### Model Testing
+- Test trained models on new/unseen data directly within the platform.
+- Upload a separate test dataset or manually input feature values to get instant predictions.
+- View evaluation metrics (accuracy, precision, recall, F1-score, RMSE, R², etc. depending on model type) to assess real-world performance.
+- Compare predicted vs. actual values through visual plots (confusion matrix, residual plots, prediction vs. actual charts).
+- Validate model reliability before downloading or deploying it.
 
 ### Export & Downloads
 - Download cleaned CSV datasets.
-- Export trained machine learning models.
+- Export trained machine learning models (`.joblib` format).
 - Save generated visualizations.
 - Copy or download graph generation code.
+- Export model testing/evaluation reports.
 
 ## Goal
-
-RefineX aims to provide an all-in-one platform where users can transform raw datasets into clean, machine-learning-ready data, visualize patterns, train predictive models, and export results without writing extensive code.
+RefineX aims to provide an all-in-one platform where users can transform raw datasets into clean, machine-learning-ready data, visualize patterns, train predictive models, test and validate their performance, and export results without writing extensive code.

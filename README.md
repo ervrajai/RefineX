@@ -34,21 +34,13 @@ RefineX allows users to train and evaluate multiple machine learning models dire
 - Random Forest
 - Support Vector Machine (SVM)
 
-Users can compare model performance and download trained models in `.joblib` format.
-
-### Model Testing
-- Test trained models on new/unseen data directly within the platform.
-- Upload a separate test dataset or manually input feature values to get instant predictions.
-- View evaluation metrics (accuracy, precision, recall, F1-score, RMSE, R², etc. depending on model type) to assess real-world performance.
-- Compare predicted vs. actual values through visual plots (confusion matrix, residual plots, prediction vs. actual charts).
-- Validate model reliability before downloading or deploying it.
+Users can compare model performance, test trained models, and download them in `.joblib` format.
 
 ### Export & Downloads
 - Download cleaned CSV datasets.
 - Export trained machine learning models (`.joblib` format).
 - Save generated visualizations.
 - Copy or download graph generation code.
-- Export model testing/evaluation reports.
 
 ## Goal
 RefineX aims to provide an all-in-one platform where users can transform raw datasets into clean, machine-learning-ready data, visualize patterns, train predictive models, test and validate their performance, and export results without writing extensive code.
